@@ -20,17 +20,23 @@ const AutoPlayVideo = ({ src, className = '', poster = '' }) => {
     const attemptPlay = () => {
       if (hasPlayed) return;
 
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            setHasPlayed(true);
-            setNeedsTap(false);
-          })
-          .catch(() => {
-            // Autoplay was blocked — show tap overlay
-            setNeedsTap(true);
-          });
+      // Only attempt to play if the video has enough data
+      if (video.readyState >= 2) {
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setHasPlayed(true);
+              setNeedsTap(false);
+            })
+            .catch((error) => {
+              console.log("Autoplay blocked:", error);
+              setNeedsTap(true);
+            });
+        }
+      } else {
+        // Wait for data if not ready
+        video.addEventListener('loadeddata', attemptPlay, { once: true });
       }
     };
 
@@ -42,16 +48,21 @@ const AutoPlayVideo = ({ src, className = '', poster = '' }) => {
           }
         });
       },
-      { threshold: 0.25 }
+      { threshold: 0.1 }
     );
 
     observer.observe(video);
 
-    // Also attempt on load in case it's already visible
-    attemptPlay();
+    // Initial attempt
+    if (video.readyState >= 2) {
+      attemptPlay();
+    } else {
+      video.addEventListener('loadeddata', attemptPlay, { once: true });
+    }
 
     return () => {
       observer.disconnect();
+      video.removeEventListener('loadeddata', attemptPlay);
     };
   }, [hasPlayed]);
 
