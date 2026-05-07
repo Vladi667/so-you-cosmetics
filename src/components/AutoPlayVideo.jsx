@@ -98,12 +98,13 @@ const AutoPlayVideo = ({ src, className = '', poster = '' }) => {
     <div className="absolute inset-0 bg-slate-900/10">
       <video
         ref={videoRef}
+        autoPlay
         loop
         muted
         playsInline
         preload="auto"
         poster={poster}
-        className={`${className} transition-opacity duration-1000 ${hasPlayed ? 'opacity-100' : 'opacity-0'}`}
+        className={className}
         style={{ pointerEvents: 'none' }}
       >
         <source src={src} type="video/mp4" />
