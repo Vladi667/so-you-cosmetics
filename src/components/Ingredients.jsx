@@ -25,7 +25,7 @@ const Ingredients = () => {
   ];
 
   return (
-    <section className="py-40 bg-mist-white relative overflow-hidden">
+    <section className="py-24 md:py-40 bg-mist-white relative overflow-hidden">
       {/* Background accents */}
       <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-green-50/40 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2"></div>
       <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-amber-50/30 rounded-full blur-3xl pointer-events-none translate-x-1/2 translate-y-1/2"></div>
@@ -35,10 +35,10 @@ const Ingredients = () => {
         {/* Header */}
         <div className="max-w-3xl mx-auto text-center mb-24 reveal">
           <p className="font-sans text-[10px] tracking-[0.5em] uppercase text-stone-gray/40 mb-6 font-bold">Notre Engagement</p>
-          <h2 className="font-serif text-5xl md:text-7xl text-slate-stone mb-10 leading-tight">
+          <h2 className="font-serif text-4xl md:text-7xl text-slate-stone mb-8 md:mb-10 leading-tight">
             Entreprise<br/><span className="italic text-slate-stone/40 font-light">Responsable</span>
           </h2>
-          <p className="font-sans font-light text-stone-gray text-xl leading-relaxed">
+          <p className="font-sans font-light text-stone-gray text-lg md:text-xl leading-relaxed">
             So You lutte contre les problématiques écologiques en privilégiant des matières premières équitables, durables et respectueuses de la biodiversité. La qualité du produit fini prime toujours sur le packaging.
           </p>
         </div>

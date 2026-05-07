@@ -167,9 +167,9 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                       </span>
                     </div>
                   )}
-                  {/* Hover Overlay */}
-                  <Link to={`/product/${product.id}`} className="absolute inset-0 bg-slate-stone/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
-                    <span className="transform translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-500 bg-white text-slate-stone px-8 py-3 rounded-full font-medium tracking-wide shadow-lg hover:bg-slate-stone hover:text-white">
+                  {/* Hover Overlay — on mobile the card image is directly tappable */}
+                  <Link to={`/product/${product.id}`} className="absolute inset-0 bg-slate-stone/10 opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center md:backdrop-blur-[2px]">
+                    <span className="transform translate-y-4 md:group-hover:translate-y-0 opacity-0 md:group-hover:opacity-100 transition-all duration-500 bg-white text-slate-stone px-8 py-3 rounded-full font-medium tracking-wide shadow-lg hover:bg-slate-stone hover:text-white hidden md:inline">
                       View Details
                     </span>
                   </Link>

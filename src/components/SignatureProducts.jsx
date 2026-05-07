@@ -33,7 +33,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
         />
       </div>
       
-      <div className="relative w-full overflow-hidden flex carousel-wrapper cursor-grab">
+      <div className="relative w-full overflow-hidden flex carousel-wrapper cursor-grab" onTouchStart={(e) => e.currentTarget.classList.add('touch-active')} onTouchEnd={(e) => e.currentTarget.classList.remove('touch-active')}>
         <div className="flex animate-marquee-slow w-max">
           {duplicatedProducts.map((product, index) => (
             <div 
@@ -61,7 +61,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                 <Link to={`/product/${product.id}`} className="absolute inset-0 z-0 bg-gradient-to-t from-slate-stone/40 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-700"></Link>
                 
                 {/* Explore button that appears on hover */}
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 translate-y-10 opacity-0 group-hover/card:translate-y-0 group-hover/card:opacity-100 transition-all duration-500 ease-out flex space-x-3 z-10">
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 md:translate-y-10 md:opacity-0 md:group-hover/card:translate-y-0 md:group-hover/card:opacity-100 translate-y-0 opacity-100 transition-all duration-500 ease-out flex space-x-3 z-10">
                   <button 
                     onClick={() => addToCart(product)}
                     className="px-6 py-2 bg-white/90 backdrop-blur-sm text-slate-stone text-xs uppercase tracking-widest rounded-full font-medium hover:bg-slate-stone hover:text-white transition-colors"

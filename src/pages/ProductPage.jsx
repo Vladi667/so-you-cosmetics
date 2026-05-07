@@ -75,7 +75,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
             
             {/* Left: Image Gallery */}
             <div className="w-full lg:w-1/2">
-              <div className="sticky top-32">
+              <div className="lg:sticky lg:top-32">
                 <div className="aspect-[4/5] w-full rounded-3xl overflow-hidden bg-white shadow-sm mb-6 relative group">
                   {product.ribbon && (
                     <div className="absolute top-6 left-6 z-10">
@@ -122,7 +122,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                     </Link>
                   ))}
                 </div>
-                <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl text-slate-stone leading-tight mb-6">
+                <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-slate-stone leading-tight mb-4 md:mb-6">
                   {product.name}
                 </h1>
                 <p className="font-sans text-2xl text-stone-gray font-light">CHF {product.price.toFixed(2)}</p>

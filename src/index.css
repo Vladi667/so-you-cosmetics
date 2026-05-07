@@ -142,3 +142,16 @@
   filter: blur(0);
   transform: translateY(0);
 }
+
+/* Touch devices: pause carousel on touch */
+.carousel-wrapper.touch-active .animate-marquee-slow {
+  animation-play-state: paused;
+}
+
+/* Mobile: ensure tap targets are adequate */
+@media (max-width: 1023px) {
+  .carousel-wrapper .animate-marquee-slow {
+    /* Slightly slower on mobile for readability */
+    animation-duration: 120s;
+  }
+}
