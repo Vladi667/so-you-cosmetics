@@ -17,26 +17,38 @@ const AutoPlayVideo = ({ src, className = '', poster = '' }) => {
     const video = videoRef.current;
     if (!video) return;
 
+    let retryCount = 0;
+    const maxRetries = 3;
+
     const attemptPlay = () => {
       if (hasPlayed) return;
 
-      // Only attempt to play if the video has enough data
+      // Ensure muted is set before playing
+      video.muted = true;
+
       if (video.readyState >= 2) {
-        const playPromise = video.play();
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              setHasPlayed(true);
-              setNeedsTap(false);
-            })
-            .catch((error) => {
-              console.log("Autoplay blocked:", error);
-              setNeedsTap(true);
-            });
-        }
+        // Small delay helps iOS Safari in some cases
+        setTimeout(() => {
+          const playPromise = video.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                setHasPlayed(true);
+                setNeedsTap(false);
+              })
+              .catch((error) => {
+                console.log(`Autoplay attempt ${retryCount + 1} failed:`, error);
+                if (retryCount < maxRetries) {
+                  retryCount++;
+                  setTimeout(attemptPlay, 1000); // Wait 1s and try again
+                } else {
+                  setNeedsTap(true);
+                }
+              });
+          }
+        }, 150);
       } else {
-        // Wait for data if not ready
-        video.addEventListener('loadeddata', attemptPlay, { once: true });
+        video.addEventListener('canplay', attemptPlay, { once: true });
       }
     };
 
@@ -57,12 +69,12 @@ const AutoPlayVideo = ({ src, className = '', poster = '' }) => {
     if (video.readyState >= 2) {
       attemptPlay();
     } else {
-      video.addEventListener('loadeddata', attemptPlay, { once: true });
+      video.addEventListener('canplay', attemptPlay, { once: true });
     }
 
     return () => {
       observer.disconnect();
-      video.removeEventListener('loadeddata', attemptPlay);
+      video.removeEventListener('canplay', attemptPlay);
     };
   }, [hasPlayed]);
 
@@ -74,7 +86,6 @@ const AutoPlayVideo = ({ src, className = '', poster = '' }) => {
       setHasPlayed(true);
       setNeedsTap(false);
     }).catch(() => {
-      // Last resort: mute and play (should always work)
       video.muted = true;
       video.play().then(() => {
         setHasPlayed(true);
@@ -84,15 +95,16 @@ const AutoPlayVideo = ({ src, className = '', poster = '' }) => {
   };
 
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0 bg-slate-900/10">
       <video
         ref={videoRef}
-        autoPlay
         loop
         muted
         playsInline
+        preload="auto"
         poster={poster}
-        className={className}
+        className={`${className} transition-opacity duration-1000 ${hasPlayed ? 'opacity-100' : 'opacity-0'}`}
+        style={{ pointerEvents: 'none' }}
       >
         <source src={src} type="video/mp4" />
       </video>
