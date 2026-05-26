@@ -13,6 +13,12 @@ const AdminDashboard = ({ onLogout }) => {
   // Password change state
   const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordStatus, setPasswordStatus] = useState({ success: '', error: '' });
+
+  // SumUp settings state
+  const [sumupSettings, setSumupSettings] = useState({ apiKeyConfigured: false, apiKeyLast4: null, merchantEmail: '', webhookSecretConfigured: false });
+  const [sumupForm, setSumupForm] = useState({ apiKey: '', merchantEmail: '', webhookSecret: '' });
+  const [sumupStatus, setSumupStatus] = useState({ success: '', error: '' });
+  const [sumupSaving, setSumupSaving] = useState(false);
   
   // Email modal state
   const [emailModal, setEmailModal] = useState({ isOpen: false, to: '', subject: '', message: '' });
@@ -64,10 +70,77 @@ const AdminDashboard = ({ onLogout }) => {
   };
 
   useEffect(() => {
+    if (activeTab === 'sumup') {
+      loadSumupSettings();
+      return;
+    }
     if (activeTab !== 'settings') {
       loadData();
     }
   }, [activeTab]);
+
+  const loadSumupSettings = () => {
+    setSumupStatus({ success: '', error: '' });
+    fetch('/api/admin/settings/sumup', { headers: fetchHeaders })
+      .then(res => {
+        if (res.status === 401) { onLogout(); throw new Error('Session expirée'); }
+        if (!res.ok) throw new Error('Erreur lors du chargement des paramètres SumUp');
+        return res.json();
+      })
+      .then(data => {
+        setSumupSettings(data);
+        setSumupForm({ apiKey: '', merchantEmail: data.merchantEmail || '', webhookSecret: '' });
+      })
+      .catch(err => setSumupStatus({ success: '', error: err.message }));
+  };
+
+  const handleSaveSumup = (e) => {
+    e.preventDefault();
+    setSumupSaving(true);
+    setSumupStatus({ success: '', error: '' });
+
+    // Only send fields the user actually filled in. Empty apiKey/webhookSecret
+    // means "leave as is" rather than "clear" — clearing is done via the
+    // dedicated Effacer buttons.
+    const patch = { merchantEmail: sumupForm.merchantEmail };
+    if (sumupForm.apiKey) patch.apiKey = sumupForm.apiKey;
+    if (sumupForm.webhookSecret) patch.webhookSecret = sumupForm.webhookSecret;
+
+    fetch('/api/admin/settings/sumup', {
+      method: 'PUT',
+      headers: fetchHeaders,
+      body: JSON.stringify(patch)
+    })
+      .then(res => res.json().then(data => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        setSumupSaving(false);
+        if (!ok) throw new Error(data.error || 'Erreur lors de la sauvegarde');
+        setSumupSettings(data);
+        setSumupForm({ apiKey: '', merchantEmail: data.merchantEmail || '', webhookSecret: '' });
+        setSumupStatus({ success: 'Paramètres SumUp mis à jour. Redémarrage du serveur non nécessaire.', error: '' });
+      })
+      .catch(err => {
+        setSumupSaving(false);
+        setSumupStatus({ success: '', error: err.message });
+      });
+  };
+
+  const clearSumupField = (field) => {
+    const fieldToServerName = { apiKey: 'apiKey', webhookSecret: 'webhookSecret', merchantEmail: 'merchantEmail' };
+    const patch = { [fieldToServerName[field]]: '' };
+    fetch('/api/admin/settings/sumup', {
+      method: 'PUT',
+      headers: fetchHeaders,
+      body: JSON.stringify(patch)
+    })
+      .then(res => res.json())
+      .then(data => {
+        setSumupSettings(data);
+        setSumupForm({ apiKey: '', merchantEmail: data.merchantEmail || '', webhookSecret: '' });
+        setSumupStatus({ success: 'Champ effacé.', error: '' });
+      })
+      .catch(err => setSumupStatus({ success: '', error: err.message }));
+  };
 
   const handleUpdateStatus = (orderId, newStatus) => {
     fetch(`/api/admin/orders/${orderId}`, {
@@ -168,6 +241,7 @@ const AdminDashboard = ({ onLogout }) => {
               { id: 'bookings', label: 'Réservations Ateliers', icon: '📅' },
               { id: 'workshops', label: 'Gestion Ateliers', icon: '🎨' },
               { id: 'clients', label: 'Fichier Clients', icon: '👤' },
+              { id: 'sumup', label: 'API SumUp', icon: '💳' },
               { id: 'settings', label: 'Configuration / Password', icon: '⚙️' }
             ].map(tab => (
               <button
@@ -445,6 +519,90 @@ const AdminDashboard = ({ onLogout }) => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Tab: API SumUp */}
+        {activeTab === 'sumup' && (
+          <div className="max-w-2xl">
+            <h1 className="font-serif text-3xl md:text-4xl text-slate-stone mb-2">API SumUp</h1>
+            <p className="text-sm text-stone-gray mb-8">Clés d'accès SumUp utilisées pour encaisser les paiements. Modifiable uniquement par l'administrateur.</p>
+
+            <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 sm:p-10 shadow-sm space-y-6">
+              {sumupStatus.success && (
+                <div className="p-4 bg-green-50 text-green-700 border border-green-100 rounded-xl text-sm font-medium">{sumupStatus.success}</div>
+              )}
+              {sumupStatus.error && (
+                <div className="p-4 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm">{sumupStatus.error}</div>
+              )}
+
+              <div className="p-4 bg-mist-white rounded-2xl border border-slate-stone/10 text-sm text-stone-gray">
+                <p className="mb-2"><strong className="text-slate-stone">Statut actuel :</strong></p>
+                <ul className="space-y-1 list-disc list-inside">
+                  <li>Clé API : {sumupSettings.apiKeyConfigured ? <span className="text-green-600 font-medium">configurée (•••• {sumupSettings.apiKeyLast4})</span> : <span className="text-amber-600 font-medium">non configurée</span>}</li>
+                  <li>Email vendeur : {sumupSettings.merchantEmail ? <span className="text-slate-stone font-medium">{sumupSettings.merchantEmail}</span> : <span className="text-amber-600">non configuré</span>}</li>
+                  <li>Secret webhook : {sumupSettings.webhookSecretConfigured ? <span className="text-green-600 font-medium">configuré</span> : <span className="text-stone-gray">facultatif, non configuré</span>}</li>
+                </ul>
+              </div>
+
+              <form onSubmit={handleSaveSumup} className="space-y-6">
+                <div>
+                  <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">Clé API SumUp</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      autoComplete="off"
+                      value={sumupForm.apiKey}
+                      onChange={(e) => setSumupForm({ ...sumupForm, apiKey: e.target.value })}
+                      className="flex-1 bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40"
+                      placeholder={sumupSettings.apiKeyConfigured ? `Laisser vide pour conserver •••• ${sumupSettings.apiKeyLast4}` : 'sup_sk_…'}
+                    />
+                    {sumupSettings.apiKeyConfigured && (
+                      <button type="button" onClick={() => clearSumupField('apiKey')} className="px-4 py-3 text-xs uppercase tracking-widest font-bold text-red-600 hover:bg-red-50 rounded-2xl border border-red-100">Effacer</button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-stone-gray/70 mt-2">Trouvée dans SumUp → Paramètres → API. Stockée chiffrée côté serveur, jamais renvoyée en clair.</p>
+                </div>
+
+                <div>
+                  <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">Email vendeur SumUp</label>
+                  <input
+                    type="email"
+                    value={sumupForm.merchantEmail}
+                    onChange={(e) => setSumupForm({ ...sumupForm, merchantEmail: e.target.value })}
+                    className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40"
+                    placeholder="votre-email@example.com"
+                  />
+                  <p className="text-[11px] text-stone-gray/70 mt-2">Compte SumUp qui reçoit les paiements.</p>
+                </div>
+
+                <div>
+                  <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">Secret webhook (facultatif)</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      autoComplete="off"
+                      value={sumupForm.webhookSecret}
+                      onChange={(e) => setSumupForm({ ...sumupForm, webhookSecret: e.target.value })}
+                      className="flex-1 bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40"
+                      placeholder={sumupSettings.webhookSecretConfigured ? 'Laisser vide pour conserver' : 'Optionnel mais recommandé'}
+                    />
+                    {sumupSettings.webhookSecretConfigured && (
+                      <button type="button" onClick={() => clearSumupField('webhookSecret')} className="px-4 py-3 text-xs uppercase tracking-widest font-bold text-red-600 hover:bg-red-50 rounded-2xl border border-red-100">Effacer</button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-stone-gray/70 mt-2">À configurer si SumUp signe ses webhooks. URL webhook : <code className="text-xs">https://soyoucosmetics.com/api/sumup/webhook</code></p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={sumupSaving}
+                  className="px-8 py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-slate-stone/90 transition-all duration-300 shadow-md disabled:opacity-50"
+                >
+                  {sumupSaving ? 'Sauvegarde…' : 'Enregistrer'}
+                </button>
+              </form>
             </div>
           </div>
         )}

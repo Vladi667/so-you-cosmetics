@@ -16,7 +16,7 @@ function timingSafeEqualStr(a, b) {
 // (depending on product/version), sometimes prefixed with "sha256=". If
 // SUMUP_WEBHOOK_SECRET is unset we skip verification (development mode).
 function verifySumupSignature(req) {
-  const secret = process.env.SUMUP_WEBHOOK_SECRET;
+  const { webhookSecret: secret } = db.getSumupConfig();
   if (!secret) return true; // dev mode
   if (!req.rawBody) return false;
   const provided = (req.headers['x-payload-signature']
@@ -142,8 +142,9 @@ router.post('/orders', async (req, res) => {
     let checkoutId = `mock_session_${newOrder.id}`;
     let sumupActive = false;
 
-    // Appeler l'API SumUp pour créer un checkout_id
-    if (process.env.SUMUP_API_KEY && process.env.SUMUP_MERCHANT_EMAIL) {
+    // Read SumUp creds from admin-saved settings first, env as fallback
+    const sumup = db.getSumupConfig();
+    if (sumup.apiKey && sumup.merchantEmail) {
       sumupActive = true;
       try {
         const axios = require('axios');
@@ -151,11 +152,11 @@ router.post('/orders', async (req, res) => {
           checkout_reference: newOrder.id,
           amount: parseFloat(total),
           currency: "CHF",
-          pay_to_email: process.env.SUMUP_MERCHANT_EMAIL,
+          pay_to_email: sumup.merchantEmail,
           description: `Commande ${newOrder.id} - SoYou Cosmetics`
         }, {
           headers: {
-            'Authorization': `Bearer ${process.env.SUMUP_API_KEY}`,
+            'Authorization': `Bearer ${sumup.apiKey}`,
             'Content-Type': 'application/json'
           }
         });
@@ -165,7 +166,7 @@ router.post('/orders', async (req, res) => {
         return res.status(500).json({ error: 'Erreur lors de la création de la session de paiement SumUp.' });
       }
     } else {
-      console.warn("SUMUP_API_KEY ou SUMUP_MERCHANT_EMAIL manquant. Utilisation d'un checkout_id simulé.");
+      console.warn("SumUp non configuré (clé API + email vendeur manquants). Utilisation d'un checkout_id simulé.");
     }
 
     // When SumUp is not yet configured we cannot wait for a real webhook, so
@@ -462,6 +463,52 @@ router.post('/admin/send-email', requireAdmin, async (req, res) => {
     res.json({ message: 'Email sent successfully!', result });
   } catch (err) {
     res.status(500).json({ error: 'Failed to send client email' });
+  }
+});
+
+// 13b. Admin Get SumUp Settings (safe view — API key is never returned, only last4)
+router.get('/admin/settings/sumup', requireAdmin, (req, res) => {
+  try {
+    const cfg = db.getSumupConfig();
+    const apiKey = cfg.apiKey || '';
+    res.json({
+      apiKeyConfigured: !!apiKey,
+      apiKeyLast4: apiKey ? apiKey.slice(-4) : null,
+      merchantEmail: cfg.merchantEmail || '',
+      webhookSecretConfigured: !!cfg.webhookSecret
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to read SumUp settings' });
+  }
+});
+
+// 13c. Admin Update SumUp Settings
+// Body may include any subset of: apiKey, merchantEmail, webhookSecret.
+// Empty string clears that setting. Missing keys are left unchanged.
+router.put('/admin/settings/sumup', requireAdmin, (req, res) => {
+  try {
+    const patch = {};
+    if (Object.prototype.hasOwnProperty.call(req.body, 'apiKey')) {
+      patch.SUMUP_API_KEY = req.body.apiKey;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'merchantEmail')) {
+      patch.SUMUP_MERCHANT_EMAIL = req.body.merchantEmail;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'webhookSecret')) {
+      patch.SUMUP_WEBHOOK_SECRET = req.body.webhookSecret;
+    }
+    db.updateSettings(patch);
+    const cfg = db.getSumupConfig();
+    res.json({
+      message: 'SumUp settings updated',
+      apiKeyConfigured: !!cfg.apiKey,
+      apiKeyLast4: cfg.apiKey ? cfg.apiKey.slice(-4) : null,
+      merchantEmail: cfg.merchantEmail || '',
+      webhookSecretConfigured: !!cfg.webhookSecret
+    });
+  } catch (err) {
+    console.error('SumUp settings update failed:', err);
+    res.status(500).json({ error: 'Failed to update SumUp settings' });
   }
 });
 

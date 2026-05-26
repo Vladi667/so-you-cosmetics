@@ -13,6 +13,7 @@ const BOOKINGS_FILE = path.join(DATA_DIR, 'bookings.json');
 const CONTACTS_FILE = path.join(DATA_DIR, 'contacts.json');
 const ADMIN_FILE = path.join(DATA_DIR, 'admin.json');
 const WORKSHOPS_FILE = path.join(DATA_DIR, 'workshops.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
 // Ensure data folder exists locally
 if (!fs.existsSync(DATA_DIR)) {
@@ -40,6 +41,7 @@ initJsonFile(ORDERS_FILE);
 initJsonFile(BOOKINGS_FILE);
 initJsonFile(CONTACTS_FILE);
 initJsonFile(WORKSHOPS_FILE);
+initJsonFile(SETTINGS_FILE, {});
 
 // Seed admin in JSON file if it doesn't exist
 if (!fs.existsSync(ADMIN_FILE)) {
@@ -639,9 +641,53 @@ async function getClients() {
   return Array.from(clientMap.values());
 }
 
+// ------------- Settings (admin-managed runtime config) -------------
+function readSettings() {
+  try {
+    return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) || {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function writeSettings(next) {
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(next, null, 2), 'utf8');
+}
+
+function getSetting(key) {
+  return readSettings()[key];
+}
+
+function updateSettings(patch) {
+  const current = readSettings();
+  const next = { ...current };
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === null || v === '') {
+      delete next[k];
+    } else {
+      next[k] = v;
+    }
+  }
+  writeSettings(next);
+  return next;
+}
+
+// Read SumUp config from admin-saved settings first, fall back to env vars.
+function getSumupConfig() {
+  const s = readSettings();
+  return {
+    apiKey: s.SUMUP_API_KEY || process.env.SUMUP_API_KEY || '',
+    merchantEmail: s.SUMUP_MERCHANT_EMAIL || process.env.SUMUP_MERCHANT_EMAIL || '',
+    webhookSecret: s.SUMUP_WEBHOOK_SECRET || process.env.SUMUP_WEBHOOK_SECRET || ''
+  };
+}
+
 module.exports = {
   getProducts,
   getProductById,
+  getSetting,
+  updateSettings,
+  getSumupConfig,
   createOrder,
   createBooking,
   createContact,
