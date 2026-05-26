@@ -1,7 +1,32 @@
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const db = require('./db');
 const emailService = require('./email');
+
+// Compare two strings in constant time; tolerates length mismatch
+function timingSafeEqualStr(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'));
+}
+
+// Verify the SumUp webhook signature header against HMAC-SHA256(rawBody, secret).
+// SumUp sends the header as either `x-payload-signature` or `x-sumup-signature`
+// (depending on product/version), sometimes prefixed with "sha256=". If
+// SUMUP_WEBHOOK_SECRET is unset we skip verification (development mode).
+function verifySumupSignature(req) {
+  const secret = process.env.SUMUP_WEBHOOK_SECRET;
+  if (!secret) return true; // dev mode
+  if (!req.rawBody) return false;
+  const provided = (req.headers['x-payload-signature']
+    || req.headers['x-sumup-signature']
+    || req.headers['x-sumup-event-signature']
+    || '').replace(/^sha256=/i, '').trim();
+  if (!provided) return false;
+  const expected = crypto.createHmac('sha256', secret).update(req.rawBody).digest('hex');
+  return timingSafeEqualStr(provided.toLowerCase(), expected.toLowerCase());
+}
 
 // Helper to generate the next 4 Saturdays dynamically for local UI slots
 function getUpcomingSaturdays() {
@@ -175,6 +200,11 @@ router.post('/orders', async (req, res) => {
 // We accept POST with JSON body. Configure SUMUP_WEBHOOK_SECRET in env if SumUp
 // signs requests; if unset, this endpoint accepts any well-formed payload.
 router.post('/sumup/webhook', async (req, res) => {
+  if (!verifySumupSignature(req)) {
+    console.warn('SumUp webhook rejected: signature mismatch');
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
   const event = req.body || {};
   const eventType = event.event_type || event.type;
   const payload = event.payload || event.data || event;

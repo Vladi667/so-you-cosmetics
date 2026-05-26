@@ -15,8 +15,11 @@ app.use(cors());
 // Log HTTP requests (Morgan)
 app.use(morgan('dev'));
 
-// Parse incoming JSON requests
-app.use(express.json());
+// Parse incoming JSON requests. Preserve the raw body too so /api/sumup/webhook
+// can verify SumUp's HMAC signature against the exact bytes that were signed.
+app.use(express.json({
+  verify: (req, _res, buf) => { req.rawBody = buf; }
+}));
 
 // Serve ACME HTTP-01 challenge files from the filesystem (for Let's Encrypt SSL validation).
 // Infomaniak writes challenge tokens into ./.well-known/acme-challenge/ at the site root.
