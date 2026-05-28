@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const router = express.Router();
 const db = require('./db');
 const emailService = require('./email');
+const imapService = require('./imap');
 
 // Compare two strings in constant time; tolerates length mismatch
 function timingSafeEqualStr(a, b) {
@@ -125,6 +126,56 @@ function buildPaymentConfirmedEmail({ name, orderId, total }) {
         </div>
         <p>Vous recevrez un nouveau message dès l'expédition.</p>
         <p style="font-style: italic; color: #888;">SoYou Cosmetics Geneva - Faits main en Suisse</p>
+      </div>
+    `;
+}
+
+// Email body for "ready for pickup at the store" notifications.
+function buildPickupReadyEmail({ name, orderId }) {
+  return `
+      <div style="font-family: sans-serif; color: #444; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
+        <h2 style="color: #2c3e50; font-family: serif; border-bottom: 1px solid #eee; padding-bottom: 10px;">Votre commande est prête !</h2>
+        <p>Bonjour <strong>${name}</strong>,</p>
+        <p>Bonne nouvelle : votre commande <strong>${orderId}</strong> est prête à être retirée en boutique.</p>
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0 0 6px 0;"><strong>Adresse de retrait :</strong></p>
+          <p style="margin: 0 0 6px 0;">Boutique Soap Opera by SoYou Cosmetics<br />3 ave. Pictet-De-Rochemont, 1207 Genève</p>
+          <p style="margin: 6px 0 0 0;"><strong>Téléphone :</strong> 022 556 69 92</p>
+        </div>
+        <p>Nous nous réjouissons de vous accueillir prochainement.</p>
+        <p style="font-style: italic; color: #888;">L'équipe SoYou Cosmetics Geneva</p>
+      </div>
+    `;
+}
+
+// Email body for "shipped — here is your tracking number" notifications.
+function buildShippedEmail({ name, orderId, carrier, trackingNumber }) {
+  // Build a "track your package" link for the major Swiss carriers if recognized.
+  const carrierLower = (carrier || '').toLowerCase();
+  let trackUrl = '';
+  if (carrierLower.includes('post')) {
+    trackUrl = `https://service.post.ch/EasyTrack/submitParcelData.do?formattedParcelCodes=${encodeURIComponent(trackingNumber)}`;
+  } else if (carrierLower.includes('dhl')) {
+    trackUrl = `https://www.dhl.com/ch-fr/home/tracking/tracking-parcel.html?submit=1&tracking-id=${encodeURIComponent(trackingNumber)}`;
+  } else if (carrierLower.includes('dpd')) {
+    trackUrl = `https://tracking.dpd.de/status/fr_CH/parcel/${encodeURIComponent(trackingNumber)}`;
+  } else if (carrierLower.includes('ups')) {
+    trackUrl = `https://www.ups.com/track?tracknum=${encodeURIComponent(trackingNumber)}`;
+  } else if (carrierLower.includes('fedex')) {
+    trackUrl = `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(trackingNumber)}`;
+  }
+  return `
+      <div style="font-family: sans-serif; color: #444; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
+        <h2 style="color: #2c3e50; font-family: serif; border-bottom: 1px solid #eee; padding-bottom: 10px;">Votre commande est en route !</h2>
+        <p>Bonjour <strong>${name}</strong>,</p>
+        <p>Votre commande <strong>${orderId}</strong> a quitté nos ateliers et est désormais en route vers vous.</p>
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0 0 6px 0;"><strong>Transporteur :</strong> ${carrier}</p>
+          <p style="margin: 0;"><strong>Numéro de suivi :</strong> <span style="font-family: monospace;">${trackingNumber}</span></p>
+        </div>
+        ${trackUrl ? `<p><a href="${trackUrl}" style="display:inline-block;padding:10px 20px;background:#2c3e50;color:#fff;text-decoration:none;border-radius:6px;">Suivre mon colis →</a></p>` : ''}
+        <p>Merci pour votre confiance.</p>
+        <p style="font-style: italic; color: #888;">L'équipe SoYou Cosmetics Geneva</p>
       </div>
     `;
 }
@@ -509,6 +560,125 @@ router.put('/admin/settings/sumup', requireAdmin, (req, res) => {
   } catch (err) {
     console.error('SumUp settings update failed:', err);
     res.status(500).json({ error: 'Failed to update SumUp settings' });
+  }
+});
+
+// 13d. Admin Get Inbox Settings (status only — password never returned)
+router.get('/admin/settings/inbox', requireAdmin, (req, res) => {
+  try {
+    const cfg = db.getInboxConfig();
+    res.json({
+      host: cfg.host,
+      port: cfg.port,
+      secure: cfg.secure !== false && cfg.secure !== 'false',
+      user: cfg.user,
+      passConfigured: !!cfg.pass
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to read inbox settings' });
+  }
+});
+
+// 13e. Admin Update Inbox Settings — any subset; empty string clears.
+router.put('/admin/settings/inbox', requireAdmin, (req, res) => {
+  try {
+    const patch = {};
+    const map = { host: 'IMAP_HOST', port: 'IMAP_PORT', secure: 'IMAP_SECURE', user: 'IMAP_USER', pass: 'IMAP_PASS' };
+    for (const [k, dbKey] of Object.entries(map)) {
+      if (Object.prototype.hasOwnProperty.call(req.body, k)) {
+        const val = req.body[k];
+        patch[dbKey] = typeof val === 'boolean' ? String(val) : val;
+      }
+    }
+    db.updateSettings(patch);
+    const cfg = db.getInboxConfig();
+    res.json({
+      message: 'Paramètres boîte de réception mis à jour',
+      host: cfg.host,
+      port: cfg.port,
+      secure: cfg.secure !== false && cfg.secure !== 'false',
+      user: cfg.user,
+      passConfigured: !!cfg.pass
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update inbox settings' });
+  }
+});
+
+// 13f. Admin Inbox — list recent messages
+router.get('/admin/inbox', requireAdmin, async (req, res) => {
+  try {
+    if (!imapService.isConfigured()) {
+      return res.status(503).json({ error: 'Boîte de réception non configurée. Renseignez les paramètres IMAP.' });
+    }
+    const limit = Math.min(parseInt(req.query.limit || '50', 10), 200);
+    const messages = await imapService.listMessages({ limit });
+    res.json(messages);
+  } catch (err) {
+    console.error('Inbox list error:', err);
+    res.status(500).json({ error: err.message || 'Failed to read inbox' });
+  }
+});
+
+// 13g. Admin Inbox — single message body
+router.get('/admin/inbox/:uid', requireAdmin, async (req, res) => {
+  try {
+    if (!imapService.isConfigured()) {
+      return res.status(503).json({ error: 'Boîte de réception non configurée' });
+    }
+    const msg = await imapService.getMessage(req.params.uid);
+    if (!msg) return res.status(404).json({ error: 'Message introuvable' });
+    res.json(msg);
+  } catch (err) {
+    console.error('Inbox fetch error:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch message' });
+  }
+});
+
+// 13h. Mark order ready — sends "ready for pickup" or "shipped with tracking" email.
+// Body: { type: 'pickup' | 'shipped', carrier?, tracking_number? }
+router.post('/admin/orders/:id/fulfill', requireAdmin, async (req, res) => {
+  const { type, carrier, tracking_number } = req.body || {};
+  if (type !== 'pickup' && type !== 'shipped') {
+    return res.status(400).json({ error: "type doit être 'pickup' ou 'shipped'" });
+  }
+  if (type === 'shipped' && (!carrier || !tracking_number)) {
+    return res.status(400).json({ error: 'Transporteur et numéro de suivi requis pour un envoi' });
+  }
+
+  try {
+    const order = await db.getOrderById(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Commande introuvable' });
+
+    const fulfillment = {
+      type,
+      carrier: type === 'shipped' ? carrier : null,
+      tracking_number: type === 'shipped' ? tracking_number : null,
+      marked_ready_at: new Date().toISOString()
+    };
+    const newStatus = type === 'pickup' ? 'ReadyForPickup' : 'Shipped';
+    const updated = await db.updateOrderFulfillment(order.id, { ...fulfillment, status: newStatus });
+
+    const customerName = order.customer_name || order.name || 'cher client';
+    let subject, html;
+    if (type === 'pickup') {
+      subject = `Votre commande ${order.id} est prête à être retirée !`;
+      html = buildPickupReadyEmail({ name: customerName, orderId: order.id });
+    } else {
+      subject = `Votre commande ${order.id} est en route ! 📦`;
+      html = buildShippedEmail({ name: customerName, orderId: order.id, carrier, trackingNumber: tracking_number });
+    }
+
+    try {
+      await emailService.sendMail({ to: order.customer_email || order.email, subject, html });
+    } catch (mailErr) {
+      console.error('Failed to send fulfillment email:', mailErr);
+    }
+
+    res.json({ message: 'Commande mise à jour et email envoyé', order: updated });
+  } catch (err) {
+    console.error('Fulfillment error:', err);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour de la commande' });
   }
 });
 

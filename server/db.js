@@ -510,7 +510,8 @@ async function getOrderById(orderId) {
       return {
         ...r,
         total: parseFloat(r.total),
-        items: typeof r.items === 'string' ? JSON.parse(r.items) : r.items
+        items: typeof r.items === 'string' ? JSON.parse(r.items) : r.items,
+        fulfillment: r.fulfillment ? (typeof r.fulfillment === 'string' ? JSON.parse(r.fulfillment) : r.fulfillment) : null
       };
     } catch (err) {
       console.error('MySQL getOrderById failed, falling back to JSON file', err);
@@ -682,12 +683,57 @@ function getSumupConfig() {
   };
 }
 
+// Read IMAP (inbox-read) config from admin-saved settings, fall back to env vars.
+function getInboxConfig() {
+  const s = readSettings();
+  return {
+    host: s.IMAP_HOST || process.env.IMAP_HOST || 'mail.infomaniak.com',
+    port: s.IMAP_PORT || process.env.IMAP_PORT || '993',
+    secure: s.IMAP_SECURE !== undefined ? s.IMAP_SECURE : (process.env.IMAP_SECURE !== 'false'),
+    user: s.IMAP_USER || process.env.IMAP_USER || process.env.SMTP_USER || '',
+    pass: s.IMAP_PASS || process.env.IMAP_PASS || process.env.SMTP_PASS || ''
+  };
+}
+
+// 9b. Update order fulfillment info (pickup ready / shipped with tracking).
+// patch may contain: { type: 'pickup'|'shipped', carrier, tracking_number,
+// marked_ready_at, status }. We merge into the order's `fulfillment` field
+// and also update top-level status if provided.
+async function updateOrderFulfillment(orderId, patch) {
+  if (pool) {
+    try {
+      // We piggy-back on the existing `items` JSON column? No — safer: store as
+      // an extra TEXT column added on the fly. For now, the MySQL path stores
+      // fulfillment as a JSON-encoded string in a new column we create lazily.
+      await pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS fulfillment TEXT NULL");
+      const existing = await getOrderById(orderId);
+      if (!existing) return null;
+      const merged = { ...(existing.fulfillment || {}), ...patch };
+      const status = patch.status || existing.status;
+      await pool.query('UPDATE orders SET fulfillment = ?, status = ? WHERE id = ?', [JSON.stringify(merged), status, orderId]);
+      return { ...existing, fulfillment: merged, status };
+    } catch (err) {
+      console.error('MySQL updateOrderFulfillment failed, falling back to JSON file', err);
+    }
+  }
+
+  const data = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
+  const order = data.find(o => o.id === orderId);
+  if (!order) return null;
+  order.fulfillment = { ...(order.fulfillment || {}), ...patch };
+  if (patch.status) order.status = patch.status;
+  fs.writeFileSync(ORDERS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  return order;
+}
+
 module.exports = {
   getProducts,
   getProductById,
   getSetting,
   updateSettings,
   getSumupConfig,
+  getInboxConfig,
+  updateOrderFulfillment,
   createOrder,
   createBooking,
   createContact,

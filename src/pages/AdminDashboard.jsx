@@ -28,6 +28,25 @@ const AdminDashboard = ({ onLogout }) => {
   // Selected order details modal
   const [selectedOrder, setSelectedOrder] = useState(null);
 
+  // Fulfillment form state (within order details modal)
+  const [fulfillForm, setFulfillForm] = useState({ type: 'pickup', carrier: 'La Poste Suisse', tracking_number: '' });
+  const [fulfillSaving, setFulfillSaving] = useState(false);
+  const [fulfillStatus, setFulfillStatus] = useState({ success: '', error: '' });
+
+  // Inbox state
+  const [inboxMessages, setInboxMessages] = useState([]);
+  const [inboxLoading, setInboxLoading] = useState(false);
+  const [inboxError, setInboxError] = useState('');
+  const [openMessage, setOpenMessage] = useState(null);
+  const [openMessageLoading, setOpenMessageLoading] = useState(false);
+
+  // Inbox settings
+  const [inboxSettings, setInboxSettings] = useState({ host: '', port: '993', secure: true, user: '', passConfigured: false });
+  const [inboxForm, setInboxForm] = useState({ host: '', port: '993', secure: true, user: '', pass: '' });
+  const [inboxSettingsStatus, setInboxSettingsStatus] = useState({ success: '', error: '' });
+  const [inboxSettingsSaving, setInboxSettingsSaving] = useState(false);
+  const [showInboxSettings, setShowInboxSettings] = useState(false);
+
   const token = localStorage.getItem('adminToken');
   const username = localStorage.getItem('adminUser') || 'admin';
 
@@ -74,10 +93,148 @@ const AdminDashboard = ({ onLogout }) => {
       loadSumupSettings();
       return;
     }
+    if (activeTab === 'inbox') {
+      loadInboxSettings();
+      loadInbox();
+      return;
+    }
     if (activeTab !== 'settings') {
       loadData();
     }
   }, [activeTab]);
+
+  // Reset fulfillment form whenever the user opens a new order
+  useEffect(() => {
+    if (selectedOrder) {
+      const existing = selectedOrder.fulfillment || {};
+      setFulfillForm({
+        type: existing.type || 'pickup',
+        carrier: existing.carrier || 'La Poste Suisse',
+        tracking_number: existing.tracking_number || ''
+      });
+      setFulfillStatus({ success: '', error: '' });
+    }
+  }, [selectedOrder]);
+
+  const loadInbox = () => {
+    setInboxLoading(true);
+    setInboxError('');
+    fetch('/api/admin/inbox', { headers: fetchHeaders })
+      .then(res => {
+        if (res.status === 401) { onLogout(); throw new Error('Session expirée'); }
+        return res.json().then(data => ({ ok: res.ok, status: res.status, data }));
+      })
+      .then(({ ok, status, data }) => {
+        setInboxLoading(false);
+        if (!ok) {
+          setInboxError(data.error || 'Erreur');
+          setInboxMessages([]);
+          if (status === 503) setShowInboxSettings(true);
+          return;
+        }
+        setInboxMessages(Array.isArray(data) ? data : []);
+      })
+      .catch(err => {
+        setInboxLoading(false);
+        setInboxError(err.message);
+      });
+  };
+
+  const openInboxMessage = (uid) => {
+    setOpenMessageLoading(true);
+    setOpenMessage({ uid, loading: true });
+    fetch(`/api/admin/inbox/${uid}`, { headers: fetchHeaders })
+      .then(res => res.json())
+      .then(data => {
+        setOpenMessageLoading(false);
+        setOpenMessage(data);
+        // Mark as seen in local list
+        setInboxMessages(prev => prev.map(m => m.uid === uid ? { ...m, seen: true } : m));
+      })
+      .catch(err => {
+        setOpenMessageLoading(false);
+        setOpenMessage({ error: err.message });
+      });
+  };
+
+  const loadInboxSettings = () => {
+    fetch('/api/admin/settings/inbox', { headers: fetchHeaders })
+      .then(res => res.json())
+      .then(data => {
+        setInboxSettings(data);
+        setInboxForm({
+          host: data.host || '',
+          port: data.port || '993',
+          secure: data.secure !== false,
+          user: data.user || '',
+          pass: ''
+        });
+      })
+      .catch(() => {});
+  };
+
+  const handleSaveInboxSettings = (e) => {
+    e.preventDefault();
+    setInboxSettingsSaving(true);
+    setInboxSettingsStatus({ success: '', error: '' });
+    const patch = {
+      host: inboxForm.host,
+      port: inboxForm.port,
+      secure: inboxForm.secure,
+      user: inboxForm.user
+    };
+    if (inboxForm.pass) patch.pass = inboxForm.pass;
+    fetch('/api/admin/settings/inbox', {
+      method: 'PUT',
+      headers: fetchHeaders,
+      body: JSON.stringify(patch)
+    })
+      .then(res => res.json().then(data => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        setInboxSettingsSaving(false);
+        if (!ok) throw new Error(data.error || 'Erreur');
+        setInboxSettings(data);
+        setInboxForm(prev => ({ ...prev, pass: '' }));
+        setInboxSettingsStatus({ success: 'Paramètres enregistrés.', error: '' });
+        loadInbox();
+      })
+      .catch(err => {
+        setInboxSettingsSaving(false);
+        setInboxSettingsStatus({ success: '', error: err.message });
+      });
+  };
+
+  const handleFulfillOrder = (e) => {
+    e.preventDefault();
+    if (!selectedOrder) return;
+    setFulfillSaving(true);
+    setFulfillStatus({ success: '', error: '' });
+
+    const payload = { type: fulfillForm.type };
+    if (fulfillForm.type === 'shipped') {
+      payload.carrier = fulfillForm.carrier;
+      payload.tracking_number = fulfillForm.tracking_number;
+    }
+
+    fetch(`/api/admin/orders/${selectedOrder.id}/fulfill`, {
+      method: 'POST',
+      headers: fetchHeaders,
+      body: JSON.stringify(payload)
+    })
+      .then(res => res.json().then(data => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        setFulfillSaving(false);
+        if (!ok) throw new Error(data.error || 'Erreur');
+        setFulfillStatus({ success: fulfillForm.type === 'pickup' ? 'Client averti par e-mail : commande prête à retirer.' : 'Client averti par e-mail avec le numéro de suivi.', error: '' });
+        // Reflect updated status in the orders list + currently selected order
+        setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: data.order.status, fulfillment: data.order.fulfillment } : o));
+        setSelectedOrder(prev => prev ? { ...prev, status: data.order.status, fulfillment: data.order.fulfillment } : prev);
+      })
+      .catch(err => {
+        setFulfillSaving(false);
+        setFulfillStatus({ success: '', error: err.message });
+      });
+  };
 
   const loadSumupSettings = () => {
     setSumupStatus({ success: '', error: '' });
@@ -241,6 +398,7 @@ const AdminDashboard = ({ onLogout }) => {
               { id: 'bookings', label: 'Réservations Ateliers', icon: '📅' },
               { id: 'workshops', label: 'Gestion Ateliers', icon: '🎨' },
               { id: 'clients', label: 'Fichier Clients', icon: '👤' },
+              { id: 'inbox', label: 'Boîte de réception', icon: '📥' },
               { id: 'sumup', label: 'API SumUp', icon: '💳' },
               { id: 'settings', label: 'Configuration / Password', icon: '⚙️' }
             ].map(tab => (
@@ -317,8 +475,8 @@ const AdminDashboard = ({ onLogout }) => {
                         </td>
                         <td className="p-6 text-right font-medium">CHF {order.total.toFixed(2)}</td>
                         <td className="p-6 text-center">
-                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${order.status === 'Paid' ? 'bg-green-100 text-green-700' : order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
-                            {order.status === 'Paid' ? 'Payé' : order.status === 'Shipped' ? 'Envoyé' : 'En attente'}
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${order.status === 'Paid' ? 'bg-green-100 text-green-700' : order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' : order.status === 'ReadyForPickup' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {order.status === 'Paid' ? 'Payé' : order.status === 'Shipped' ? 'Envoyé' : order.status === 'ReadyForPickup' ? 'À retirer' : 'En attente'}
                           </span>
                         </td>
                         <td className="p-6 text-center">
@@ -523,6 +681,84 @@ const AdminDashboard = ({ onLogout }) => {
           </div>
         )}
 
+        {/* Tab: Inbox */}
+        {activeTab === 'inbox' && (
+          <div>
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h1 className="font-serif text-3xl md:text-4xl text-slate-stone">Boîte de réception</h1>
+                <p className="text-xs text-stone-gray font-light mt-1">Messages reçus sur {inboxSettings.user || 'la boîte mail'}.</p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={loadInbox} className="px-4 py-2 bg-white rounded-lg border border-slate-stone/10 text-xs text-stone-gray hover:bg-slate-stone/5 transition-all">Rafraîchir 🔄</button>
+                <button onClick={() => setShowInboxSettings(s => !s)} className="px-4 py-2 bg-white rounded-lg border border-slate-stone/10 text-xs text-stone-gray hover:bg-slate-stone/5 transition-all">{showInboxSettings ? 'Masquer' : 'Paramètres'} ⚙️</button>
+              </div>
+            </div>
+
+            {showInboxSettings && (
+              <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 sm:p-8 shadow-sm mb-6">
+                <h3 className="font-serif text-lg text-slate-stone mb-4">Paramètres IMAP (lecture des e-mails)</h3>
+                {inboxSettingsStatus.success && <div className="mb-4 p-3 bg-green-50 text-green-700 border border-green-100 rounded-xl text-sm">{inboxSettingsStatus.success}</div>}
+                {inboxSettingsStatus.error && <div className="mb-4 p-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm">{inboxSettingsStatus.error}</div>}
+                <form onSubmit={handleSaveInboxSettings} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold tracking-widest uppercase text-slate-stone mb-2">Serveur IMAP</label>
+                    <input value={inboxForm.host} onChange={e => setInboxForm({ ...inboxForm, host: e.target.value })} placeholder="mail.infomaniak.com" className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-slate-stone/40" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold tracking-widest uppercase text-slate-stone mb-2">Port</label>
+                    <input value={inboxForm.port} onChange={e => setInboxForm({ ...inboxForm, port: e.target.value })} placeholder="993" className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-slate-stone/40" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold tracking-widest uppercase text-slate-stone mb-2">Nom d'utilisateur (e-mail)</label>
+                    <input type="email" value={inboxForm.user} onChange={e => setInboxForm({ ...inboxForm, user: e.target.value })} placeholder="contact@soyoucosmetics.com" className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-slate-stone/40" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold tracking-widest uppercase text-slate-stone mb-2">Mot de passe</label>
+                    <input type="password" autoComplete="new-password" value={inboxForm.pass} onChange={e => setInboxForm({ ...inboxForm, pass: e.target.value })} placeholder={inboxSettings.passConfigured ? 'Laisser vide pour conserver' : '••••••••'} className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-slate-stone/40" />
+                  </div>
+                  <div className="md:col-span-2 flex items-center gap-3">
+                    <label className="flex items-center gap-2 text-sm text-slate-stone">
+                      <input type="checkbox" checked={inboxForm.secure} onChange={e => setInboxForm({ ...inboxForm, secure: e.target.checked })} />
+                      <span>Connexion sécurisée (SSL/TLS)</span>
+                    </label>
+                  </div>
+                  <div className="md:col-span-2">
+                    <button type="submit" disabled={inboxSettingsSaving} className="px-6 py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-slate-stone/90 transition-all shadow-md disabled:opacity-50">
+                      {inboxSettingsSaving ? 'Sauvegarde…' : 'Enregistrer'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {inboxError && (
+              <div className="mb-4 p-4 bg-amber-50 text-amber-800 border border-amber-200 rounded-2xl text-sm">
+                {inboxError}
+              </div>
+            )}
+
+            {inboxLoading ? (
+              <div className="py-24 text-center text-stone-gray/60">Chargement de la boîte…</div>
+            ) : inboxMessages.length === 0 && !inboxError ? (
+              <div className="py-24 text-center bg-white rounded-3xl border border-slate-stone/5 text-stone-gray">Aucun message.</div>
+            ) : inboxMessages.length > 0 ? (
+              <div className="bg-white rounded-3xl border border-slate-stone/5 overflow-hidden shadow-sm">
+                {inboxMessages.map(msg => (
+                  <button key={msg.uid} onClick={() => openInboxMessage(msg.uid)} className={`w-full text-left p-5 border-b border-slate-stone/5 hover:bg-mist-white/40 transition-colors flex items-center gap-4 ${msg.seen ? 'text-stone-gray' : 'text-slate-stone font-medium'}`}>
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${msg.seen ? 'bg-transparent' : 'bg-slate-stone'}`}></span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate">{(msg.from[0]?.name) || msg.from[0]?.address || 'Inconnu'}</p>
+                      <p className="text-xs text-stone-gray truncate">{msg.subject}</p>
+                    </div>
+                    <span className="text-xs text-stone-gray/60 shrink-0">{msg.date ? new Date(msg.date).toLocaleString('fr-CH', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
+
         {/* Tab: API SumUp */}
         {activeTab === 'sumup' && (
           <div className="max-w-2xl">
@@ -715,6 +951,7 @@ const AdminDashboard = ({ onLogout }) => {
                 >
                   <option value="Pending">En attente (Pending)</option>
                   <option value="Paid">Payé (Paid)</option>
+                  <option value="ReadyForPickup">À retirer (Ready)</option>
                   <option value="Shipped">Envoyé (Shipped)</option>
                 </select>
                 <button 
@@ -753,6 +990,121 @@ const AdminDashboard = ({ onLogout }) => {
               <span className="text-xl font-serif">CHF {selectedOrder.total.toFixed(2)}</span>
             </div>
 
+            {/* Fulfillment block: mark as ready (pickup) or shipped (carrier + tracking) */}
+            <div className="h-px bg-slate-stone/10 my-6"></div>
+            <h4 className="font-sans text-xs tracking-widest uppercase font-bold text-stone-gray/60 mb-4">Marquer comme prêt</h4>
+
+            {selectedOrder.fulfillment && (
+              <div className="mb-4 p-4 rounded-2xl bg-mist-white border border-slate-stone/10 text-sm">
+                <p className="text-stone-gray text-xs uppercase tracking-widest font-bold mb-2">État actuel</p>
+                {selectedOrder.fulfillment.type === 'pickup' ? (
+                  <p>📍 Prête à retirer en boutique{selectedOrder.fulfillment.marked_ready_at ? ` — ${new Date(selectedOrder.fulfillment.marked_ready_at).toLocaleString('fr-CH', { dateStyle: 'short', timeStyle: 'short' })}` : ''}</p>
+                ) : (
+                  <p>📦 Expédiée via <strong>{selectedOrder.fulfillment.carrier}</strong> — suivi : <span className="font-mono">{selectedOrder.fulfillment.tracking_number}</span></p>
+                )}
+              </div>
+            )}
+
+            {fulfillStatus.success && (
+              <div className="mb-4 p-3 bg-green-50 text-green-700 border border-green-100 rounded-xl text-sm">{fulfillStatus.success}</div>
+            )}
+            {fulfillStatus.error && (
+              <div className="mb-4 p-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm">{fulfillStatus.error}</div>
+            )}
+
+            <form onSubmit={handleFulfillOrder} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <label className={`cursor-pointer p-4 rounded-2xl border text-sm transition-all ${fulfillForm.type === 'pickup' ? 'bg-slate-stone text-white border-slate-stone' : 'bg-white border-slate-stone/15 text-slate-stone hover:border-slate-stone/40'}`}>
+                  <input type="radio" name="fulfilltype" className="hidden" checked={fulfillForm.type === 'pickup'} onChange={() => setFulfillForm({ ...fulfillForm, type: 'pickup' })} />
+                  <div className="flex items-center gap-2">
+                    <span>📍</span>
+                    <span className="font-medium">Retrait en boutique</span>
+                  </div>
+                </label>
+                <label className={`cursor-pointer p-4 rounded-2xl border text-sm transition-all ${fulfillForm.type === 'shipped' ? 'bg-slate-stone text-white border-slate-stone' : 'bg-white border-slate-stone/15 text-slate-stone hover:border-slate-stone/40'}`}>
+                  <input type="radio" name="fulfilltype" className="hidden" checked={fulfillForm.type === 'shipped'} onChange={() => setFulfillForm({ ...fulfillForm, type: 'shipped' })} />
+                  <div className="flex items-center gap-2">
+                    <span>📦</span>
+                    <span className="font-medium">Envoi postal</span>
+                  </div>
+                </label>
+              </div>
+
+              {fulfillForm.type === 'shipped' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold tracking-widest uppercase text-slate-stone mb-2">Transporteur</label>
+                    <select
+                      value={fulfillForm.carrier}
+                      onChange={(e) => setFulfillForm({ ...fulfillForm, carrier: e.target.value })}
+                      className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-slate-stone/40"
+                    >
+                      <option>La Poste Suisse</option>
+                      <option>DHL</option>
+                      <option>DPD</option>
+                      <option>UPS</option>
+                      <option>FedEx</option>
+                      <option>Autre</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold tracking-widest uppercase text-slate-stone mb-2">Numéro de suivi</label>
+                    <input
+                      type="text"
+                      required
+                      value={fulfillForm.tracking_number}
+                      onChange={(e) => setFulfillForm({ ...fulfillForm, tracking_number: e.target.value })}
+                      placeholder="Ex : 99.00.123456.00000017"
+                      className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-4 py-3 font-mono text-sm focus:outline-none focus:border-slate-stone/40"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={fulfillSaving}
+                className="w-full py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.25em] text-xs rounded-full hover:bg-slate-stone/90 transition-all shadow-md disabled:opacity-50"
+              >
+                {fulfillSaving ? 'Envoi…' : fulfillForm.type === 'pickup' ? 'Marquer prêt + Avertir le client' : 'Marquer expédié + Envoyer le suivi'}
+              </button>
+            </form>
+
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Inbox message viewer */}
+      {openMessage && (
+        <div className="fixed inset-0 z-[105] flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpenMessage(null)}></div>
+          <div className="relative z-10 w-full max-w-3xl bg-white rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-stone/5 max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-6">
+              <h3 className="font-serif text-2xl text-slate-stone">{openMessage.subject || 'Message'}</h3>
+              <button onClick={() => setOpenMessage(null)} className="w-10 h-10 rounded-full bg-mist-white flex items-center justify-center hover:bg-slate-stone hover:text-white transition-colors">✕</button>
+            </div>
+            {openMessageLoading ? (
+              <p className="text-stone-gray text-sm">Chargement…</p>
+            ) : openMessage.error ? (
+              <p className="text-red-600 text-sm">{openMessage.error}</p>
+            ) : (
+              <>
+                <div className="mb-6 text-sm text-stone-gray space-y-1">
+                  <p><strong className="text-slate-stone">De :</strong> {(openMessage.from || []).map(a => a.name ? `${a.name} <${a.address}>` : a.address).join(', ')}</p>
+                  <p><strong className="text-slate-stone">À :</strong> {(openMessage.to || []).map(a => a.address).join(', ')}</p>
+                  {openMessage.date && <p><strong className="text-slate-stone">Date :</strong> {new Date(openMessage.date).toLocaleString('fr-CH', { dateStyle: 'long', timeStyle: 'short' })}</p>}
+                </div>
+                <div className="h-px bg-slate-stone/10 mb-6"></div>
+                {openMessage.html ? (
+                  <div className="text-sm text-slate-stone" dangerouslySetInnerHTML={{ __html: openMessage.html }} />
+                ) : (
+                  <pre className="whitespace-pre-wrap font-sans text-sm text-slate-stone">{openMessage.text || ''}</pre>
+                )}
+                <div className="mt-8 flex gap-3">
+                  <button onClick={() => { const from = openMessage.from && openMessage.from[0]; if (from && from.address) { setEmailModal({ isOpen: true, to: from.address, subject: `Re: ${openMessage.subject || ''}`, message: '\n\n---\nMessage d\'origine :\n' + (openMessage.text || '').slice(0, 1000) }); setOpenMessage(null); } }} className="px-6 py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-slate-stone/90 transition-all shadow-md">↩ Répondre</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
