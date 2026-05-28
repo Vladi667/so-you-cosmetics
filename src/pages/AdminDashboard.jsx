@@ -395,7 +395,6 @@ const AdminDashboard = ({ onLogout }) => {
           <nav className="space-y-2">
             {[
               { id: 'orders', label: 'Commandes', icon: '🛒' },
-              { id: 'bookings', label: 'Réservations Ateliers', icon: '📅' },
               { id: 'workshops', label: 'Gestion Ateliers', icon: '🎨' },
               { id: 'clients', label: 'Fichier Clients', icon: '👤' },
               { id: 'inbox', label: 'Boîte de réception', icon: '📥' },
