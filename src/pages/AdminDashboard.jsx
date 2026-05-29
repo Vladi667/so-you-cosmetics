@@ -10,6 +10,8 @@ const AdminDashboard = ({ onLogout }) => {
   const [products, setProducts] = useState([]);
   const [productForm, setProductForm] = useState({ id: null, name: '', price: '', ribbon: '', collectionsText: '', imagesText: '', description: '' });
   const [productSearch, setProductSearch] = useState('');
+  const [productsPage, setProductsPage] = useState(1);
+  const PRODUCTS_PER_PAGE = 25;
   const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', imagesText: '', description: '' };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -676,8 +678,8 @@ const AdminDashboard = ({ onLogout }) => {
             </div>
 
             <div className="mb-4 flex items-center justify-between gap-4">
-              <input type="text" placeholder="Rechercher un produit..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="px-4 py-2 border rounded w-full max-w-sm" />
-              <span className="text-sm text-stone-gray whitespace-nowrap">{products.length} produits</span>
+              <input type="text" placeholder="Rechercher un produit..." value={productSearch} onChange={e => { setProductSearch(e.target.value); setProductsPage(1); }} className="px-4 py-2 border rounded w-full max-w-sm" />
+              <span className="text-sm text-stone-gray whitespace-nowrap">{products.filter(p => !productSearch || (p.name || '').toLowerCase().includes(productSearch.toLowerCase())).length} produit(s)</span>
             </div>
 
             <div className="bg-white rounded-3xl border border-slate-stone/5 overflow-hidden shadow-sm">
@@ -691,9 +693,11 @@ const AdminDashboard = ({ onLogout }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {products
-                    .filter(p => !productSearch || (p.name || '').toLowerCase().includes(productSearch.toLowerCase()))
-                    .map((p) => (
+                  {(() => {
+                    const filtered = products.filter(p => !productSearch || (p.name || '').toLowerCase().includes(productSearch.toLowerCase()));
+                    const totalPages = Math.max(1, Math.ceil(filtered.length / PRODUCTS_PER_PAGE));
+                    const page = Math.min(productsPage, totalPages);
+                    return filtered.slice((page - 1) * PRODUCTS_PER_PAGE, page * PRODUCTS_PER_PAGE).map((p) => (
                     <tr key={p.id} className="border-b align-top">
                       <td className="p-4 flex items-center gap-3">
                         {p.images && p.images[0] && <img src={p.images[0]} alt="" className="w-10 h-10 object-cover rounded" />}
@@ -726,10 +730,33 @@ const AdminDashboard = ({ onLogout }) => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  ));
+                  })()}
                 </tbody>
               </table>
             </div>
+
+            {(() => {
+              const filteredCount = products.filter(p => !productSearch || (p.name || '').toLowerCase().includes(productSearch.toLowerCase())).length;
+              const totalPages = Math.max(1, Math.ceil(filteredCount / PRODUCTS_PER_PAGE));
+              const page = Math.min(productsPage, totalPages);
+              if (totalPages <= 1) return null;
+              return (
+                <div className="mt-4 flex items-center justify-center gap-4">
+                  <button
+                    onClick={() => setProductsPage(Math.max(1, page - 1))}
+                    disabled={page <= 1}
+                    className="px-4 py-2 rounded border border-slate-stone/10 text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:bg-mist-white"
+                  >← Précédent</button>
+                  <span className="text-sm text-stone-gray">Page {page} / {totalPages}</span>
+                  <button
+                    onClick={() => setProductsPage(Math.min(totalPages, page + 1))}
+                    disabled={page >= totalPages}
+                    className="px-4 py-2 rounded border border-slate-stone/10 text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:bg-mist-white"
+                  >Suivant →</button>
+                </div>
+              );
+            })()}
           </div>
         )}
 
