@@ -30,11 +30,28 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
         setActiveImage(0);
         setQuantity(1);
         
-        // Find related products in the same primary category
-        const primaryCategory = foundProduct.collections[0] || 'All';
-        const related = productsList
-          .filter(p => p.id !== id && p.collections.includes(primaryCategory))
-          .slice(0, 4);
+        // Find coherent related products: rank other products by how many
+        // categories they share with the current one (most shared = most
+        // relevant), so a soap suggests soaps, a hydrolat suggests hydrolats…
+        const currentCols = foundProduct.collections || [];
+        const scored = productsList
+          .filter(p => p.id !== id)
+          .map(p => ({
+            product: p,
+            shared: (p.collections || []).filter(c => currentCols.includes(c)).length
+          }))
+          .filter(x => x.shared > 0)
+          .sort((a, b) => b.shared - a.shared);
+
+        let related = scored.slice(0, 4).map(x => x.product);
+
+        // Fallback: if too few share a category, top up with other products so
+        // the section is never awkwardly empty.
+        if (related.length < 4) {
+          const taken = new Set([id, ...related.map(r => r.id)]);
+          const fillers = productsList.filter(p => !taken.has(p.id)).slice(0, 4 - related.length);
+          related = related.concat(fillers);
+        }
         setRelatedProducts(related);
       } else {
         // Product not found, redirect to home
