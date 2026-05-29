@@ -59,6 +59,13 @@ const AdminDashboard = ({ onLogout }) => {
     'Content-Type': 'application/json'
   };
 
+  // Invalidate the session server-side, then clear local state.
+  const handleLogout = () => {
+    fetch('/api/admin/logout', { method: 'POST', headers: fetchHeaders })
+      .catch(() => {})
+      .finally(() => onLogout());
+  };
+
   const loadData = () => {
     setLoading(true);
     setError('');
@@ -423,8 +430,8 @@ const AdminDashboard = ({ onLogout }) => {
           </nav>
         </div>
 
-        <button 
-          onClick={onLogout}
+        <button
+          onClick={handleLogout}
           className="mt-12 w-full py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-xs uppercase tracking-widest font-bold hover:bg-red-100 transition-colors"
         >
           Déconnexion 🚪

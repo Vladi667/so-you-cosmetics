@@ -15,6 +15,7 @@ const ADMIN_FILE = path.join(DATA_DIR, 'admin.json');
 const WORKSHOPS_FILE = path.join(DATA_DIR, 'workshops.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 const NEWSLETTER_FILE = path.join(DATA_DIR, 'newsletter.json');
+const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 const PRODUCTS_FILE = path.join(__dirname, 'products.json');
 
 // Ensure data folder exists locally
@@ -39,12 +40,51 @@ const initJsonFile = (filePath, defaultData = []) => {
   }
 };
 
+// ------------- Admin sessions (server-side, file-based) -------------
+// Cryptographically-random bearer tokens, stored with an expiry and validated
+// on every admin request. Replaces the old forgeable "token_admin_" prefix.
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function readSessions() {
+  try {
+    return JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8')) || [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function writeSessions(list) {
+  fs.writeFileSync(SESSIONS_FILE, JSON.stringify(list, null, 2), 'utf8');
+}
+
+function createSession(username) {
+  const token = crypto.randomBytes(32).toString('hex'); // 256-bit, unguessable
+  const sessions = readSessions().filter(s => s.expiresAt > Date.now()); // prune expired
+  sessions.push({ token, username, createdAt: Date.now(), expiresAt: Date.now() + SESSION_TTL_MS });
+  writeSessions(sessions);
+  return token;
+}
+
+function getSession(token) {
+  if (!token) return null;
+  const session = readSessions().find(s => s.token === token);
+  if (!session) return null;
+  if (session.expiresAt <= Date.now()) return null;
+  return session;
+}
+
+function deleteSession(token) {
+  if (!token) return;
+  writeSessions(readSessions().filter(s => s.token !== token));
+}
+
 initJsonFile(ORDERS_FILE);
 initJsonFile(BOOKINGS_FILE);
 initJsonFile(CONTACTS_FILE);
 initJsonFile(WORKSHOPS_FILE);
 initJsonFile(SETTINGS_FILE, {});
 initJsonFile(NEWSLETTER_FILE);
+initJsonFile(SESSIONS_FILE);
 
 // Seed admin in JSON file if it doesn't exist
 if (!fs.existsSync(ADMIN_FILE)) {
@@ -878,6 +918,9 @@ module.exports = {
   // Admin DB functions
   getAdmin,
   updateAdminPassword,
+  createSession,
+  getSession,
+  deleteSession,
   getOrders,
   getOrderById,
   updateOrderStatus,

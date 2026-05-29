@@ -59,18 +59,19 @@ function getUpcomingSaturdays() {
   return dates;
 }
 
-// Authentication Middleware
+// Authentication Middleware — validates a real server-side session token.
 const requireAdmin = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Unauthorized: Missing admin token' });
   }
   const token = authHeader.split(' ')[1];
-  if (token.startsWith('token_admin_')) {
-    next();
-  } else {
-    res.status(401).json({ error: 'Unauthorized: Invalid token' });
+  const session = db.getSession(token);
+  if (!session) {
+    return res.status(401).json({ error: 'Unauthorized: Session invalide ou expirée' });
   }
+  req.adminUser = session.username; // trust this, never the request body
+  next();
 };
 
 // ==========================================
@@ -415,7 +416,7 @@ router.post('/admin/login', async (req, res) => {
 
     const hash = db.hashPassword(password, admin.salt);
     if (hash === admin.password_hash) {
-      const token = `token_admin_${username}_${Date.now()}`;
+      const token = db.createSession(username);
       res.json({ token, username });
     } else {
       res.status(401).json({ error: 'Invalid credentials' });
@@ -423,6 +424,13 @@ router.post('/admin/login', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Login process encountered an error' });
   }
+});
+
+// 7b. Admin Logout — invalidate the current session token
+router.post('/admin/logout', requireAdmin, (req, res) => {
+  const token = req.headers.authorization.split(' ')[1];
+  db.deleteSession(token);
+  res.json({ message: 'Logged out' });
 });
 
 // 8. Admin Change Password
