@@ -10,6 +10,17 @@ const placeholders = [
   'https://images.unsplash.com/photo-1629198688000-71f23e745b6e?auto=format&fit=crop&w=600&q=80'
 ];
 
+// Lowercase + strip diacritics so "levres" matches "lèvres", "bebe" matches "bébé", etc.
+const normalizeText = (s) =>
+  (s || '')
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+
+// Remove HTML tags from descriptions so we match words, not markup.
+const stripHtml = (s) => (s || '').toString().replace(/<[^>]*>/g, ' ');
+
 function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, toggleFavorite, favorites, searchQuery = '' }) {
   const [productsList, setProductsList] = useState([]);
   const [activeCategory, setActiveCategory] = useState(globalActiveCategory);
@@ -50,13 +61,16 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
     
     const timer = setTimeout(() => {
       let filtered = productsList;
-      const q = searchQuery.trim().toLowerCase();
-      if (q) {
-        filtered = productsList.filter(p =>
-          (p.name && p.name.toLowerCase().includes(q)) ||
-          (p.description && p.description.toLowerCase().includes(q)) ||
-          (p.collections && p.collections.some(c => c.toLowerCase().includes(q)))
-        );
+      const terms = normalizeText(searchQuery).split(/\s+/).filter(Boolean);
+      if (terms.length) {
+        // A product matches when every search word appears (accent-insensitive)
+        // somewhere in its name, description or categories — in any order.
+        filtered = productsList.filter(p => {
+          const haystack = normalizeText(
+            `${p.name || ''} ${stripHtml(p.description || '')} ${(p.collections || []).join(' ')}`
+          );
+          return terms.every(t => haystack.includes(t));
+        });
       } else if (activeCategory !== 'All') {
         filtered = productsList.filter(p => p.collections && p.collections.includes(activeCategory));
       }

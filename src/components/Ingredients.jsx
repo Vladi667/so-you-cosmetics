@@ -44,21 +44,21 @@ const Ingredients = () => {
         </div>
 
         {/* 4 Commitment Cards — 2x2 Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 max-w-4xl mx-auto">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:gap-8 max-w-4xl mx-auto">
           {commitments.map((item, index) => (
             <div
               key={index}
-              className="group flex items-start gap-6 bg-white rounded-[30px] p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgb(0,0,0,0.1)] hover:-translate-y-2 transition-all duration-700 reveal border border-slate-stone/5"
+              className="group flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-6 bg-white rounded-[20px] sm:rounded-[30px] p-4 sm:p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgb(0,0,0,0.1)] hover:-translate-y-2 transition-all duration-700 reveal border border-slate-stone/5"
               style={{ transitionDelay: `${index * 100}ms` }}
             >
-              <div className="w-14 h-14 bg-mist-white rounded-2xl flex items-center justify-center flex-shrink-0 text-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+              <div className="w-10 h-10 sm:w-14 sm:h-14 bg-mist-white rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0 text-lg sm:text-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
                 {item.icon}
               </div>
               <div>
-                <h3 className="font-sans tracking-[0.15em] uppercase text-sm font-bold text-slate-stone mb-3">
+                <h3 className="font-sans tracking-[0.1em] sm:tracking-[0.15em] uppercase text-[10px] sm:text-xs md:text-sm font-bold text-slate-stone mb-1.5 sm:mb-3">
                   {item.title}
                 </h3>
-                <p className="font-sans font-light text-stone-gray leading-relaxed text-[15px]">
+                <p className="font-sans font-light text-stone-gray leading-relaxed text-[11px] sm:text-xs md:text-[15px]">
                   {item.text}
                 </p>
               </div>

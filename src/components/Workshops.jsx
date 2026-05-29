@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import AutoPlayVideo from './AutoPlayVideo';
 
 const Workshops = () => {
@@ -28,12 +29,12 @@ const Workshops = () => {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 justify-center">
-          <a href="/workshops" className="inline-block px-10 py-4 bg-white text-slate-stone font-sans uppercase tracking-[0.3em] text-xs hover:bg-slate-stone hover:text-white transition-all duration-500 rounded-full shadow-xl hover:scale-105 transform text-center">
+          <Link to="/workshops" className="inline-block px-10 py-4 bg-white text-slate-stone font-sans uppercase tracking-[0.3em] text-xs hover:bg-slate-stone hover:text-white transition-all duration-500 rounded-full shadow-xl hover:scale-105 active:scale-95 transform-gpu text-center">
             Découvrir
-          </a>
-          <a href="/contact" className="inline-block px-10 py-4 border border-white/40 text-white font-sans uppercase tracking-[0.3em] text-xs hover:bg-white/10 hover:border-white transition-all duration-500 rounded-full backdrop-blur-sm text-center">
+          </Link>
+          <Link to="/contact" className="inline-block px-10 py-4 border border-white/40 text-white font-sans uppercase tracking-[0.3em] text-xs hover:bg-white/10 hover:border-white transition-all duration-500 rounded-full backdrop-blur-sm active:scale-95 transform-gpu text-center">
             Réserver
-          </a>
+          </Link>
         </div>
       </div>
     </section>

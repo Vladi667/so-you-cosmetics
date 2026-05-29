@@ -379,6 +379,23 @@ router.post('/contact', async (req, res) => {
   }
 });
 
+// 6b. Newsletter Signup — stores the email (deduped). Independent of SMTP,
+// so it works even before the mailbox/SMTP credentials are configured.
+router.post('/newsletter', async (req, res) => {
+  const { email } = req.body;
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Adresse e-mail invalide' });
+  }
+
+  try {
+    await db.createNewsletterSubscriber(email);
+    res.status(201).json({ message: 'Inscription à la newsletter réussie' });
+  } catch (err) {
+    console.error('Newsletter signup failed:', err);
+    res.status(500).json({ error: 'Failed to subscribe to newsletter' });
+  }
+});
+
 // ==========================================
 // admin routes
 // ==========================================
@@ -719,6 +736,55 @@ router.delete('/admin/workshops/:id', requireAdmin, async (req, res) => {
     res.json({ message: 'Workshop deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete workshop' });
+  }
+});
+
+// 18. Admin List Products
+router.get('/admin/products', requireAdmin, async (req, res) => {
+  try {
+    const products = await db.getProducts();
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve products' });
+  }
+});
+
+// 19. Admin Create Product
+router.post('/admin/products', requireAdmin, async (req, res) => {
+  try {
+    if (!req.body || !req.body.name) {
+      return res.status(400).json({ error: 'Le nom du produit est requis' });
+    }
+    const product = await db.createProduct(req.body);
+    res.status(201).json(product);
+  } catch (err) {
+    console.error('createProduct error', err);
+    res.status(500).json({ error: 'Failed to create product' });
+  }
+});
+
+// 20. Admin Update Product
+router.put('/admin/products/:id', requireAdmin, async (req, res) => {
+  try {
+    const product = await db.updateProduct(req.params.id, req.body);
+    res.json(product);
+  } catch (err) {
+    if (err && err.message === 'Product not found') {
+      return res.status(404).json({ error: 'Produit introuvable' });
+    }
+    console.error('updateProduct error', err);
+    res.status(500).json({ error: 'Failed to update product' });
+  }
+});
+
+// 21. Admin Delete Product
+router.delete('/admin/products/:id', requireAdmin, async (req, res) => {
+  try {
+    await db.deleteProduct(req.params.id);
+    res.json({ message: 'Product deleted' });
+  } catch (err) {
+    console.error('deleteProduct error', err);
+    res.status(500).json({ error: 'Failed to delete product' });
   }
 });
 

@@ -7,6 +7,10 @@ const AdminDashboard = ({ onLogout }) => {
   const [clients, setClients] = useState([]);
   const [workshops, setWorkshops] = useState([]);
   const [workshopForm, setWorkshopForm] = useState({ id: null, title: '', description: '', price: '', duration: '', image_url: '' });
+  const [products, setProducts] = useState([]);
+  const [productForm, setProductForm] = useState({ id: null, name: '', price: '', ribbon: '', collectionsText: '', imagesText: '', description: '' });
+  const [productSearch, setProductSearch] = useState('');
+  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', imagesText: '', description: '' };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -63,7 +67,8 @@ const AdminDashboard = ({ onLogout }) => {
       orders: '/api/admin/orders',
       bookings: '/api/admin/bookings',
       clients: '/api/admin/clients',
-      workshops: '/api/admin/workshops'
+      workshops: '/api/admin/workshops',
+      products: '/api/admin/products'
     };
 
     fetch(endpoints[activeTab], { headers: fetchHeaders })
@@ -80,6 +85,7 @@ const AdminDashboard = ({ onLogout }) => {
         if (activeTab === 'bookings') setBookings(data);
         if (activeTab === 'clients') setClients(data);
         if (activeTab === 'workshops') setWorkshops(data);
+        if (activeTab === 'products') setProducts(data);
         setLoading(false);
       })
       .catch(err => {
@@ -395,6 +401,7 @@ const AdminDashboard = ({ onLogout }) => {
           <nav className="space-y-2">
             {[
               { id: 'orders', label: 'Commandes', icon: '🛒' },
+              { id: 'products', label: 'Gestion Produits', icon: '🧴' },
               { id: 'workshops', label: 'Gestion Ateliers', icon: '🎨' },
               { id: 'clients', label: 'Fichier Clients', icon: '👤' },
               { id: 'inbox', label: 'Boîte de réception', icon: '📥' },
@@ -612,6 +619,113 @@ const AdminDashboard = ({ onLogout }) => {
         )}
 
         {/* Tab 3.5: Workshops */}
+        {activeTab === 'products' && (
+          <div>
+            <h1 className="font-serif text-3xl md:text-4xl text-slate-stone mb-8">Gestion des Produits</h1>
+
+            <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 shadow-sm mb-8">
+              <h3 className="font-serif text-xl text-slate-stone mb-4">{productForm.id ? 'Modifier le produit' : 'Ajouter un produit'}</h3>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const url = productForm.id ? `/api/admin/products/${productForm.id}` : '/api/admin/products';
+                const method = productForm.id ? 'PUT' : 'POST';
+                const payload = {
+                  name: productForm.name,
+                  price: productForm.price,
+                  ribbon: productForm.ribbon,
+                  description: productForm.description,
+                  collections: productForm.collectionsText,
+                  images: productForm.imagesText
+                };
+                fetch(url, { method, headers: fetchHeaders, body: JSON.stringify(payload) })
+                  .then(res => {
+                    if (res.status === 401) { onLogout(); throw new Error('Session expirée'); }
+                    if (!res.ok) throw new Error('Erreur lors de la sauvegarde');
+                    return res.json();
+                  })
+                  .then(() => {
+                    setProductForm(emptyProductForm);
+                    loadData();
+                  })
+                  .catch(err => alert(err.message));
+              }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" required placeholder="Nom du produit" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="px-4 py-2 border rounded" />
+                <input type="number" step="0.01" min="0" required placeholder="Prix (CHF)" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="px-4 py-2 border rounded" />
+                <input type="text" placeholder="Badge / Ruban (ex: Hydrolat) — optionnel" value={productForm.ribbon} onChange={e => setProductForm({...productForm, ribbon: e.target.value})} className="px-4 py-2 border rounded" />
+                <input type="text" placeholder="Catégories (séparées par des virgules)" value={productForm.collectionsText} onChange={e => setProductForm({...productForm, collectionsText: e.target.value})} className="px-4 py-2 border rounded" />
+                <div className="md:col-span-2">
+                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Images (une URL par ligne)</label>
+                  <textarea placeholder="https://...jpg&#10;https://...png" value={productForm.imagesText} onChange={e => setProductForm({...productForm, imagesText: e.target.value})} className="px-4 py-2 border rounded w-full h-24"></textarea>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Description (HTML accepté)</label>
+                  <textarea required placeholder="Description du produit" value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} className="px-4 py-2 border rounded w-full h-40"></textarea>
+                </div>
+                <div className="md:col-span-2 flex gap-4">
+                  <button type="submit" className="px-6 py-2 bg-slate-stone text-white rounded">{productForm.id ? 'Enregistrer les modifications' : 'Ajouter le produit'}</button>
+                  {productForm.id && <button type="button" onClick={() => setProductForm(emptyProductForm)} className="px-6 py-2 bg-gray-200 rounded">Annuler</button>}
+                </div>
+              </form>
+            </div>
+
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <input type="text" placeholder="Rechercher un produit..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="px-4 py-2 border rounded w-full max-w-sm" />
+              <span className="text-sm text-stone-gray whitespace-nowrap">{products.length} produits</span>
+            </div>
+
+            <div className="bg-white rounded-3xl border border-slate-stone/5 overflow-hidden shadow-sm">
+              <table className="w-full text-left">
+                <thead className="bg-slate-stone text-white font-sans text-xs tracking-widest uppercase">
+                  <tr>
+                    <th className="p-4">Produit</th>
+                    <th className="p-4">Catégories</th>
+                    <th className="p-4">Prix</th>
+                    <th className="p-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products
+                    .filter(p => !productSearch || (p.name || '').toLowerCase().includes(productSearch.toLowerCase()))
+                    .map((p) => (
+                    <tr key={p.id} className="border-b align-top">
+                      <td className="p-4 flex items-center gap-3">
+                        {p.images && p.images[0] && <img src={p.images[0]} alt="" className="w-10 h-10 object-cover rounded" />}
+                        <span className="font-medium">{p.name}</span>
+                      </td>
+                      <td className="p-4 text-sm text-stone-gray">{(p.collections || []).join(', ')}</td>
+                      <td className="p-4 whitespace-nowrap">CHF {p.price}</td>
+                      <td className="p-4">
+                        <div className="flex gap-3">
+                          <button onClick={() => {
+                            setProductForm({
+                              id: p.id,
+                              name: p.name || '',
+                              price: p.price ?? '',
+                              ribbon: p.ribbon || '',
+                              collectionsText: (p.collections || []).join(', '),
+                              imagesText: (p.images || []).join('\n'),
+                              description: p.description || ''
+                            });
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }} className="text-blue-500 underline">Modifier</button>
+                          <button onClick={() => {
+                            if (window.confirm(`Supprimer le produit "${p.name}" ? Cette action est irréversible.`)) {
+                              fetch(`/api/admin/products/${p.id}`, { method: 'DELETE', headers: fetchHeaders })
+                                .then(res => { if (!res.ok) throw new Error('Erreur de suppression'); return res.json(); })
+                                .then(() => loadData())
+                                .catch(err => alert(err.message));
+                            }
+                          }} className="text-red-500 underline">Supprimer</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'workshops' && (
           <div>
             <h1 className="font-serif text-3xl md:text-4xl text-slate-stone mb-8">Gestion des Ateliers</h1>

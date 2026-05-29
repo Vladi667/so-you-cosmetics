@@ -14,6 +14,8 @@ const CONTACTS_FILE = path.join(DATA_DIR, 'contacts.json');
 const ADMIN_FILE = path.join(DATA_DIR, 'admin.json');
 const WORKSHOPS_FILE = path.join(DATA_DIR, 'workshops.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const NEWSLETTER_FILE = path.join(DATA_DIR, 'newsletter.json');
+const PRODUCTS_FILE = path.join(__dirname, 'products.json');
 
 // Ensure data folder exists locally
 if (!fs.existsSync(DATA_DIR)) {
@@ -42,6 +44,7 @@ initJsonFile(BOOKINGS_FILE);
 initJsonFile(CONTACTS_FILE);
 initJsonFile(WORKSHOPS_FILE);
 initJsonFile(SETTINGS_FILE, {});
+initJsonFile(NEWSLETTER_FILE);
 
 // Seed admin in JSON file if it doesn't exist
 if (!fs.existsSync(ADMIN_FILE)) {
@@ -132,6 +135,15 @@ async function initProductionDatabase() {
         email VARCHAR(255) NOT NULL,
         subject VARCHAR(255),
         message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create newsletter subscribers table
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS newsletter (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -244,6 +256,106 @@ async function getProductById(id) {
   return productsData.products.find(p => p.id === id) || null;
 }
 
+// ---- Product catalog editing (admin) ----
+// In file-based mode, products live in server/products.json ({ categories, products }).
+// We read/write that file and keep the in-memory `productsData` cache in sync so
+// changes are reflected immediately without a restart.
+function readProductsFile() {
+  return JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf8'));
+}
+
+function writeProductsFile(data) {
+  fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  // keep the cached require() object in sync
+  productsData.products = data.products;
+  if (data.categories) productsData.categories = data.categories;
+}
+
+function normalizeProductInput(input, base = {}) {
+  const toArray = (v) => {
+    if (Array.isArray(v)) return v.map(s => String(s).trim()).filter(Boolean);
+    if (typeof v === 'string') return v.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+    return [];
+  };
+  const out = { ...base };
+  if (input.name !== undefined) out.name = input.name;
+  if (input.description !== undefined) out.description = input.description;
+  if (input.price !== undefined) out.price = Number(input.price) || 0;
+  if (input.ribbon !== undefined) out.ribbon = input.ribbon || null;
+  if (input.collections !== undefined) out.collections = toArray(input.collections);
+  if (input.images !== undefined) out.images = toArray(input.images);
+  return out;
+}
+
+async function createProduct(input) {
+  const product = normalizeProductInput(input, {
+    id: 'product_' + crypto.randomUUID(),
+    description: '',
+    price: 0,
+    ribbon: null,
+    collections: [],
+    images: []
+  });
+
+  if (pool) {
+    try {
+      await pool.query(
+        'INSERT INTO products (id, name, description, price, ribbon, collections, images) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [product.id, product.name, product.description, product.price, product.ribbon, JSON.stringify(product.collections), JSON.stringify(product.images)]
+      );
+      return product;
+    } catch (err) {
+      console.error('MySQL createProduct failed, falling back to JSON file', err);
+    }
+  }
+
+  const data = readProductsFile();
+  data.products.push(product);
+  writeProductsFile(data);
+  return product;
+}
+
+async function updateProduct(id, input) {
+  if (pool) {
+    try {
+      const existing = await getProductById(id);
+      if (!existing) throw new Error('Product not found');
+      const merged = normalizeProductInput(input, existing);
+      await pool.query(
+        'UPDATE products SET name = ?, description = ?, price = ?, ribbon = ?, collections = ?, images = ? WHERE id = ?',
+        [merged.name, merged.description, merged.price, merged.ribbon, JSON.stringify(merged.collections), JSON.stringify(merged.images), id]
+      );
+      return merged;
+    } catch (err) {
+      console.error('MySQL updateProduct failed, falling back to JSON file', err);
+    }
+  }
+
+  const data = readProductsFile();
+  const idx = data.products.findIndex(p => p.id === id);
+  if (idx === -1) throw new Error('Product not found');
+  const merged = normalizeProductInput(input, data.products[idx]);
+  data.products[idx] = merged;
+  writeProductsFile(data);
+  return merged;
+}
+
+async function deleteProduct(id) {
+  if (pool) {
+    try {
+      await pool.query('DELETE FROM products WHERE id = ?', [id]);
+      return true;
+    } catch (err) {
+      console.error('MySQL deleteProduct failed, falling back to JSON file', err);
+    }
+  }
+
+  const data = readProductsFile();
+  data.products = data.products.filter(p => p.id !== id);
+  writeProductsFile(data);
+  return true;
+}
+
 // 3. Create Order
 async function createOrder(order) {
   const orderId = 'order_' + Math.random().toString(36).substr(2, 9);
@@ -354,6 +466,28 @@ async function createContact(contact) {
   data.push(newContact);
   fs.writeFileSync(CONTACTS_FILE, JSON.stringify(data, null, 2), 'utf8');
   return newContact;
+}
+
+// 5b. Create Newsletter Subscriber (idempotent — ignores duplicate emails)
+async function createNewsletterSubscriber(email) {
+  const normalized = String(email).toLowerCase().trim();
+  const entry = { email: normalized, created_at: new Date().toISOString() };
+
+  if (pool) {
+    try {
+      await pool.query('INSERT IGNORE INTO newsletter (email) VALUES (?)', [normalized]);
+      return entry;
+    } catch (err) {
+      console.error('MySQL createNewsletterSubscriber failed, falling back to JSON file', err);
+    }
+  }
+
+  const data = JSON.parse(fs.readFileSync(NEWSLETTER_FILE, 'utf8'));
+  if (!data.some(s => s.email === normalized)) {
+    data.push(entry);
+    fs.writeFileSync(NEWSLETTER_FILE, JSON.stringify(data, null, 2), 'utf8');
+  }
+  return entry;
 }
 
 // ==============================================
@@ -729,6 +863,9 @@ async function updateOrderFulfillment(orderId, patch) {
 module.exports = {
   getProducts,
   getProductById,
+  createProduct,
+  updateProduct,
+  deleteProduct,
   getSetting,
   updateSettings,
   getSumupConfig,
@@ -737,6 +874,7 @@ module.exports = {
   createOrder,
   createBooking,
   createContact,
+  createNewsletterSubscriber,
   // Admin DB functions
   getAdmin,
   updateAdminPassword,

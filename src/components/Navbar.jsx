@@ -12,9 +12,12 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
   const navigate = useNavigate();
 
   const handleSearchSubmit = (e) => {
-    e.preventDefault();
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     const q = searchQuery.trim();
-    if (!q) return;
+    if (!q) {
+      setSearchOpen(false);
+      return;
+    }
     navigate(`/search/${encodeURIComponent(q)}`);
     setSearchOpen(false);
     setSearchQuery('');
@@ -146,26 +149,29 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
 
           {/* Right side icons + hamburger */}
           <div className="flex items-center space-x-4 sm:space-x-6 ml-auto lg:ml-0">
-            {/* Search Icon with sliding input — hidden on very small screens */}
+            {/* Search — magnifier expands an input. Rendered only when open, at a
+                fixed width with a fail-safe fade-in (no width transition from zero,
+                which previously failed to expand). */}
             <form onSubmit={handleSearchSubmit} className="hidden sm:flex items-center">
-              <input
-                id="search-input"
-                type="text"
-                placeholder="Rechercher..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={`bg-transparent border-b outline-none text-xs font-sans transition-all duration-500 ease-out placeholder-current/50 ${getTextColor()} ${searchOpen ? 'w-48 opacity-100 px-2 border-current mr-2' : 'w-0 opacity-0 px-0 border-transparent mr-0'}`}
-              />
+              {searchOpen && (
+                <input
+                  id="search-input"
+                  type="text"
+                  autoFocus
+                  placeholder="Rechercher..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onBlur={() => { if (!searchQuery.trim()) setSearchOpen(false); }}
+                  className={`w-44 md:w-56 bg-transparent border-b border-current outline-none text-xs font-sans px-2 mr-2 placeholder-current/50 ${getTextColor()}`}
+                />
+              )}
               <button
                 type="button"
                 onClick={() => {
-                  if (searchOpen && searchQuery.trim()) {
-                    handleSearchSubmit({ preventDefault: () => {} });
-                    return;
-                  }
-                  setSearchOpen(!searchOpen);
-                  if (!searchOpen) {
-                    setTimeout(() => document.getElementById('search-input')?.focus(), 50);
+                  if (searchOpen) {
+                    handleSearchSubmit();
+                  } else {
+                    setSearchOpen(true);
                   }
                 }}
                 className={`relative transition-colors duration-500 p-2 ${getTextColor()}`}

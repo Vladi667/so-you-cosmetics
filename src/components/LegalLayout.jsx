@@ -30,7 +30,15 @@ const LegalLayout = ({ title, intro, sections = [], lastUpdated }) => {
               <div key={i}>
                 <h2 className="font-serif text-2xl sm:text-3xl text-slate-stone mb-4">{s.heading}</h2>
                 <div className="font-sans font-light text-stone-gray leading-relaxed space-y-4 text-sm sm:text-base">
-                  {s.body.map((p, j) => <p key={j}>{p}</p>)}
+                  {s.body.map((p, j) =>
+                    Array.isArray(p) ? (
+                      <ul key={j} className="list-disc pl-5 space-y-2 marker:text-slate-stone/40">
+                        {p.map((li, k) => <li key={k}>{li}</li>)}
+                      </ul>
+                    ) : (
+                      <p key={j}>{p}</p>
+                    )
+                  )}
                 </div>
               </div>
             ))}
