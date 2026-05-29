@@ -76,7 +76,9 @@ async function getMessage(uid, { mailbox = 'INBOX' } = {}) {
       if (!msg) return null;
       // Try to parse text + html out of raw source very simply (mailparser would be nicer
       // but is a heavy dep; do a small best-effort here).
-      const raw = msg.source ? msg.source.toString('utf8') : '';
+      // Read as 'latin1' so every byte is preserved 1:1 — body decoding below
+      // reconstructs the real bytes and applies the declared charset itself.
+      const raw = msg.source ? msg.source.toString('latin1') : '';
       const { textPlain, textHtml } = naiveExtractBodies(raw);
       // Mark as read
       try { await client.messageFlagsAdd(String(uid), ['\\Seen'], { uid: true }); } catch (_) {}
@@ -127,7 +129,8 @@ function naiveExtractBodies(raw) {
         const pBody = part.slice(pHdrEnd + 4).replace(/\r?\n--\s*$/, '');
         const pCt = (pHdr.match(/Content-Type:\s*([^;\r\n]+)/i) || [, ''])[1].toLowerCase();
         const pEnc = (pHdr.match(/Content-Transfer-Encoding:\s*([^\r\n]+)/i) || [, ''])[1].toLowerCase().trim();
-        const decoded = decodePart(pBody, pEnc);
+        const pCharset = (pHdr.match(/charset="?([^";\r\n]+)"?/i) || [, 'utf-8'])[1];
+        const decoded = decodePart(pBody, pEnc, pCharset);
         if (pCt === 'text/plain' && !textPlain) textPlain = decoded;
         else if (pCt === 'text/html' && !textHtml) textHtml = decoded;
       }
@@ -135,23 +138,53 @@ function naiveExtractBodies(raw) {
   } else {
     const encMatch = headers.match(/Content-Transfer-Encoding:\s*([^\r\n]+)/i);
     const enc = encMatch ? encMatch[1].toLowerCase().trim() : '';
-    const decoded = decodePart(body, enc);
+    const charset = (headers.match(/charset="?([^";\r\n]+)"?/i) || [, 'utf-8'])[1];
+    const decoded = decodePart(body, enc, charset);
     if (ct === 'text/html') textHtml = decoded;
     else textPlain = decoded;
   }
   return { textPlain, textHtml };
 }
 
-function decodePart(body, encoding) {
+// Decode a MIME part body into a proper JS string, honouring both the
+// transfer-encoding (base64 / quoted-printable / 7bit-8bit) AND the declared
+// charset. `body` arrives as a latin1 string (1 char == 1 raw byte), so we can
+// reconstruct the exact bytes before applying the charset.
+function decodePart(body, encoding, charset) {
+  let buf;
   if (encoding === 'base64') {
-    try { return Buffer.from(body.replace(/\s+/g, ''), 'base64').toString('utf8'); } catch (_) { return body; }
+    try { buf = Buffer.from(body.replace(/\s+/g, ''), 'base64'); } catch (_) { return body; }
+  } else if (encoding === 'quoted-printable') {
+    const cleaned = body.replace(/=\r?\n/g, ''); // drop soft line breaks
+    const bytes = [];
+    for (let i = 0; i < cleaned.length; i++) {
+      if (cleaned[i] === '=' && /^[0-9A-Fa-f]{2}$/.test(cleaned.substr(i + 1, 2))) {
+        bytes.push(parseInt(cleaned.substr(i + 1, 2), 16));
+        i += 2;
+      } else {
+        bytes.push(cleaned.charCodeAt(i) & 0xff);
+      }
+    }
+    buf = Buffer.from(bytes);
+  } else {
+    // 7bit / 8bit / binary / none — body already holds the raw bytes (as latin1)
+    buf = Buffer.from(body, 'latin1');
   }
-  if (encoding === 'quoted-printable') {
-    return body
-      .replace(/=\r?\n/g, '')
-      .replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  return decodeBytes(buf, charset);
+}
+
+// Decode a byte buffer using the given charset label, falling back gracefully.
+function decodeBytes(buf, charset) {
+  const cs = (charset || 'utf-8').toLowerCase().trim();
+  if (cs === 'utf-8' || cs === 'utf8' || cs === 'us-ascii' || cs === 'ascii') {
+    return buf.toString('utf8');
   }
-  return body;
+  try {
+    // Node's TextDecoder (full ICU) supports iso-8859-1, windows-1252, etc.
+    return new TextDecoder(cs).decode(buf);
+  } catch (_) {
+    try { return buf.toString('latin1'); } catch (_) { return buf.toString('utf8'); }
+  }
 }
 
 module.exports = { isConfigured, listMessages, getMessage };
