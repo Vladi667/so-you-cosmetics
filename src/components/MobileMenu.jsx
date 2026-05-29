@@ -1,7 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import Logo from './Logo';
 
 const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [shopExpanded, setShopExpanded] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const handleMobileSearch = (e) => {
+    e.preventDefault();
+    const q = searchTerm.trim();
+    if (!q) return;
+    onClose();
+    navigate(`/search/${encodeURIComponent(q)}`);
+    setSearchTerm('');
+  };
+
+  const isLinkActive = (item) => {
+    if (item === 'Home') return location.pathname === '/';
+    if (item === 'About Us') return location.pathname === '/about';
+    if (item === 'Workshops') return location.pathname === '/workshops';
+    if (item === 'Contact') return location.pathname === '/contact';
+    if (item === 'Shop') return location.pathname.startsWith('/category/');
+    return false;
+  };
+
+  const isCategoryActive = (item) => {
+    return location.pathname === `/category/${encodeURIComponent(item)}`;
+  };
+
+  // Auto-expand Shop submenu on opening mobile menu if currently on a category page
+  useEffect(() => {
+    if (isOpen) {
+      setShopExpanded(location.pathname.startsWith('/category/'));
+    }
+  }, [isOpen, location.pathname]);
 
   const categories = [
     'Savons', 'Soins de la peau', 'Bien-être et détente', 'Bébés',
@@ -34,9 +68,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
 
           {/* Header */}
           <div className="flex items-center justify-between px-8 pt-8 pb-6">
-            <span className="font-serif text-xl text-white tracking-[0.1em]">
-              So You
-            </span>
+            <Logo className="h-5 w-auto text-white" />
             <button
               onClick={onClose}
               className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300"
@@ -50,6 +82,22 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
           {/* Divider */}
           <div className="h-px bg-white/10 mx-8" />
 
+          {/* Search */}
+          <form onSubmit={handleMobileSearch} className="px-8 pt-6">
+            <div className="flex items-center gap-3 border-b border-white/20 pb-3">
+              <svg className="w-5 h-5 text-white/50 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Rechercher un produit..."
+                className="bg-transparent outline-none text-white placeholder-white/40 font-sans text-sm w-full"
+              />
+            </div>
+          </form>
+
           {/* Navigation Links */}
           <nav className="flex-1 px-8 py-8">
             <ul className="space-y-1">
@@ -62,7 +110,11 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
               >
                 <button
                   onClick={() => handleNav('Home')}
-                  className="w-full text-left py-4 text-white font-sans text-lg tracking-[0.15em] uppercase hover:text-white/70 transition-colors duration-300"
+                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase transition-all duration-300 flex items-center justify-between active:scale-[0.98] border-l-2 pl-4 -ml-4 transform-gpu ${
+                    isLinkActive('Home') 
+                      ? 'text-white border-white font-medium' 
+                      : 'text-white/60 hover:text-white border-transparent'
+                  }`}
                 >
                   Home
                 </button>
@@ -77,7 +129,11 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
               >
                 <button
                   onClick={() => setShopExpanded(!shopExpanded)}
-                  className="w-full flex items-center justify-between py-4 text-white font-sans text-lg tracking-[0.15em] uppercase hover:text-white/70 transition-colors duration-300"
+                  className={`w-full flex items-center justify-between py-4 font-sans text-lg tracking-[0.15em] uppercase transition-all duration-300 active:scale-[0.98] border-l-2 pl-4 -ml-4 transform-gpu ${
+                    isLinkActive('Shop') 
+                      ? 'text-white border-white font-medium' 
+                      : 'text-white/60 hover:text-white border-transparent'
+                  }`}
                 >
                   <span>Shop</span>
                   <svg
@@ -101,7 +157,11 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                       <button
                         key={cat}
                         onClick={() => handleNav(cat)}
-                        className="text-left px-4 py-3 text-white/60 font-sans text-xs tracking-[0.15em] uppercase hover:text-white hover:bg-white/10 rounded-xl transition-all duration-300"
+                        className={`text-left px-4 py-3 font-sans text-xs tracking-[0.15em] uppercase rounded-xl transition-all duration-300 active:scale-[0.97] border transform-gpu ${
+                          isCategoryActive(cat)
+                            ? 'text-white bg-white/20 border-white/20 font-medium'
+                            : 'text-white/60 bg-transparent border-transparent hover:text-white hover:bg-white/10'
+                        }`}
                         style={{ transitionDelay: shopExpanded ? `${idx * 30}ms` : '0ms' }}
                       >
                         {cat}
@@ -120,7 +180,11 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
               >
                 <button
                   onClick={() => handleNav('About Us')}
-                  className="w-full text-left py-4 text-white font-sans text-lg tracking-[0.15em] uppercase hover:text-white/70 transition-colors duration-300"
+                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase transition-all duration-300 flex items-center justify-between active:scale-[0.98] border-l-2 pl-4 -ml-4 transform-gpu ${
+                    isLinkActive('About Us') 
+                      ? 'text-white border-white font-medium' 
+                      : 'text-white/60 hover:text-white border-transparent'
+                  }`}
                 >
                   About Us
                 </button>
@@ -135,7 +199,11 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
               >
                 <button
                   onClick={() => handleNav('Workshops')}
-                  className="w-full text-left py-4 text-white font-sans text-lg tracking-[0.15em] uppercase hover:text-white/70 transition-colors duration-300"
+                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase transition-all duration-300 flex items-center justify-between active:scale-[0.98] border-l-2 pl-4 -ml-4 transform-gpu ${
+                    isLinkActive('Workshops') 
+                      ? 'text-white border-white font-medium' 
+                      : 'text-white/60 hover:text-white border-transparent'
+                  }`}
                 >
                   Workshops
                 </button>
@@ -150,7 +218,11 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
               >
                 <button
                   onClick={() => handleNav('Contact')}
-                  className="w-full text-left py-4 text-white font-sans text-lg tracking-[0.15em] uppercase hover:text-white/70 transition-colors duration-300"
+                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase transition-all duration-300 flex items-center justify-between active:scale-[0.98] border-l-2 pl-4 -ml-4 transform-gpu ${
+                    isLinkActive('Contact') 
+                      ? 'text-white border-white font-medium' 
+                      : 'text-white/60 hover:text-white border-transparent'
+                  }`}
                 >
                   Contact
                 </button>

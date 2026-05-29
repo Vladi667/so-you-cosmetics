@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import MobileMenu from './MobileMenu';
+import Logo from './Logo';
 
 const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick }) => {
   const [scrolled, setScrolled] = useState(false);
@@ -8,18 +9,47 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    navigate(`/search/${encodeURIComponent(q)}`);
+    setSearchOpen(false);
+    setSearchQuery('');
+  };
 
   const isHomePage = location.pathname === '/';
   const isContentPage = !isHomePage;
+
+  const isLinkActive = (item) => {
+    if (item === 'Home') return location.pathname === '/';
+    if (item === 'About Us') return location.pathname === '/about';
+    if (item === 'Workshops') return location.pathname === '/workshops';
+    if (item === 'Contact') return location.pathname === '/contact';
+    if (item === 'Shop') return location.pathname.startsWith('/category/');
+    return false;
+  };
+
+  const isCategoryActive = (item) => {
+    return location.pathname === `/category/${encodeURIComponent(item)}`;
+  };
 
   const getTextColor = () => {
     if (scrolled) return 'text-white';
     return isContentPage ? 'text-slate-stone' : 'text-white text-shadow';
   };
 
-  const getLinkColor = () => {
-    if (scrolled) return 'text-white/70 hover:text-white';
-    return isContentPage ? 'text-slate-stone/70 hover:text-slate-stone' : 'text-white/80 text-shadow hover:text-white';
+  const getLinkColor = (item) => {
+    const active = isLinkActive(item);
+    if (scrolled) {
+      return active ? 'text-white opacity-100 font-medium' : 'text-white/70 hover:text-white hover:opacity-100';
+    }
+    if (isContentPage) {
+      return active ? 'text-slate-stone opacity-100 font-medium' : 'text-slate-stone/70 hover:text-slate-stone hover:opacity-100';
+    }
+    return active ? 'text-white opacity-100 font-medium text-shadow' : 'text-white/80 text-shadow hover:text-white hover:opacity-100';
   };
 
   useEffect(() => {
@@ -50,20 +80,35 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
             : 'bg-transparent py-5 lg:py-8'
       }`}>
         <div className="container mx-auto px-4 sm:px-6 md:px-12 flex items-center">
-          <button onClick={() => onCategorySelect('All')} className={`font-serif text-xl lg:text-2xl font-medium tracking-[0.1em] transition-colors duration-500 ${getTextColor()}`}>
-            So You Cosmetics
+          <button onClick={() => onCategorySelect('All')} className="transition-all duration-200 hover:opacity-85 active:scale-95 py-1 flex items-center transform-gpu">
+            <Logo 
+              className={`h-5 sm:h-8 w-auto transition-colors duration-500 ${
+                scrolled || !isContentPage ? 'text-white' : 'text-slate-stone'
+              }`} 
+            />
           </button>
           
           {/* Desktop navigation — hidden below lg */}
           <div className="hidden lg:flex ml-auto space-x-10 items-center mr-10">
-            <button onClick={() => onCategorySelect('Home')} className={`font-sans text-[11px] tracking-[0.2em] uppercase transition-all duration-500 hover:opacity-100 ${getLinkColor()}`}>
+            <button 
+              onClick={() => onCategorySelect('Home')} 
+              className={`font-sans text-[11px] tracking-[0.2em] uppercase py-1 cursor-pointer transition-all duration-300 active:scale-95 relative transform-gpu
+                after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1.5px] after:bg-current after:transition-transform after:duration-300 after:origin-left
+                ${isLinkActive('Home') ? 'after:scale-x-100' : 'after:scale-x-0 hover:after:scale-x-100'} ${getLinkColor('Home')}`}
+            >
               Home
             </button>
             
             <div className="relative group py-4">
-              <button className={`font-sans text-[11px] tracking-[0.2em] uppercase transition-all duration-500 hover:opacity-100 flex items-center gap-1 ${getLinkColor()}`}>
-                Shop
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              <button 
+                className={`font-sans text-[11px] tracking-[0.2em] uppercase py-1 cursor-pointer transition-all duration-300 active:scale-95 relative flex items-center gap-1.5 transform-gpu
+                  after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1.5px] after:bg-current after:transition-transform after:duration-300 after:origin-left
+                  ${isLinkActive('Shop') ? 'after:scale-x-100' : 'after:scale-x-0 hover:after:scale-x-100'} ${getLinkColor('Shop')}`}
+              >
+                <span>Shop</span>
+                <svg className="w-3 h-3 transition-transform duration-300 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
               </button>
               
               {/* Dropdown Menu */}
@@ -73,7 +118,11 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
                     <button 
                       key={item} 
                       onClick={() => onCategorySelect(item)}
-                      className="text-left px-4 py-2 text-xs font-sans tracking-widest uppercase text-slate-stone/70 hover:text-slate-stone hover:bg-mist-white rounded-lg transition-colors"
+                      className={`text-left pl-4 pr-3 py-2 text-xs font-sans tracking-widest uppercase rounded-lg transition-all duration-300 flex items-center justify-between active:scale-[0.98] border-l-2 transform-gpu ${
+                        isCategoryActive(item) 
+                          ? 'text-slate-stone bg-slate-stone/5 border-slate-stone font-medium' 
+                          : 'text-slate-stone/70 hover:text-slate-stone hover:bg-mist-white border-transparent hover:border-slate-stone/20'
+                      }`}
                     >
                       {item}
                     </button>
@@ -86,7 +135,9 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
               <button 
                 key={item} 
                 onClick={() => onCategorySelect(item)}
-                className={`font-sans text-[11px] tracking-[0.2em] uppercase transition-all duration-500 hover:opacity-100 ${getLinkColor()}`}
+                className={`font-sans text-[11px] tracking-[0.2em] uppercase py-1 cursor-pointer transition-all duration-300 active:scale-95 relative transform-gpu
+                  after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1.5px] after:bg-current after:transition-transform after:duration-300 after:origin-left
+                  ${isLinkActive(item) ? 'after:scale-x-100' : 'after:scale-x-0 hover:after:scale-x-100'} ${getLinkColor(item)}`}
               >
                 {item}
               </button>
@@ -96,29 +147,35 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
           {/* Right side icons + hamburger */}
           <div className="flex items-center space-x-4 sm:space-x-6 ml-auto lg:ml-0">
             {/* Search Icon with sliding input — hidden on very small screens */}
-            <div className="hidden sm:flex items-center">
-              <input 
+            <form onSubmit={handleSearchSubmit} className="hidden sm:flex items-center">
+              <input
                 id="search-input"
-                type="text" 
-                placeholder="Rechercher..." 
+                type="text"
+                placeholder="Rechercher..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={`bg-transparent border-b outline-none text-xs font-sans transition-all duration-500 ease-out placeholder-current/50 ${getTextColor()} ${searchOpen ? 'w-48 opacity-100 px-2 border-current mr-2' : 'w-0 opacity-0 px-0 border-transparent mr-0'}`}
               />
-              <button 
+              <button
+                type="button"
                 onClick={() => {
+                  if (searchOpen && searchQuery.trim()) {
+                    handleSearchSubmit({ preventDefault: () => {} });
+                    return;
+                  }
                   setSearchOpen(!searchOpen);
                   if (!searchOpen) {
                     setTimeout(() => document.getElementById('search-input')?.focus(), 50);
                   }
-                }} 
+                }}
                 className={`relative transition-colors duration-500 p-2 ${getTextColor()}`}
+                aria-label="Rechercher"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </button>
-            </div>
+            </form>
 
             <button id="fav-icon" onClick={onFavClick} className={`relative transition-colors duration-500 p-2 ${getTextColor()}`}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

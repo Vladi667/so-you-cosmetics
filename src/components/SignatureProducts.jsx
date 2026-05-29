@@ -1,10 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import SectionHeader from './SectionHeader';
 
-import productsData from '../data/products.json';
+import { getProducts } from '../services/products';
 
 const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
+  const [productsList, setProductsList] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    getProducts().then(data => { if (active) setProductsList(data); });
+    return () => { active = false; };
+  }, []);
+
   // Best sellers with best photos — hand-picked
   const bestNames = [
     'Stick lèvres naturel - cacao, coco, amande douce et cranberry',
@@ -18,14 +26,14 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
     'Savon olive, coco, ricin, palme RSPO - Senteur Légère Fraise',
   ];
   const products = bestNames
-    .map(name => productsData.products.find(p => p.name === name))
+    .map(name => productsList.find(p => p.name === name))
     .filter(Boolean);
   // Duplicate for infinite scroll
   const duplicatedProducts = [...products, ...products, ...products];
 
   return (
-    <section id="products" className="py-32 bg-mist-white overflow-hidden">
-      <div className="container mx-auto px-6 md:px-12 mb-16">
+    <section id="products" className="py-16 md:py-32 bg-mist-white overflow-hidden">
+      <div className="container mx-auto px-6 md:px-12 mb-8 md:mb-16">
         <SectionHeader 
           title="Signature Collection" 
           subtitle="Our most exquisite botanical formulations, curated for your daily ritual."
@@ -38,7 +46,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
           {duplicatedProducts.map((product, index) => (
             <div 
               key={index} 
-              className="w-[280px] md:w-[350px] mx-4 shrink-0 cursor-pointer"
+              className="w-[220px] sm:w-[280px] md:w-[350px] mx-4 shrink-0 cursor-pointer"
             >
               <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-white mb-6 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-700 group/card">
                 {/* Product Image */}
@@ -82,7 +90,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
               <div className="flex flex-col items-center text-center">
                 <p className="text-xs uppercase tracking-widest text-mist-blue mb-2 font-medium">{product.collections[0] || 'Cosmetics'}</p>
                 <Link to={`/product/${product.id}`}>
-                  <h3 className="font-serif text-xl text-slate-stone mb-1 line-clamp-1 px-4 hover:text-stone-gray transition-colors">{product.name}</h3>
+                  <h3 className="font-serif text-base sm:text-lg md:text-xl text-slate-stone mb-1 line-clamp-1 px-4 hover:text-stone-gray transition-colors">{product.name}</h3>
                 </Link>
                 <p className="font-sans text-sm text-stone-gray">CHF {product.price.toFixed(2)}</p>
               </div>

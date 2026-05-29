@@ -10,15 +10,21 @@ import Workshops from './components/Workshops';
 import Footer from './components/Footer';
 import PageLoader from './components/PageLoader';
 import SideDrawer from './components/SideDrawer';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import CategoryPage from './pages/CategoryPage';
 import AboutPage from './pages/AboutPage';
 import WorkshopsPage from './pages/WorkshopsPage';
 import ContactPage from './pages/ContactPage';
 import ProductPage from './pages/ProductPage';
+import SearchPage from './pages/SearchPage';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
+import AdminLogin from './pages/AdminLogin';
+import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('adminToken'));
   const [cart, setCart] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,6 +39,8 @@ function App() {
   }, []);
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const isAdminPage = location.pathname.startsWith('/admin');
 
   const handleCategorySelect = (category) => {
     setIsLoading(true);
@@ -90,24 +98,42 @@ function App() {
       });
     }, { threshold: 0.1 });
 
-    const hiddenElements = document.querySelectorAll('.reveal');
-    hiddenElements.forEach((el) => observer.observe(el));
+    const observeReveals = () => {
+      document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+    };
+
+    observeReveals();
+
+    const mutationObserver = new MutationObserver((mutations) => {
+      let shouldObserve = false;
+      mutations.forEach(mutation => {
+        if (mutation.addedNodes.length > 0) shouldObserve = true;
+      });
+      if (shouldObserve) {
+        observeReveals();
+      }
+    });
+
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
 
     return () => {
-      hiddenElements.forEach((el) => observer.unobserve(el));
+      observer.disconnect();
+      mutationObserver.disconnect();
     };
   }, []);
 
   return (
     <div className="font-sans antialiased text-stone-gray bg-mist-white min-h-screen flex flex-col overflow-x-hidden">
-      <PageLoader isVisible={isLoading} />
-      <Navbar 
-        cartCount={cart.length} 
-        favCount={favorites.length} 
-        onCategorySelect={handleCategorySelect}
-        onCartClick={() => setCartOpen(true)}
-        onFavClick={() => setFavOpen(true)}
-      />
+      {!isAdminPage && <PageLoader isVisible={isLoading} />}
+      {!isAdminPage && (
+        <Navbar 
+          cartCount={cart.length} 
+          favCount={favorites.length} 
+          onCategorySelect={handleCategorySelect}
+          onCartClick={() => setCartOpen(true)}
+          onFavClick={() => setFavOpen(true)}
+        />
+      )}
       
       <main className="flex-grow">
         <Routes>
@@ -117,28 +143,45 @@ function App() {
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/category/:categoryName" element={<CategoryPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
           <Route path="/product/:id" element={<ProductPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
+          <Route path="/search/:query" element={<SearchPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route 
+            path="/admin" 
+            element={
+              isAdminLoggedIn ? (
+                <AdminDashboard onLogout={() => { localStorage.removeItem('adminToken'); setIsAdminLoggedIn(false); }} />
+              ) : (
+                <AdminLogin onLoginSuccess={() => setIsAdminLoggedIn(true)} />
+              )
+            } 
+          />
         </Routes>
       </main>
 
-      <Footer />
+      {!isAdminPage && <Footer />}
 
       {/* Side Drawers */}
-      <SideDrawer 
-        isOpen={cartOpen} 
-        onClose={() => setCartOpen(false)} 
-        title="Votre Panier" 
-        items={cart} 
-        type="cart"
-        onRemove={removeFromCart}
-      />
-      <SideDrawer 
-        isOpen={favOpen} 
-        onClose={() => setFavOpen(false)} 
-        title="Vos Favoris" 
-        items={favorites} 
-        type="favorites"
-        onRemove={removeFavorite}
-      />
+      {!isAdminPage && (
+        <>
+          <SideDrawer 
+            isOpen={cartOpen} 
+            onClose={() => setCartOpen(false)} 
+            title="Votre Panier" 
+            items={cart} 
+            type="cart"
+            onRemove={removeFromCart}
+          />
+          <SideDrawer 
+            isOpen={favOpen} 
+            onClose={() => setFavOpen(false)} 
+            title="Vos Favoris" 
+            items={favorites} 
+            type="favorites"
+            onRemove={removeFavorite}
+          />
+        </>
+      )}
     </div>
   );
 }

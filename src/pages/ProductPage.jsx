@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import productsData from '../data/products.json';
+import { getProducts } from '../services/products';
 
 const placeholders = [
   'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=600&q=80',
@@ -19,22 +19,27 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    const foundProduct = productsData.products.find(p => p.id === id);
     
-    if (foundProduct) {
-      setProduct(foundProduct);
-      setActiveImage(0);
-      setQuantity(1);
+    getProducts().then(data => handleProductsLoaded(data));
+
+    function handleProductsLoaded(productsList) {
+      const foundProduct = productsList.find(p => p.id === id);
       
-      // Find related products in the same primary category
-      const primaryCategory = foundProduct.collections[0] || 'All';
-      const related = productsData.products
-        .filter(p => p.id !== id && p.collections.includes(primaryCategory))
-        .slice(0, 4);
-      setRelatedProducts(related);
-    } else {
-      // Product not found, maybe redirect to shop
-      navigate('/');
+      if (foundProduct) {
+        setProduct(foundProduct);
+        setActiveImage(0);
+        setQuantity(1);
+        
+        // Find related products in the same primary category
+        const primaryCategory = foundProduct.collections[0] || 'All';
+        const related = productsList
+          .filter(p => p.id !== id && p.collections.includes(primaryCategory))
+          .slice(0, 4);
+        setRelatedProducts(related);
+      } else {
+        // Product not found, redirect to home
+        navigate('/');
+      }
     }
   }, [id, navigate]);
 
@@ -193,37 +198,37 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
         {relatedProducts.length > 0 && (
           <div className="container mx-auto px-6 lg:px-12 mt-32">
             <h3 className="font-serif text-3xl text-slate-stone mb-12 text-center">Vous aimerez aussi</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
               {relatedProducts.map((p, index) => {
                 const img = p.images.length > 0 ? p.images[0] : placeholders[p.name.length % placeholders.length];
                 const isFav = favorites.some(fav => fav.id === p.id);
                 return (
-                  <div key={p.id} className="group relative flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500">
+                  <div key={p.id} className="group relative flex flex-col bg-white rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500">
                     <Link to={`/product/${p.id}`} className="aspect-[4/5] w-full overflow-hidden bg-slate-100 relative block">
                       <img src={img} alt={p.name} className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-in-out" />
                       {p.ribbon && (
-                        <div className="absolute top-4 left-4 z-10">
-                          <span className="inline-block bg-white/90 backdrop-blur-sm text-slate-stone text-xs tracking-widest uppercase px-3 py-1.5 rounded-full shadow-sm">
+                        <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10">
+                          <span className="inline-block bg-white/90 backdrop-blur-sm text-slate-stone text-[9px] sm:text-xs tracking-widest uppercase px-2 py-1 sm:px-3 sm:py-1.5 rounded-full shadow-sm">
                             {p.ribbon}
                           </span>
                         </div>
                       )}
                     </Link>
-                    <div className="p-6 flex flex-col flex-grow">
+                    <div className="p-3 sm:p-6 flex flex-col flex-grow">
                       <Link to={`/product/${p.id}`} className="block">
-                        <p className="font-sans text-[9px] tracking-[0.2em] uppercase text-stone-gray mb-2">{p.collections[0] || 'So You'}</p>
-                        <h3 className="font-serif text-xl text-slate-stone mb-3 line-clamp-2 group-hover:text-stone-gray transition-colors">{p.name}</h3>
+                        <p className="font-sans text-[9px] sm:text-[10px] tracking-[0.2em] uppercase text-stone-gray mb-1 sm:mb-2">{p.collections[0] || 'So You'}</p>
+                        <h3 className="font-serif text-sm sm:text-xl text-slate-stone mb-2 sm:mb-3 line-clamp-2 group-hover:text-stone-gray transition-colors">{p.name}</h3>
                       </Link>
-                      <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-stone/10">
-                        <span className="font-sans text-sm text-stone-gray">CHF {p.price.toFixed(2)}</span>
-                        <div className="flex gap-2">
-                          <button onClick={() => toggleFavorite(p)} className={`p-2 rounded-full border transition-colors ${isFav ? 'border-red-400 text-red-500 bg-red-50' : 'border-slate-stone/20 text-slate-stone hover:bg-slate-stone hover:text-white'}`}>
-                            <svg className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="mt-auto flex items-center justify-between pt-2 sm:pt-4 border-t border-slate-stone/10">
+                        <span className="font-sans text-xs sm:text-sm text-stone-gray">CHF {p.price.toFixed(2)}</span>
+                        <div className="flex gap-1.5 sm:gap-2">
+                          <button onClick={() => toggleFavorite(p)} className={`p-1.5 sm:p-2 rounded-full border transition-colors ${isFav ? 'border-red-400 text-red-500 bg-red-50' : 'border-slate-stone/20 text-slate-stone hover:bg-slate-stone hover:text-white'}`}>
+                            <svg className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isFav ? 'fill-current' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                             </svg>
                           </button>
-                          <button onClick={() => addToCart(p)} className="p-2 rounded-full bg-slate-stone text-white hover:bg-stone-gray transition-colors">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <button onClick={() => addToCart(p)} className="p-1.5 sm:p-2 rounded-full bg-slate-stone text-white hover:bg-stone-gray transition-colors">
+                            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                             </svg>
                           </button>

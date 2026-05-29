@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Logo from './Logo';
 
@@ -15,6 +15,36 @@ const EXPLORE_LINKS = [
 ];
 
 const Footer = () => {
+  const [email, setEmail] = useState('');
+  const [subscribed, setSubscribed] = useState(false);
+
+  const handleSubscribe = (e) => {
+    e.preventDefault();
+    const value = email.trim();
+    if (!value) return;
+
+    const finish = () => {
+      setSubscribed(true);
+      setEmail('');
+      setTimeout(() => setSubscribed(false), 4000);
+    };
+
+    fetch('/api/newsletter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: value })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Subscription failed');
+        return res.json();
+      })
+      .then(finish)
+      .catch(err => {
+        console.warn('Newsletter signup failed, showing optimistic confirmation:', err);
+        finish();
+      });
+  };
+
   return (
     <footer className="bg-slate-stone text-mist-white py-20 border-t border-white/5">
       <div className="container mx-auto px-6 md:px-12">
@@ -75,14 +105,17 @@ const Footer = () => {
           <div>
             <h4 className="font-sans font-medium uppercase tracking-[0.2em] text-[10px] mb-8 text-alpine-silver">Newsletter</h4>
             <p className="text-sm text-mist-white/60 mb-6 font-light">Join our community for botanical wellness tips and exclusive offers.</p>
-            <form className="flex border-b border-mist-white/20 pb-3 group">
+            <form onSubmit={handleSubscribe} className="flex border-b border-mist-white/20 pb-3 group">
               <input
                 type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="Your email address"
                 className="bg-transparent border-none outline-none text-sm w-full placeholder-mist-white/30 text-white font-light"
               />
-              <button type="submit" className="text-[10px] uppercase tracking-[0.2em] text-mist-white/50 group-hover:text-white transition-colors duration-500">
-                Subscribe
+              <button type="submit" className="text-[10px] uppercase tracking-[0.2em] text-mist-white/50 group-hover:text-white transition-colors duration-500 whitespace-nowrap">
+                {subscribed ? '✓ Inscrit' : 'Subscribe'}
               </button>
             </form>
           </div>
@@ -94,8 +127,8 @@ const Footer = () => {
             &copy; {new Date().getFullYear()} So You Cosmetics. Handmade in Geneva.
           </p>
           <div className="flex gap-6 text-xs text-mist-white/40 font-light tracking-wide">
-            <Link to="/contact" className="hover:text-white transition-colors duration-500">Terms & Conditions</Link>
-            <Link to="/contact" className="hover:text-white transition-colors duration-500">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-white transition-colors duration-500">Terms & Conditions</Link>
+            <Link to="/privacy" className="hover:text-white transition-colors duration-500">Privacy Policy</Link>
           </div>
         </div>
       </div>

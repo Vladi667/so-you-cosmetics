@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import SectionHeader from './SectionHeader';
-import productsData from '../data/products.json';
+import { getProducts } from '../services/products';
 
 const placeholders = [
   'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=600&q=80',
@@ -10,12 +10,14 @@ const placeholders = [
   'https://images.unsplash.com/photo-1629198688000-71f23e745b6e?auto=format&fit=crop&w=600&q=80'
 ];
 
-function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, toggleFavorite, favorites }) {
+function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, toggleFavorite, favorites, searchQuery = '' }) {
+  const [productsList, setProductsList] = useState([]);
   const [activeCategory, setActiveCategory] = useState(globalActiveCategory);
   const [displayedProducts, setDisplayedProducts] = useState([]);
   const [visibleCount, setVisibleCount] = useState(12);
   const [isAnimating, setIsAnimating] = useState(false);
   const scrollRef = useRef(null);
+  const isSearching = searchQuery.trim().length > 0;
 
   const categories = [
     'All',
@@ -34,6 +36,12 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
   ];
 
   useEffect(() => {
+    let active = true;
+    getProducts().then(data => { if (active) setProductsList(data); });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
     setActiveCategory(globalActiveCategory);
   }, [globalActiveCategory]);
 
@@ -41,40 +49,30 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
     setIsAnimating(true);
     
     const timer = setTimeout(() => {
-      let filtered = productsData.products;
-      if (activeCategory !== 'All') {
-        filtered = productsData.products.filter(p => p.collections.includes(activeCategory));
+      let filtered = productsList;
+      const q = searchQuery.trim().toLowerCase();
+      if (q) {
+        filtered = productsList.filter(p =>
+          (p.name && p.name.toLowerCase().includes(q)) ||
+          (p.description && p.description.toLowerCase().includes(q)) ||
+          (p.collections && p.collections.some(c => c.toLowerCase().includes(q)))
+        );
+      } else if (activeCategory !== 'All') {
+        filtered = productsList.filter(p => p.collections && p.collections.includes(activeCategory));
       }
       setDisplayedProducts(filtered);
-      setVisibleCount(12); // Reset visible count on category change
-      
+      setVisibleCount(12); // Reset visible count on category/search change
+
       // Allow enter animation to play
       setTimeout(() => setIsAnimating(false), 50);
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [activeCategory]);
+  }, [activeCategory, productsList, searchQuery]);
 
   const loadMore = () => {
     setVisibleCount(prev => prev + 12);
   };
-
-  useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('active');
-        }
-      });
-    }, { threshold: 0.1 });
-
-    const hiddenElements = document.querySelectorAll('#catalog .reveal');
-    hiddenElements.forEach((el) => observer.observe(el));
-
-    return () => {
-      hiddenElements.forEach((el) => observer.unobserve(el));
-    };
-  }, [displayedProducts, visibleCount]);
 
   // Drag to scroll for categories
   const [isDragging, setIsDragging] = useState(false);
@@ -106,12 +104,15 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
   return (
     <section id="catalog" className="py-24 bg-mist-white">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <SectionHeader 
-          title="The Full Collection" 
-          subtitle="Discover our complete range of artisanal, handmade cosmetics crafted in Geneva."
+        <SectionHeader
+          title={isSearching ? 'Résultats de recherche' : 'The Full Collection'}
+          subtitle={isSearching
+            ? `${displayedProducts.length} résultat(s) pour « ${searchQuery.trim()} »`
+            : 'Discover our complete range of artisanal, handmade cosmetics crafted in Geneva.'}
         />
 
-        {/* Categories Filter */}
+        {/* Categories Filter — hidden while searching */}
+        {!isSearching && (
         <div className="mt-12 mb-16 relative">
           <div 
             ref={scrollRef}
@@ -142,27 +143,28 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
           <div className="absolute top-0 right-0 h-full w-16 bg-gradient-to-l from-mist-white to-transparent pointer-events-none"></div>
           <div className="absolute top-0 left-0 h-full w-16 bg-gradient-to-r from-mist-white to-transparent pointer-events-none"></div>
         </div>
+        )}
 
         {/* Products Grid */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 transition-all duration-500 ease-in-out ${isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
+        <div className={`grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8 transition-all duration-500 ease-in-out ${isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
           {displayedProducts.slice(0, visibleCount).map((product, index) => {
             const placeholderImg = placeholders[product.name.length % placeholders.length];
             return (
               <div 
                 key={product.id} 
-                className="group relative flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 reveal"
+                className="group relative flex flex-col bg-white rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 reveal"
                 style={{ transitionDelay: `${(index % 12) * 100}ms` }}
               >
                 <div className="aspect-[4/5] w-full overflow-hidden bg-slate-100 relative">
                   <img
-                    src={product.images.length > 0 ? product.images[0] : placeholders[product.name.length % placeholders.length]}
+                    src={product.images.length > 0 ? product.images[0] : placeholderImg}
                     alt={product.name}
                     loading="lazy"
                     className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-in-out"
                   />
                   {product.ribbon && (
-                    <div className="absolute top-4 left-4 z-10">
-                      <span className="inline-block bg-white/90 backdrop-blur-sm text-slate-stone text-xs tracking-widest uppercase px-3 py-1.5 rounded-full shadow-sm">
+                    <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10">
+                      <span className="inline-block bg-white/90 backdrop-blur-sm text-slate-stone text-[9px] sm:text-xs tracking-widest uppercase px-2 py-1 sm:px-3 sm:py-1.5 rounded-full shadow-sm">
                         {product.ribbon}
                       </span>
                     </div>
@@ -175,27 +177,27 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                   </Link>
                 </div>
                 
-                <div className="p-6 flex flex-col flex-grow">
+                <div className="p-3 sm:p-6 flex flex-col flex-grow">
                   <div className="mb-2">
-                    <p className="text-xs text-slate-stone/60 uppercase tracking-widest mb-1 truncate">
+                    <p className="text-[9px] sm:text-xs text-slate-stone/60 uppercase tracking-widest mb-0.5 sm:mb-1 truncate">
                       {product.collections[0] || 'Cosmetics'}
                     </p>
                     <Link to={`/product/${product.id}`}>
-                      <h3 className="text-lg font-serif text-slate-stone leading-tight line-clamp-2 hover:text-stone-gray transition-colors">
+                      <h3 className="text-sm sm:text-lg font-serif text-slate-stone leading-tight line-clamp-2 hover:text-stone-gray transition-colors">
                         {product.name}
                       </h3>
                     </Link>
                   </div>
-                  <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-stone/10">
-                    <p className="text-slate-stone font-medium tracking-wide">
+                  <div className="mt-auto pt-2 sm:pt-4 flex items-center justify-between border-t border-slate-stone/10">
+                    <p className="text-slate-stone text-xs sm:text-base font-medium tracking-wide">
                       CHF {product.price.toFixed(2)}
                     </p>
-                    <div className="flex space-x-3">
+                    <div className="flex space-x-2 sm:space-x-3">
                       <button 
                         onClick={() => toggleFavorite(product)}
                         className={`transition-colors duration-300 ${favorites.find(f => f.id === product.id) ? 'text-red-400' : 'text-slate-stone/60 hover:text-red-400'}`}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={favorites.find(f => f.id === product.id) ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill={favorites.find(f => f.id === product.id) ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
                       </button>
@@ -208,7 +210,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                         }}
                         className="text-slate-stone/60 hover:text-slate-stone transition-all duration-300"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                         </svg>
                       </button>
@@ -223,7 +225,9 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
         {/* Empty State */}
         {displayedProducts.length === 0 && (
           <div className="text-center py-24">
-            <p className="text-slate-stone/60 text-lg">No products found in this category.</p>
+            <p className="text-slate-stone/60 text-lg">
+              {isSearching ? `Aucun résultat pour « ${searchQuery.trim()} ».` : 'No products found in this category.'}
+            </p>
           </div>
         )}
 
