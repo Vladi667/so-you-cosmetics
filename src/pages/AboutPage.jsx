@@ -1,18 +1,13 @@
 import React, { useEffect } from 'react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const AboutPage = () => {
+  const { t } = useLanguage();
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-  const values = [
-    { title: "Hydratation & Bien-être", text: "Qui aident notre peau à être naturellement hydratée et de se sentir bien." },
-    { title: "100% Naturel", text: "Exempts de conservateurs et autres ingrédients chimiques indésirables." },
-    { title: "Éco-Responsable", text: "Dont la fabrication et l'utilisation sont respectueuses de l'environnement et de la biodiversité." },
-    { title: "Zéro Déchet", text: "Dont l'emballage est minimaliste et entièrement recyclable." },
-    { title: "Cruelty Free", text: "Qui ne sont pas testés sur les animaux et ne contiennent aucune graisse animale." },
-    { title: "Sans Pétrochimie", text: "Qui ne contiennent absolument aucune graisse issue de la pétrochimie." }
-  ];
+  const values = t('about.values');
 
   return (
     <div className="min-h-screen bg-mist-white overflow-hidden">
@@ -29,12 +24,12 @@ const AboutPage = () => {
           <div className="absolute inset-0 bg-gradient-to-b from-slate-stone/80 via-transparent to-slate-stone/60"></div>
         </div>
         <div className="relative z-10 container mx-auto px-6 text-center reveal mt-20">
-          <p className="text-white/80 uppercase tracking-[0.5em] text-[10px] md:text-xs mb-8 font-sans font-bold">L'Art de la Cosmétique Naturelle</p>
+          <p className="text-white/80 uppercase tracking-[0.5em] text-[10px] md:text-xs mb-8 font-sans font-bold">{t('about.eyebrow')}</p>
           <h1 className="font-serif text-4xl sm:text-6xl md:text-8xl text-white leading-tight max-w-6xl mx-auto drop-shadow-2xl">
-            So You, créateur de beauté au naturel
+            {t('about.title')}
           </h1>
           <p className="text-white/90 font-serif italic text-lg sm:text-2xl md:text-3xl mt-8 max-w-3xl mx-auto drop-shadow-lg opacity-80">
-            "Les cosmétiques qui vous ressemblent"
+            {t('about.quote')}
           </p>
         </div>
       </section>
@@ -44,17 +39,17 @@ const AboutPage = () => {
         <div className="container mx-auto px-6 md:px-12 max-w-7xl">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12 md:gap-24 items-center">
             <div className="reveal">
-              <h2 className="font-serif text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-slate-stone mb-4 sm:mb-8 md:mb-12 leading-tight">Une Révolution dans<br/><span className="italic text-slate-stone/40">votre salle de bain</span></h2>
+              <h2 className="font-serif text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-slate-stone mb-4 sm:mb-8 md:mb-12 leading-tight">{t('about.s2TitleLine1')}<br/><span className="italic text-slate-stone/40">{t('about.s2TitleLine2')}</span></h2>
               <div className="space-y-3 sm:space-y-6 md:space-y-8 font-sans text-stone-gray font-light leading-relaxed text-sm md:text-lg lg:text-xl text-left sm:text-justify">
                 <p className="first-letter:text-3xl sm:first-letter:text-5xl md:first-letter:text-7xl first-letter:font-serif first-letter:text-slate-stone first-letter:mr-2 sm:first-letter:mr-3 first-letter:float-left first-letter:leading-none">
-                  Dès le réveil, nous sommes tous en contact avec des produits cosmétiques tels que le dentifrice, le savon, le shampoing, ainsi que les crèmes, lotions, gels, sérums de toutes sortes. 
+                  {t('about.s2p1')}
                 </p>
                 <p>
-                  Et en plus pour les femmes : maquillage, vernis à ongles, teintures pour cheveux etc... Dès lors, il est important de se procurer des cosmétiques naturels aussi sains que possible, non seulement pour notre bien-être, mais également pour préserver la nature.
+                  {t('about.s2p2')}
                 </p>
                 <div className="relative py-3 px-3 sm:py-6 sm:px-6 md:py-12 md:px-10 bg-mist-white rounded-xl sm:rounded-2xl md:rounded-3xl border-l-2 sm:border-l-4 md:border-l-8 border-slate-stone shadow-md sm:shadow-xl transform -rotate-1 my-4 sm:my-8 md:my-12">
                   <p className="text-sm md:text-xl lg:text-2xl italic font-serif text-slate-stone leading-relaxed">
-                    "Comme il est difficile et rare de se procurer des produits naturels de qualité ayant également une texture et une senteur qui conviennent, j'ai décidé de les fabriquer directement par moi-même."
+                    {t('about.s2quote')}
                   </p>
                 </div>
               </div>
@@ -88,17 +83,17 @@ const AboutPage = () => {
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
             <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
             
-            <h2 className="font-serif text-2xl sm:text-5xl md:text-7xl text-white mb-6 sm:mb-12 drop-shadow-lg">De la passion à la création</h2>
+            <h2 className="font-serif text-2xl sm:text-5xl md:text-7xl text-white mb-6 sm:mb-12 drop-shadow-lg">{t('about.tpTitle')}</h2>
             <div className="space-y-4 sm:space-y-8 md:space-y-10 font-sans text-white/90 font-light leading-relaxed text-xs sm:text-lg md:text-xl lg:text-2xl">
               <p className="reveal">
-                Pour cela, j'ai fini par suivre plusieurs formations professionnelles auprès d'un établissement de renom en Suisse. Ces formations m'ont permis de fabriquer des savons solides et liquides ainsi que des cosmétiques naturels.
+                {t('about.tpp1')}
               </p>
               <p className="reveal" style={{ transitionDelay: '100ms' }}>
-                Avec le temps, convaincue par les effets et la qualité des produits sur la peau, j'ai été enthousiasmée par l'idée de les partager avec le grand public. 
+                {t('about.tpp2')}
               </p>
               <div className="w-24 h-[1px] bg-white/40 mx-auto my-4 sm:my-8 md:my-12"></div>
               <p className="font-serif italic text-sm sm:text-2xl md:text-3xl lg:text-4xl text-white drop-shadow-xl reveal" style={{ transitionDelay: '200ms' }}>
-                "Changement de cap : après 20 ans dans le négoce international, la marque <span className="font-sans font-bold not-italic">So You</span> est née."
+                {t('about.tpQuotePrefix')}<span className="font-sans font-bold not-italic">{t('about.tpQuoteBrand')}</span>{t('about.tpQuoteSuffix')}
               </p>
             </div>
           </div>
@@ -111,9 +106,9 @@ const AboutPage = () => {
         
         <div className="container mx-auto px-6 md:px-12 relative z-10">
           <div className="text-center max-w-4xl mx-auto mb-12 sm:mb-20 md:mb-32 reveal">
-            <h2 className="font-serif text-3xl sm:text-5xl md:text-7xl text-slate-stone mb-4 sm:mb-10">Nos Engagements</h2>
+            <h2 className="font-serif text-3xl sm:text-5xl md:text-7xl text-slate-stone mb-4 sm:mb-10">{t('about.valuesTitle')}</h2>
             <p className="font-sans font-light text-stone-gray text-sm sm:text-xl md:text-2xl max-w-3xl mx-auto leading-relaxed">
-              Nous offrons à nos clients la possibilité d'utiliser quotidiennement des cosmétiques naturels sains et de qualité :
+              {t('about.valuesIntro')}
             </p>
           </div>
 
@@ -148,13 +143,13 @@ const AboutPage = () => {
       {/* Promise / Footer */}
       <section className="py-16 sm:py-32 bg-white text-center border-t border-mist-white">
         <div className="container mx-auto px-6 md:px-12 max-w-4xl reveal">
-          <h2 className="font-serif text-2xl sm:text-4xl text-slate-stone mb-6 sm:mb-10">Une entreprise à taille humaine</h2>
+          <h2 className="font-serif text-2xl sm:text-4xl text-slate-stone mb-6 sm:mb-10">{t('about.promiseTitle')}</h2>
           <p className="font-sans text-stone-gray font-light leading-relaxed text-sm sm:text-xl mb-8 sm:mb-16">
-            So You est une jeune entreprise de proximité. De par sa taille humaine, elle est à la fois proche et à l'écoute de ses clients. Les demandes spécifiques et conseils des clients sont pris en compte et lorsque cela est possible, nous nous adaptons pour les satisfaire.
+            {t('about.promiseText')}
           </p>
           <div className="w-16 h-[1px] bg-slate-stone/20 mx-auto mb-8 sm:mb-16"></div>
           <p className="font-serif italic text-lg sm:text-4xl text-slate-stone leading-relaxed px-2 sm:px-8">
-            "So You vous remercie pour votre confiance, votre soutien, votre gentillesse et vos conseils constructifs."
+            {t('about.promiseQuote')}
           </p>
           
           <div className="mt-10 sm:mt-20">
@@ -162,7 +157,7 @@ const AboutPage = () => {
               So You
             </div>
             <p className="text-xs sm:text-sm uppercase tracking-[0.4em] text-stone-gray mt-3 sm:mt-6">
-              La Fondatrice
+              {t('about.founder')}
             </p>
           </div>
         </div>

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../i18n/LanguageContext';
 
-const SideDrawer = ({ isOpen, onClose, title, items, type, onRemove }) => {
+const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
+  const { t } = useLanguage();
+  const title = type === 'cart' ? t('drawer.cartTitle') : t('drawer.favTitle');
   const [isCheckoutMode, setIsCheckoutMode] = useState(false);
   const [checkoutForm, setCheckoutForm] = useState({ name: '', email: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,7 +50,7 @@ const SideDrawer = ({ isOpen, onClose, title, items, type, onRemove }) => {
   };
 
   const getName = (product) => {
-    return product.name || product['Product Name'] || product['Name'] || 'Product';
+    return product.name || product['Product Name'] || product['Name'] || t('drawer.productFallback');
   };
 
   const total = items.reduce((sum, item) => sum + parseFloat(getPrice(item)), 0);
@@ -108,7 +111,7 @@ const SideDrawer = ({ isOpen, onClose, title, items, type, onRemove }) => {
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-stone/10">
           <h2 className="font-serif text-2xl text-slate-stone">
-            {checkoutSuccess ? 'Merci !' : isCheckoutMode ? 'Finaliser ma commande' : title}
+            {checkoutSuccess ? t('drawer.thanks') : isCheckoutMode ? t('drawer.finalize') : title}
           </h2>
           <button 
             onClick={onClose} 
@@ -130,47 +133,47 @@ const SideDrawer = ({ isOpen, onClose, title, items, type, onRemove }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="font-serif text-xl text-slate-stone mb-2">Commande confirmée</h3>
+              <h3 className="font-serif text-xl text-slate-stone mb-2">{t('drawer.orderConfirmed')}</h3>
               <p className="font-sans text-stone-gray/60 text-sm max-w-xs mx-auto">
-                Votre commande a bien été enregistrée. Nous vous avons envoyé un récapitulatif par e-mail.
+                {t('drawer.orderConfirmedText')}
               </p>
-              <button 
+              <button
                 onClick={onClose}
                 className="mt-8 px-8 py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-slate-stone/90 transition-all duration-300"
               >
-                Fermer
+                {t('drawer.close')}
               </button>
             </div>
           ) : sumupCheckoutId ? (
             /* SumUp Payment Widget */
             <div className="pt-4">
-              <h3 className="font-serif text-xl text-slate-stone mb-4 text-center">Paiement Sécurisé</h3>
+              <h3 className="font-serif text-xl text-slate-stone mb-4 text-center">{t('drawer.securePayment')}</h3>
               <div id="sumup-card"></div>
-              <button 
+              <button
                 type="button"
                 onClick={() => setSumupCheckoutId(null)}
                 className="mt-6 w-full py-3 bg-transparent text-stone-gray/60 font-sans uppercase tracking-[0.2em] text-[10px] rounded-full hover:text-slate-stone transition-all"
               >
-                Annuler
+                {t('drawer.cancel')}
               </button>
             </div>
           ) : isCheckoutMode ? (
             /* Checkout Form Screen */
             <form onSubmit={handleCheckoutSubmit} className="space-y-6 pt-4">
               <div>
-                <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">Nom Complet</label>
-                <input 
-                  type="text" 
+                <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">{t('drawer.fullName')}</label>
+                <input
+                  type="text"
                   required
                   value={checkoutForm.name}
                   onChange={(e) => setCheckoutForm({ ...checkoutForm, name: e.target.value })}
-                  placeholder="Votre nom"
+                  placeholder={t('drawer.yourName')}
                   className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40 transition-all"
                 />
               </div>
               
               <div>
-                <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">Email</label>
+                <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">{t('drawer.email')}</label>
                 <input 
                   type="email" 
                   required
@@ -182,7 +185,7 @@ const SideDrawer = ({ isOpen, onClose, title, items, type, onRemove }) => {
               </div>
 
               <div className="bg-mist-white rounded-2xl p-4 border border-slate-stone/5">
-                <h4 className="font-sans text-xs font-bold text-slate-stone uppercase tracking-wider mb-2">Détails de la commande</h4>
+                <h4 className="font-sans text-xs font-bold text-slate-stone uppercase tracking-wider mb-2">{t('drawer.orderDetails')}</h4>
                 <div className="space-y-1 max-h-36 overflow-y-auto">
                   {items.map((item, idx) => (
                     <div key={idx} className="flex justify-between text-xs text-stone-gray font-light">
@@ -193,7 +196,7 @@ const SideDrawer = ({ isOpen, onClose, title, items, type, onRemove }) => {
                 </div>
                 <div className="h-px bg-slate-stone/10 my-3"></div>
                 <div className="flex justify-between font-sans text-sm font-medium text-slate-stone">
-                  <span>Total</span>
+                  <span>{t('drawer.total')}</span>
                   <span>CHF {total.toFixed(2)}</span>
                 </div>
               </div>
@@ -204,14 +207,14 @@ const SideDrawer = ({ isOpen, onClose, title, items, type, onRemove }) => {
                   disabled={isSubmitting}
                   className="w-full py-4 bg-slate-stone text-white font-sans uppercase tracking-[0.3em] text-xs rounded-full hover:bg-slate-stone/90 transition-all duration-300 shadow-lg"
                 >
-                  {isSubmitting ? 'Traitement en cours...' : 'Valider ma commande'}
+                  {isSubmitting ? t('drawer.processing') : t('drawer.validateOrder')}
                 </button>
-                <button 
+                <button
                   type="button"
                   onClick={() => setIsCheckoutMode(false)}
                   className="w-full py-3 bg-transparent text-stone-gray/60 font-sans uppercase tracking-[0.2em] text-[10px] rounded-full hover:text-slate-stone transition-all"
                 >
-                  Retour au panier
+                  {t('drawer.backToCart')}
                 </button>
               </div>
             </form>
@@ -230,7 +233,7 @@ const SideDrawer = ({ isOpen, onClose, title, items, type, onRemove }) => {
                 )}
               </div>
               <p className="font-sans text-stone-gray/60 text-sm">
-                {type === 'cart' ? 'Votre panier est vide' : 'Aucun favori pour le moment'}
+                {type === 'cart' ? t('drawer.emptyCart') : t('drawer.emptyFav')}
               </p>
             </div>
           ) : (
@@ -272,7 +275,7 @@ const SideDrawer = ({ isOpen, onClose, title, items, type, onRemove }) => {
         {type === 'cart' && items.length > 0 && !isCheckoutMode && !checkoutSuccess && (
           <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-8 py-4 sm:py-6 border-t border-slate-stone/10 bg-white">
             <div className="flex justify-between items-center mb-6">
-              <span className="font-sans text-sm text-stone-gray">Total estimé</span>
+              <span className="font-sans text-sm text-stone-gray">{t('drawer.estimatedTotal')}</span>
               <span className="font-serif text-2xl text-slate-stone">
                 CHF {total.toFixed(2)}
               </span>
@@ -281,7 +284,7 @@ const SideDrawer = ({ isOpen, onClose, title, items, type, onRemove }) => {
               onClick={() => setIsCheckoutMode(true)}
               className="w-full py-4 bg-slate-stone text-white font-sans uppercase tracking-[0.3em] text-xs rounded-full hover:bg-slate-stone/90 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
             >
-              Commander
+              {t('drawer.order')}
             </button>
           </div>
         )}

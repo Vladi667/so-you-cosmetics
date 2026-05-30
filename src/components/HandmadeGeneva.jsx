@@ -1,30 +1,21 @@
 import React from 'react';
 import AutoPlayVideo from './AutoPlayVideo';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const HandmadeGeneva = () => {
-  const pillars = [
-    {
-      icon: (
-        <svg viewBox="0 0 32 32" className="w-8 h-8">
-          <rect width="32" height="32" rx="4" fill="#FF0000"/>
-          <rect x="13" y="6" width="6" height="20" rx="1" fill="white"/>
-          <rect x="6" y="13" width="20" height="6" rx="1" fill="white"/>
-        </svg>
-      ),
-      title: "Local",
-      text: "Artisanal genevois, ingrédients suisses, parfums de Grasse.",
-    },
-    {
-      icon: <span className="text-3xl">🌿</span>,
-      title: "Écologique",
-      text: "Végétal, RSPO, vegan-friendly, emballages recyclables.",
-    },
-    {
-      icon: <span className="text-3xl">✨</span>,
-      title: "Bon",
-      text: "Zéro parabènes, sulfates, silicones ou graisses animales.",
-    },
+  const { t } = useLanguage();
+  const icons = [
+    (
+      <svg viewBox="0 0 32 32" className="w-8 h-8">
+        <rect width="32" height="32" rx="4" fill="#FF0000"/>
+        <rect x="13" y="6" width="6" height="20" rx="1" fill="white"/>
+        <rect x="6" y="13" width="20" height="6" rx="1" fill="white"/>
+      </svg>
+    ),
+    <span className="text-3xl">🌿</span>,
+    <span className="text-3xl">✨</span>,
   ];
+  const pillars = t('handmade.pillars').map((p, i) => ({ ...p, icon: icons[i] }));
 
   return (
     <section className="relative">
@@ -42,10 +33,10 @@ const HandmadeGeneva = () => {
 
         {/* Title */}
         <div className="relative z-20 flex flex-col items-center justify-center h-full text-center px-6 reveal">
-          <p className="font-sans text-[10px] tracking-[0.5em] uppercase text-white/50 mb-6 font-bold" style={{ textShadow: '0 1px 12px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.2)' }}>Notre Philosophie</p>
+          <p className="font-sans text-[10px] tracking-[0.5em] uppercase text-white/50 mb-6 font-bold" style={{ textShadow: '0 1px 12px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.2)' }}>{t('handmade.eyebrow')}</p>
           <h2 className="font-serif text-4xl md:text-8xl text-white leading-tight" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
-            100% Handmade<br/>
-            <span className="italic font-light opacity-80">in Geneva</span>
+            {t('handmade.titleLine1')}<br/>
+            <span className="italic font-light opacity-80">{t('handmade.titleLine2')}</span>
           </h2>
         </div>
       </div>

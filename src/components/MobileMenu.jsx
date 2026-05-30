@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Logo from './Logo';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [shopExpanded, setShopExpanded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -92,7 +95,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Rechercher un produit..."
+                placeholder={t('nav.searchPlaceholderMobile')}
                 className="bg-transparent outline-none text-white placeholder-white/40 font-sans text-sm w-full"
               />
             </div>
@@ -116,7 +119,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                       : 'text-white/60 hover:text-white border-transparent'
                   }`}
                 >
-                  Home
+                  {t('nav.home')}
                 </button>
               </li>
 
@@ -135,7 +138,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                       : 'text-white/60 hover:text-white border-transparent'
                   }`}
                 >
-                  <span>Shop</span>
+                  <span>{t('nav.shop')}</span>
                   <svg
                     className={`w-4 h-4 transform transition-transform duration-300 ${shopExpanded ? 'rotate-180' : ''}`}
                     fill="none"
@@ -186,7 +189,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                       : 'text-white/60 hover:text-white border-transparent'
                   }`}
                 >
-                  About Us
+                  {t('nav.about')}
                 </button>
               </li>
 
@@ -205,7 +208,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                       : 'text-white/60 hover:text-white border-transparent'
                   }`}
                 >
-                  Workshops
+                  {t('nav.workshops')}
                 </button>
               </li>
 
@@ -224,7 +227,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                       : 'text-white/60 hover:text-white border-transparent'
                   }`}
                 >
-                  Contact
+                  {t('nav.contact')}
                 </button>
               </li>
             </ul>
@@ -232,8 +235,11 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
 
           {/* Footer info */}
           <div className="px-8 py-8 border-t border-white/10">
+            <div className="mb-6">
+              <LanguageSwitcher inline variant="dark" className="text-white -ml-1.5" />
+            </div>
             <p className="text-white/30 font-sans text-xs tracking-wider">
-              Handmade in Geneva
+              {t('nav.handmadeInGeneva')}
             </p>
             <p className="text-white/20 font-sans text-xs tracking-wider mt-2">
               3 ave. Pictet-De-Rochemont, 1207 Genève

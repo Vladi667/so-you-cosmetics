@@ -1,8 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import AutoPlayVideo from './AutoPlayVideo';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const Workshops = () => {
+  const { t } = useLanguage();
   return (
     <section id="workshops" className="relative py-24 md:py-48 flex items-center justify-center overflow-hidden">
       
@@ -19,21 +21,21 @@ const Workshops = () => {
 
       {/* Content */}
       <div className="relative z-20 container mx-auto px-6 text-center">
-        <p className="font-sans text-[10px] tracking-[0.5em] uppercase text-white/60 mb-6 md:mb-8 font-bold">Expérience So You</p>
+        <p className="font-sans text-[10px] tracking-[0.5em] uppercase text-white/60 mb-6 md:mb-8 font-bold">{t('workshopsSection.eyebrow')}</p>
         <h2 className="font-serif text-4xl md:text-7xl text-white mb-6 md:mb-8 tracking-wide" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
-          Nos Ateliers Artisanaux
+          {t('workshopsSection.title')}
         </h2>
-        
+
         <p className="font-sans text-white/85 text-base md:text-xl mb-10 md:mb-16 leading-relaxed font-light max-w-2xl mx-auto" style={{ textShadow: '0 1px 12px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.2)' }}>
-          Apprenez l'art de la cosmétique naturelle lors d'ateliers intimistes dans notre atelier genevois. Chacun repart avec sa propre création.
+          {t('workshopsSection.text')}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 justify-center">
           <Link to="/workshops" className="inline-block px-10 py-4 bg-white text-slate-stone font-sans uppercase tracking-[0.3em] text-xs hover:bg-slate-stone hover:text-white transition-all duration-500 rounded-full shadow-xl hover:scale-105 active:scale-95 transform-gpu text-center">
-            Découvrir
+            {t('workshopsSection.cta1')}
           </Link>
           <Link to="/contact" className="inline-block px-10 py-4 border border-white/40 text-white font-sans uppercase tracking-[0.3em] text-xs hover:bg-white/10 hover:border-white transition-all duration-500 rounded-full backdrop-blur-sm active:scale-95 transform-gpu text-center">
-            Réserver
+            {t('workshopsSection.cta2')}
           </Link>
         </div>
       </div>

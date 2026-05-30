@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import SectionHeader from './SectionHeader';
 import { getProducts } from '../services/products';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const placeholders = [
   'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=600&q=80',
@@ -22,6 +23,7 @@ const normalizeText = (s) =>
 const stripHtml = (s) => (s || '').toString().replace(/<[^>]*>/g, ' ');
 
 function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, toggleFavorite, favorites, searchQuery = '' }) {
+  const { t } = useLanguage();
   const [productsList, setProductsList] = useState([]);
   const [activeCategory, setActiveCategory] = useState(globalActiveCategory);
   const [displayedProducts, setDisplayedProducts] = useState([]);
@@ -119,10 +121,10 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
     <section id="catalog" className="py-24 bg-mist-white">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <SectionHeader
-          title={isSearching ? 'Résultats de recherche' : 'The Full Collection'}
+          title={isSearching ? t('catalog.titleSearch') : t('catalog.titleFull')}
           subtitle={isSearching
-            ? `${displayedProducts.length} résultat(s) pour « ${searchQuery.trim()} »`
-            : 'Discover our complete range of artisanal, handmade cosmetics crafted in Geneva.'}
+            ? t('catalog.resultCount')(displayedProducts.length, searchQuery.trim())
+            : t('catalog.subtitleFull')}
         />
 
         {/* Categories Filter — hidden while searching */}
@@ -186,7 +188,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                   {/* Hover Overlay — on mobile the card image is directly tappable */}
                   <Link to={`/product/${product.id}`} className="absolute inset-0 bg-slate-stone/10 opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center md:backdrop-blur-[2px]">
                     <span className="transform translate-y-4 md:group-hover:translate-y-0 opacity-0 md:group-hover:opacity-100 transition-all duration-500 bg-white text-slate-stone px-8 py-3 rounded-full font-medium tracking-wide shadow-lg hover:bg-slate-stone hover:text-white hidden md:inline">
-                      View Details
+                      {t('catalog.viewDetails')}
                     </span>
                   </Link>
                 </div>
@@ -194,7 +196,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                 <div className="p-3 sm:p-6 flex flex-col flex-grow">
                   <div className="mb-2">
                     <p className="text-[9px] sm:text-xs text-slate-stone/60 uppercase tracking-widest mb-0.5 sm:mb-1 truncate">
-                      {product.collections[0] || 'Cosmetics'}
+                      {product.collections[0] || t('catalog.cosmeticsFallback')}
                     </p>
                     <Link to={`/product/${product.id}`}>
                       <h3 className="text-sm sm:text-lg font-serif text-slate-stone leading-tight line-clamp-2 hover:text-stone-gray transition-colors">
@@ -240,7 +242,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
         {displayedProducts.length === 0 && (
           <div className="text-center py-24">
             <p className="text-slate-stone/60 text-lg">
-              {isSearching ? `Aucun résultat pour « ${searchQuery.trim()} ».` : 'No products found in this category.'}
+              {isSearching ? t('catalog.emptySearch')(searchQuery.trim()) : t('catalog.emptyCategory')}
             </p>
           </div>
         )}
@@ -252,7 +254,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
               onClick={loadMore}
               className="inline-block border-b border-slate-stone text-slate-stone tracking-widest uppercase text-sm pb-1 hover:text-slate-stone/70 hover:border-slate-stone/70 transition-colors"
             >
-              Load More
+              {t('catalog.loadMore')}
             </button>
           </div>
         )}

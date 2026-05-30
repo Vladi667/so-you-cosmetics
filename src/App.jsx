@@ -164,19 +164,17 @@ function App() {
       {/* Side Drawers */}
       {!isAdminPage && (
         <>
-          <SideDrawer 
-            isOpen={cartOpen} 
-            onClose={() => setCartOpen(false)} 
-            title="Votre Panier" 
-            items={cart} 
+          <SideDrawer
+            isOpen={cartOpen}
+            onClose={() => setCartOpen(false)}
+            items={cart}
             type="cart"
             onRemove={removeFromCart}
           />
-          <SideDrawer 
-            isOpen={favOpen} 
-            onClose={() => setFavOpen(false)} 
-            title="Vos Favoris" 
-            items={favorites} 
+          <SideDrawer
+            isOpen={favOpen}
+            onClose={() => setFavOpen(false)}
+            items={favorites}
             type="favorites"
             onRemove={removeFavorite}
           />

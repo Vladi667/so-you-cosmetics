@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const LegalLayout = ({ title, intro, sections = [], lastUpdated }) => {
+  const { t } = useLanguage();
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -10,10 +12,10 @@ const LegalLayout = ({ title, intro, sections = [], lastUpdated }) => {
       {/* Hero */}
       <section className="relative pt-40 pb-16 sm:pt-48 sm:pb-24 bg-slate-stone text-white">
         <div className="container mx-auto px-6 md:px-12 max-w-4xl text-center">
-          <p className="text-white/60 uppercase tracking-[0.5em] text-[10px] md:text-xs mb-6 font-sans font-bold">SoYou Cosmetics</p>
+          <p className="text-white/60 uppercase tracking-[0.5em] text-[10px] md:text-xs mb-6 font-sans font-bold">{t('legal.brand')}</p>
           <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl text-white leading-tight">{title}</h1>
           {lastUpdated && (
-            <p className="font-sans text-white/50 text-xs sm:text-sm mt-6">Dernière mise à jour : {lastUpdated}</p>
+            <p className="font-sans text-white/50 text-xs sm:text-sm mt-6">{t('legal.lastUpdatedLabel')} {lastUpdated}</p>
           )}
         </div>
       </section>
@@ -46,8 +48,8 @@ const LegalLayout = ({ title, intro, sections = [], lastUpdated }) => {
 
           <div className="mt-16 pt-8 border-t border-slate-stone/10">
             <p className="font-sans text-stone-gray/60 text-sm">
-              Pour toute question, contactez-nous à{' '}
-              <a href="mailto:contact@soyou.ch" className="text-slate-stone hover:underline">contact@soyou.ch</a>.
+              {t('legal.contactQuestionPrefix')}
+              <a href="mailto:contact@soyou.ch" className="text-slate-stone hover:underline">contact@soyou.ch</a>{t('legal.contactQuestionSuffix')}
             </p>
           </div>
         </div>

@@ -1,28 +1,10 @@
 import React from 'react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const Ingredients = () => {
-  const commitments = [
-    {
-      icon: "🌴",
-      title: "Huile de Palme RSPO",
-      text: "Garantie sans déforestation, soutenant les petits producteurs durables.",
-    },
-    {
-      icon: "🧴",
-      title: "Alternatives Sans Palme",
-      text: "Des gammes sans huile de palme, colorants ou parfums pour chaque sensibilité.",
-    },
-    {
-      icon: "♻️",
-      title: "Zéro Déchet Toxique",
-      text: "Emballages recyclables, rechargeables ou biodégradables. Packaging minimal.",
-    },
-    {
-      icon: "🌱",
-      title: "Saponification à Froid",
-      text: "Aucune émission de gaz, fumée ou déchets toxiques pour l'environnement.",
-    },
-  ];
+  const { t } = useLanguage();
+  const icons = ['🌴', '🧴', '♻️', '🌱'];
+  const commitments = t('ingredients.commitments').map((c, i) => ({ ...c, icon: icons[i] }));
 
   return (
     <section className="py-24 md:py-40 bg-mist-white relative overflow-hidden">
@@ -34,12 +16,12 @@ const Ingredients = () => {
         
         {/* Header */}
         <div className="max-w-3xl mx-auto text-center mb-24 reveal">
-          <p className="font-sans text-[10px] tracking-[0.5em] uppercase text-stone-gray/40 mb-6 font-bold">Notre Engagement</p>
+          <p className="font-sans text-[10px] tracking-[0.5em] uppercase text-stone-gray/40 mb-6 font-bold">{t('ingredients.eyebrow')}</p>
           <h2 className="font-serif text-4xl md:text-7xl text-slate-stone mb-8 md:mb-10 leading-tight">
-            Entreprise<br/><span className="italic text-slate-stone/40 font-light">Responsable</span>
+            {t('ingredients.titleLine1')}<br/><span className="italic text-slate-stone/40 font-light">{t('ingredients.titleLine2')}</span>
           </h2>
           <p className="font-sans font-light text-stone-gray text-lg md:text-xl leading-relaxed">
-            So You lutte contre les problématiques écologiques en privilégiant des matières premières équitables, durables et respectueuses de la biodiversité. La qualité du produit fini prime toujours sur le packaging.
+            {t('ingredients.intro')}
           </p>
         </div>
 
@@ -69,9 +51,9 @@ const Ingredients = () => {
         {/* Le saviez-vous callout */}
         <div className="max-w-3xl mx-auto mt-16 reveal">
           <div className="bg-white rounded-[30px] p-10 md:p-12 border border-slate-stone/5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center">
-            <p className="font-sans text-xs tracking-[0.3em] uppercase text-slate-stone/40 font-bold mb-4">Le saviez-vous ?</p>
+            <p className="font-sans text-xs tracking-[0.3em] uppercase text-slate-stone/40 font-bold mb-4">{t('ingredients.didYouKnowLabel')}</p>
             <p className="font-serif text-xl md:text-2xl text-slate-stone leading-relaxed italic">
-              Notre production ne génère aucune émission de gaz, fumée ou déchet toxique. Tous nos emballages sont recyclables, rechargeables ou biodégradables.
+              {t('ingredients.didYouKnowText')}
             </p>
           </div>
         </div>

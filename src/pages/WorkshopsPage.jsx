@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import AutoPlayVideo from '../components/AutoPlayVideo';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const WorkshopsPage = () => {
+  const { t } = useLanguage();
   const [workshops, setWorkshops] = useState([]);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-  const [contactForm, setContactForm] = useState({ name: '', email: '', subject: 'Demande de renseignement - Ateliers', message: '' });
+  const [contactForm, setContactForm] = useState({ name: '', email: '', subject: t('workshopsPage.defaultSubject'), message: '' });
   const [contactStatus, setContactStatus] = useState({ sending: false, success: '', error: '' });
 
   useEffect(() => {
@@ -31,7 +33,7 @@ const WorkshopsPage = () => {
       return res.json();
     })
     .then(() => {
-      setContactStatus({ sending: false, success: 'Message envoyé avec succès !', error: '' });
+      setContactStatus({ sending: false, success: t('workshopsPage.successMsg'), error: '' });
       setTimeout(() => {
         setIsContactModalOpen(false);
         setContactStatus({ sending: false, success: '', error: '' });
@@ -39,7 +41,7 @@ const WorkshopsPage = () => {
       }, 2000);
     })
     .catch(err => {
-      setContactStatus({ sending: false, success: '', error: 'Une erreur est survenue. Veuillez réessayer plus tard.' });
+      setContactStatus({ sending: false, success: '', error: t('workshopsPage.errorMsg') });
     });
   };
 
@@ -47,12 +49,7 @@ const WorkshopsPage = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  const details = [
-    { label: "Format", value: "One-to-one ou 2 personnes maximum" },
-    { label: "Tarifs", value: "CHF 150 — CHF 450 par personne" },
-    { label: "Durée", value: "2 à 6 heures selon l'atelier choisi" },
-    { label: "Jours", value: "Samedis, ou exceptionnellement dimanches" },
-  ];
+  const details = t('workshopsPage.details');
 
   return (
     <div className="min-h-screen bg-mist-white overflow-hidden">
@@ -72,12 +69,12 @@ const WorkshopsPage = () => {
           <div className="absolute inset-0 z-10 bg-gradient-to-b from-slate-stone/70 via-transparent to-slate-stone/60"></div>
         </div>
         <div className="relative z-20 container mx-auto px-6 text-center reveal mt-20">
-          <p className="text-white/80 uppercase tracking-[0.5em] text-[10px] md:text-xs mb-6 md:mb-8 font-sans font-bold">Expérience Artisanale</p>
+          <p className="text-white/80 uppercase tracking-[0.5em] text-[10px] md:text-xs mb-6 md:mb-8 font-sans font-bold">{t('workshopsPage.eyebrow')}</p>
           <h1 className="font-serif text-4xl sm:text-6xl md:text-8xl text-white leading-tight max-w-5xl mx-auto" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
-            Nos Ateliers
+            {t('workshopsPage.title')}
           </h1>
           <p className="text-white/90 font-serif italic text-lg sm:text-xl md:text-3xl mt-6 md:mt-8 max-w-3xl mx-auto opacity-80" style={{ textShadow: '0 1px 12px rgba(0,0,0,0.4)' }}>
-            "Créez vos propres cosmétiques naturels"
+            {t('workshopsPage.quote')}
           </p>
         </div>
       </section>
@@ -88,15 +85,15 @@ const WorkshopsPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12 md:gap-20 items-center">
             <div className="reveal">
               <h2 className="font-serif text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-slate-stone mb-4 sm:mb-8 md:mb-12 leading-tight">
-                L'Art de la<br/><span className="italic text-slate-stone/40">Fabrication</span>
+                {t('workshopsPage.introTitleLine1')}<br/><span className="italic text-slate-stone/40">{t('workshopsPage.introTitleLine2')}</span>
               </h2>
               <div className="space-y-3 sm:space-y-6 md:space-y-8 font-sans text-stone-gray font-light leading-relaxed text-sm md:text-lg lg:text-xl text-left sm:text-justify">
                 <p className="first-letter:text-3xl sm:first-letter:text-5xl md:first-letter:text-7xl first-letter:font-serif first-letter:text-slate-stone first-letter:mr-2 sm:first-letter:mr-3 first-letter:float-left first-letter:leading-none">
-                  Les ateliers sont dispensés sur demande, les samedis ou exceptionnellement les dimanches. Ils sont également personnalisables selon les besoins de chacun.
+                  {t('workshopsPage.introP1')}
                 </p>
                 <div className="relative py-3 px-3 sm:py-6 sm:px-6 md:py-10 md:px-10 bg-mist-white rounded-xl sm:rounded-2xl md:rounded-3xl border-l-2 sm:border-l-4 md:border-l-8 border-slate-stone shadow-md sm:shadow-xl transform -rotate-1 my-3 sm:my-6 md:my-10">
                   <p className="text-sm md:text-xl lg:text-2xl italic font-serif text-slate-stone leading-relaxed">
-                    "Chacun repart avec sa propre fabrication."
+                    {t('workshopsPage.introQuote')}
                   </p>
                 </div>
               </div>
@@ -117,7 +114,7 @@ const WorkshopsPage = () => {
       {workshops.length > 0 && (
         <section className="py-12 sm:py-24 bg-mist-white relative">
           <div className="container mx-auto px-6 md:px-12 max-w-6xl">
-            <h2 className="font-serif text-3xl sm:text-5xl md:text-6xl text-slate-stone mb-12 text-center reveal">Nos Prochains Ateliers</h2>
+            <h2 className="font-serif text-3xl sm:text-5xl md:text-6xl text-slate-stone mb-12 text-center reveal">{t('workshopsPage.nextWorkshops')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
               {workshops.map((ws, idx) => (
                 <div key={idx} className="bg-white rounded-3xl p-6 sm:p-10 shadow-xl reveal">
@@ -130,7 +127,7 @@ const WorkshopsPage = () => {
                         <span className="font-bold text-slate-stone">CHF {ws.price}</span>
                         <span className="text-stone-gray/60 text-sm">{ws.duration}</span>
                       </div>
-                      <button onClick={() => { setContactForm({...contactForm, subject: `Réservation: ${ws.title}`}); setIsContactModalOpen(true); }} className="mt-6 px-6 py-2 bg-slate-stone text-white rounded-full text-xs uppercase tracking-widest hover:bg-slate-stone/90 transition-all shadow-md">Réserver cet atelier</button>
+                      <button onClick={() => { setContactForm({...contactForm, subject: t('workshopsPage.reservationSubject')(ws.title)}); setIsContactModalOpen(true); }} className="mt-6 px-6 py-2 bg-slate-stone text-white rounded-full text-xs uppercase tracking-widest hover:bg-slate-stone/90 transition-all shadow-md">{t('workshopsPage.reserveThis')}</button>
                     </div>
                   </div>
                 </div>
@@ -146,9 +143,9 @@ const WorkshopsPage = () => {
 
         <div className="container mx-auto px-6 md:px-12 relative z-10">
           <div className="text-center max-w-4xl mx-auto mb-8 sm:mb-16 md:mb-24 reveal">
-            <h2 className="font-serif text-2xl sm:text-5xl md:text-7xl text-slate-stone mb-4 sm:mb-6 md:mb-10">Les Détails</h2>
+            <h2 className="font-serif text-2xl sm:text-5xl md:text-7xl text-slate-stone mb-4 sm:mb-6 md:mb-10">{t('workshopsPage.detailsTitle')}</h2>
             <p className="font-sans font-light text-stone-gray text-sm sm:text-xl md:text-2xl max-w-3xl mx-auto leading-relaxed">
-              Un moment privilégié de création, rien que pour vous.
+              {t('workshopsPage.detailsSubtitle')}
             </p>
           </div>
 
@@ -190,15 +187,15 @@ const WorkshopsPage = () => {
           <div className="absolute inset-0 bg-slate-stone/50"></div>
         </div>
         <div className="relative z-10 container mx-auto px-6 text-center reveal">
-          <h2 className="font-serif text-2xl sm:text-5xl md:text-7xl text-white mb-6 sm:mb-10 drop-shadow-lg">Réservez Votre Atelier</h2>
+          <h2 className="font-serif text-2xl sm:text-5xl md:text-7xl text-white mb-6 sm:mb-10 drop-shadow-lg">{t('workshopsPage.ctaTitle')}</h2>
           <p className="font-sans text-white/80 text-sm sm:text-xl md:text-2xl font-light mb-8 sm:mb-16 max-w-2xl mx-auto leading-relaxed">
-            Contactez-nous pour de plus amples renseignements et réservez votre moment de création.
+            {t('workshopsPage.ctaText')}
           </p>
           <button
-            onClick={() => { setContactForm({...contactForm, subject: 'Demande de renseignement - Ateliers'}); setIsContactModalOpen(true); }}
+            onClick={() => { setContactForm({...contactForm, subject: t('workshopsPage.defaultSubject')}); setIsContactModalOpen(true); }}
             className="inline-block px-6 sm:px-10 py-3 sm:py-4 bg-white text-slate-stone font-sans uppercase tracking-[0.3em] text-[10px] sm:text-sm hover:bg-slate-stone hover:text-white transition-all duration-500 shadow-xl rounded-full hover:scale-105 transform"
           >
-            Nous Contacter
+            {t('workshopsPage.ctaButton')}
           </button>
         </div>
       </section>
@@ -208,21 +205,21 @@ const WorkshopsPage = () => {
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsContactModalOpen(false)}></div>
           <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
             <div className="p-8">
-              <h2 className="font-serif text-3xl text-slate-stone mb-2">Nous contacter</h2>
-              <p className="text-stone-gray text-sm mb-6">Envoyez-nous un message et nous vous répondrons très vite pour organiser votre atelier.</p>
+              <h2 className="font-serif text-3xl text-slate-stone mb-2">{t('workshopsPage.modalTitle')}</h2>
+              <p className="text-stone-gray text-sm mb-6">{t('workshopsPage.modalText')}</p>
               
               {contactStatus.success && <div className="mb-4 p-4 bg-green-50 text-green-700 rounded-xl text-sm">{contactStatus.success}</div>}
               {contactStatus.error && <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-xl text-sm">{contactStatus.error}</div>}
               
               <form onSubmit={handleContactSubmit} className="space-y-4">
-                <input type="text" required placeholder="Votre nom" value={contactForm.name} onChange={e => setContactForm({...contactForm, name: e.target.value})} className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40" />
-                <input type="email" required placeholder="Votre e-mail" value={contactForm.email} onChange={e => setContactForm({...contactForm, email: e.target.value})} className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40" />
-                <input type="text" required placeholder="Sujet" value={contactForm.subject} onChange={e => setContactForm({...contactForm, subject: e.target.value})} className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40" />
-                <textarea required placeholder="Votre message..." rows="4" value={contactForm.message} onChange={e => setContactForm({...contactForm, message: e.target.value})} className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40"></textarea>
-                
+                <input type="text" required placeholder={t('workshopsPage.namePlaceholder')} value={contactForm.name} onChange={e => setContactForm({...contactForm, name: e.target.value})} className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40" />
+                <input type="email" required placeholder={t('workshopsPage.emailPlaceholder')} value={contactForm.email} onChange={e => setContactForm({...contactForm, email: e.target.value})} className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40" />
+                <input type="text" required placeholder={t('workshopsPage.subjectPlaceholder')} value={contactForm.subject} onChange={e => setContactForm({...contactForm, subject: e.target.value})} className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40" />
+                <textarea required placeholder={t('workshopsPage.messagePlaceholder')} rows="4" value={contactForm.message} onChange={e => setContactForm({...contactForm, message: e.target.value})} className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40"></textarea>
+
                 <div className="pt-2 flex gap-4">
-                  <button type="submit" disabled={contactStatus.sending} className="flex-1 py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-slate-stone/90 transition-all">{contactStatus.sending ? 'Envoi...' : 'Envoyer'}</button>
-                  <button type="button" onClick={() => setIsContactModalOpen(false)} className="flex-1 py-3 bg-mist-white text-slate-stone font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-gray-200 transition-all">Annuler</button>
+                  <button type="submit" disabled={contactStatus.sending} className="flex-1 py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-slate-stone/90 transition-all">{contactStatus.sending ? t('workshopsPage.sending') : t('workshopsPage.send')}</button>
+                  <button type="button" onClick={() => setIsContactModalOpen(false)} className="flex-1 py-3 bg-mist-white text-slate-stone font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-gray-200 transition-all">{t('workshopsPage.cancel')}</button>
                 </div>
               </form>
             </div>

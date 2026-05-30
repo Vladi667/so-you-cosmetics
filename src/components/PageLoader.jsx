@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import Logo from './Logo';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const PageLoader = ({ isVisible }) => {
+  const { t } = useLanguage();
   const [shouldRender, setShouldRender] = useState(isVisible);
 
   useEffect(() => {
@@ -24,7 +26,7 @@ const PageLoader = ({ isVisible }) => {
         <Logo className="w-48 sm:w-64 h-auto mb-8 animate-[pulse_2s_ease-in-out_infinite] text-slate-stone" />
 
         <div className="font-sans text-stone-gray text-[10px] tracking-widest mt-3 opacity-60">
-          Swiss Purity Loading
+          {t('loader.text')}
         </div>
       </div>
     </div>

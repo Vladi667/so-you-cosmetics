@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Catalog from '../components/Catalog';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const CategoryPage = ({ addToCart, toggleFavorite, favorites }) => {
+  const { t } = useLanguage();
   const { categoryName } = useParams();
   
   // Decode the URL parameter just in case
@@ -17,7 +19,7 @@ const CategoryPage = ({ addToCart, toggleFavorite, favorites }) => {
       <div className="flex-grow">
         <div className="container mx-auto px-6 pt-12 pb-4">
           <div className="flex items-center gap-4 text-xs tracking-widest uppercase text-stone-gray mb-8">
-            <Link to="/" className="hover:text-slate-stone transition-colors">Home</Link>
+            <Link to="/" className="hover:text-slate-stone transition-colors">{t('category.home')}</Link>
             <span>/</span>
             <span className="text-slate-stone font-medium">{decodedCategory}</span>
           </div>

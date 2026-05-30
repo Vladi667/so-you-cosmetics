@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Logo from './Logo';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const SOCIAL = {
   instagram: 'https://www.instagram.com/soyoucosmetics.ch?igsh=MTM4bWd2NTd2OHB1Mw==',
@@ -8,13 +9,14 @@ const SOCIAL = {
 };
 
 const EXPLORE_LINKS = [
-  { label: 'Products', to: '/category/All' },
-  { label: 'Workshops', to: '/workshops' },
-  { label: 'About', to: '/about' },
-  { label: 'Contact', to: '/contact' }
+  { key: 'products', to: '/category/All' },
+  { key: 'workshops', to: '/workshops' },
+  { key: 'about', to: '/about' },
+  { key: 'contact', to: '/contact' }
 ];
 
 const Footer = () => {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
 
@@ -52,7 +54,7 @@ const Footer = () => {
           <div className="col-span-1 md:col-span-2">
             <Logo className="h-8 w-auto text-white mb-6" />
             <p className="font-sans text-mist-white/70 max-w-sm text-sm leading-relaxed mb-8 font-light">
-              Natural, artisanal cosmetics handmade in Geneva. Formulated with Swiss purity for your daily wellness ritual.
+              {t('footer.tagline')}
             </p>
             <div className="flex gap-4 mb-8">
               <a
@@ -87,15 +89,15 @@ const Footer = () => {
           </div>
 
           <div>
-            <h4 className="font-sans font-medium uppercase tracking-[0.2em] text-[10px] mb-8 text-alpine-silver">Explore</h4>
+            <h4 className="font-sans font-medium uppercase tracking-[0.2em] text-[10px] mb-8 text-alpine-silver">{t('footer.explore')}</h4>
             <ul className="space-y-4">
               {EXPLORE_LINKS.map((item) => (
-                <li key={item.label}>
+                <li key={item.key}>
                   <Link
                     to={item.to}
                     className="text-sm text-mist-white/60 hover:text-white transition-colors duration-500 font-light tracking-wide"
                   >
-                    {item.label}
+                    {t(`footer.links.${item.key}`)}
                   </Link>
                 </li>
               ))}
@@ -103,19 +105,19 @@ const Footer = () => {
           </div>
 
           <div>
-            <h4 className="font-sans font-medium uppercase tracking-[0.2em] text-[10px] mb-8 text-alpine-silver">Newsletter</h4>
-            <p className="text-sm text-mist-white/60 mb-6 font-light">Join our community for botanical wellness tips and exclusive offers.</p>
+            <h4 className="font-sans font-medium uppercase tracking-[0.2em] text-[10px] mb-8 text-alpine-silver">{t('footer.newsletter')}</h4>
+            <p className="text-sm text-mist-white/60 mb-6 font-light">{t('footer.newsletterText')}</p>
             <form onSubmit={handleSubscribe} className="flex border-b border-mist-white/20 pb-3 group">
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Your email address"
+                placeholder={t('footer.emailPlaceholder')}
                 className="bg-transparent border-none outline-none text-sm w-full placeholder-mist-white/30 text-white font-light"
               />
               <button type="submit" className="text-[10px] uppercase tracking-[0.2em] text-mist-white/50 group-hover:text-white transition-colors duration-500 whitespace-nowrap">
-                {subscribed ? '✓ Inscrit' : 'Subscribe'}
+                {subscribed ? t('footer.subscribed') : t('footer.subscribe')}
               </button>
             </form>
           </div>
@@ -124,11 +126,11 @@ const Footer = () => {
 
         <div className="mt-20 pt-8 border-t border-mist-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-xs text-mist-white/40 font-light tracking-wide">
-            &copy; {new Date().getFullYear()} So You Cosmetics. Handmade in Geneva.
+            {t('footer.rights')(new Date().getFullYear())}
           </p>
           <div className="flex gap-6 text-xs text-mist-white/40 font-light tracking-wide">
-            <Link to="/terms" className="hover:text-white transition-colors duration-500">Terms & Conditions</Link>
-            <Link to="/privacy" className="hover:text-white transition-colors duration-500">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-white transition-colors duration-500">{t('footer.terms')}</Link>
+            <Link to="/privacy" className="hover:text-white transition-colors duration-500">{t('footer.privacy')}</Link>
           </div>
         </div>
       </div>

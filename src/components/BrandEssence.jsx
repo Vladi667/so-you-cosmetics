@@ -1,7 +1,9 @@
 import React from 'react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const BrandEssence = () => {
-  const marqueeText = "PURETÉ SUISSE & SAVOIR-FAIRE ARTISANAL • ZÉRO COMPROMIS SUR LA QUALITÉ • COSMÉTIQUE 100% NATURELLE • ";
+  const { t } = useLanguage();
+  const marqueeText = t('brandEssence.marquee');
 
   return (
     <section className="bg-white overflow-hidden">

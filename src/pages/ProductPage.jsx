@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getProducts } from '../services/products';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const placeholders = [
   'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=600&q=80',
@@ -10,6 +11,7 @@ const placeholders = [
 ];
 
 const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
+  const { t } = useLanguage();
   const { id } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
@@ -82,10 +84,10 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
         {/* Breadcrumb */}
         <div className="container mx-auto px-6 pt-12 pb-8">
           <div className="flex flex-wrap items-center gap-3 text-xs tracking-widest uppercase text-stone-gray">
-            <Link to="/" className="hover:text-slate-stone transition-colors">Home</Link>
+            <Link to="/" className="hover:text-slate-stone transition-colors">{t('product.home')}</Link>
             <span>/</span>
             <Link to={`/category/${product.collections[0] || 'All'}`} className="hover:text-slate-stone transition-colors">
-              {product.collections[0] || 'Shop'}
+              {product.collections[0] || t('product.shopFallback')}
             </Link>
             <span>/</span>
             <span className="text-slate-stone font-medium truncate max-w-[200px] sm:max-w-xs">{product.name}</span>
@@ -160,7 +162,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 />
               ) : (
                 <p className="font-sans font-light text-stone-gray leading-relaxed mb-10">
-                  Un produit artisanal So You, fait main avec amour à Genève.
+                  {t('product.defaultDesc')}
                 </p>
               )}
 
@@ -186,7 +188,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   onClick={handleAddToCart}
                   className="flex-grow bg-slate-stone text-white rounded-full py-4 px-8 font-sans text-xs tracking-widest uppercase hover:bg-stone-gray transition-all duration-500 shadow-xl hover:shadow-2xl hover:-translate-y-1"
                 >
-                  Ajouter au panier
+                  {t('product.addToCart')}
                 </button>
                 
                 <button 
@@ -203,8 +205,8 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
               <div className="mt-10 p-6 bg-white rounded-2xl border border-slate-stone/5 flex items-start gap-4">
                 <span className="text-2xl">📦</span>
                 <div>
-                  <h4 className="font-sans text-xs tracking-widest uppercase text-slate-stone font-bold mb-2">Livraison Suisse</h4>
-                  <p className="font-sans text-sm text-stone-gray font-light">Livraison offerte dès CHF 100.- d'achat. Expédition sous 2 à 4 jours ouvrés.</p>
+                  <h4 className="font-sans text-xs tracking-widest uppercase text-slate-stone font-bold mb-2">{t('product.shippingTitle')}</h4>
+                  <p className="font-sans text-sm text-stone-gray font-light">{t('product.shippingText')}</p>
                 </div>
               </div>
             </div>
@@ -214,7 +216,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
         {/* Related Products */}
         {relatedProducts.length > 0 && (
           <div className="container mx-auto px-6 lg:px-12 mt-32">
-            <h3 className="font-serif text-3xl text-slate-stone mb-12 text-center">Vous aimerez aussi</h3>
+            <h3 className="font-serif text-3xl text-slate-stone mb-12 text-center">{t('product.youMayAlsoLike')}</h3>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
               {relatedProducts.map((p, index) => {
                 const img = p.images.length > 0 ? p.images[0] : placeholders[p.name.length % placeholders.length];

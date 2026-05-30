@@ -2,8 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import MobileMenu from './MobileMenu';
 import Logo from './Logo';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useLanguage } from '../i18n/LanguageContext';
+
+// Maps the routing keys used by onCategorySelect/isLinkActive to translation keys.
+const NAV_LABELS = { 'About Us': 'nav.about', Workshops: 'nav.workshops', Contact: 'nav.contact' };
 
 const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick }) => {
+  const { t } = useLanguage();
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -99,7 +105,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
                 after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1.5px] after:bg-current after:transition-transform after:duration-300 after:origin-left
                 ${isLinkActive('Home') ? 'after:scale-x-100' : 'after:scale-x-0 hover:after:scale-x-100'} ${getLinkColor('Home')}`}
             >
-              Home
+              {t('nav.home')}
             </button>
             
             <div className="relative group py-4">
@@ -108,7 +114,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
                   after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1.5px] after:bg-current after:transition-transform after:duration-300 after:origin-left
                   ${isLinkActive('Shop') ? 'after:scale-x-100' : 'after:scale-x-0 hover:after:scale-x-100'} ${getLinkColor('Shop')}`}
               >
-                <span>Shop</span>
+                <span>{t('nav.shop')}</span>
                 <svg className="w-3 h-3 transition-transform duration-300 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
@@ -142,13 +148,13 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
                   after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1.5px] after:bg-current after:transition-transform after:duration-300 after:origin-left
                   ${isLinkActive(item) ? 'after:scale-x-100' : 'after:scale-x-0 hover:after:scale-x-100'} ${getLinkColor(item)}`}
               >
-                {item}
+                {t(NAV_LABELS[item])}
               </button>
             ))}
           </div>
 
           {/* Right side icons + hamburger */}
-          <div className="flex items-center space-x-4 sm:space-x-6 ml-auto lg:ml-0">
+          <div className="flex items-center space-x-1.5 sm:space-x-5 lg:space-x-6 ml-auto lg:ml-0">
             {/* Search — magnifier expands an input. Rendered only when open, at a
                 fixed width with a fail-safe fade-in (no width transition from zero,
                 which previously failed to expand). */}
@@ -158,7 +164,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
                   id="search-input"
                   type="text"
                   autoFocus
-                  placeholder="Rechercher..."
+                  placeholder={t('nav.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onBlur={() => { if (!searchQuery.trim()) setSearchOpen(false); }}
@@ -174,8 +180,8 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
                     setSearchOpen(true);
                   }
                 }}
-                className={`relative transition-colors duration-500 p-2 ${getTextColor()}`}
-                aria-label="Rechercher"
+                className={`relative transition-colors duration-500 p-1.5 sm:p-2 ${getTextColor()}`}
+                aria-label={t('nav.search')}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -183,7 +189,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
               </button>
             </form>
 
-            <button id="fav-icon" onClick={onFavClick} className={`relative transition-colors duration-500 p-2 ${getTextColor()}`}>
+            <button id="fav-icon" onClick={onFavClick} className={`relative transition-colors duration-500 p-1.5 sm:p-2 ${getTextColor()}`}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
@@ -194,7 +200,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
               )}
             </button>
             
-            <button id="cart-icon" onClick={onCartClick} className={`relative transition-colors duration-500 p-2 ${getTextColor()}`}>
+            <button id="cart-icon" onClick={onCartClick} className={`relative transition-colors duration-500 p-1.5 sm:p-2 ${getTextColor()}`}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
@@ -208,14 +214,17 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
             {/* Hamburger — visible below lg */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className={`lg:hidden relative transition-colors duration-500 p-2 ${getTextColor()}`}
-              aria-label="Open menu"
+              className={`lg:hidden relative transition-colors duration-500 p-1.5 sm:p-2 ${getTextColor()}`}
+              aria-label={t('nav.openMenu')}
             >
               <div className="flex flex-col items-end space-y-1.5">
                 <div className="w-6 h-[1.5px] bg-current rounded-full" />
                 <div className="w-4 h-[1.5px] bg-current rounded-full" />
               </div>
             </button>
+
+            {/* Language switcher — kept as the last item so it always sits at the top-right */}
+            <LanguageSwitcher className={getTextColor()} />
           </div>
         </div>
       </nav>

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import SectionHeader from './SectionHeader';
+import { useLanguage } from '../i18n/LanguageContext';
 
 import { getProducts } from '../services/products';
 
 const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
+  const { t } = useLanguage();
   const [productsList, setProductsList] = useState([]);
 
   useEffect(() => {
@@ -34,9 +36,9 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
   return (
     <section id="products" className="py-16 md:py-32 bg-mist-white overflow-hidden">
       <div className="container mx-auto px-6 md:px-12 mb-8 md:mb-16">
-        <SectionHeader 
-          title="Signature Collection" 
-          subtitle="Our most exquisite botanical formulations, curated for your daily ritual."
+        <SectionHeader
+          title={t('signature.title')}
+          subtitle={t('signature.subtitle')}
           align="center"
         />
       </div>
@@ -74,7 +76,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                     onClick={() => addToCart(product)}
                     className="px-6 py-2 bg-white/90 backdrop-blur-sm text-slate-stone text-xs uppercase tracking-widest rounded-full font-medium hover:bg-slate-stone hover:text-white transition-colors"
                   >
-                    Add
+                    {t('signature.add')}
                   </button>
                   <button 
                     onClick={() => toggleFavorite(product)}
@@ -88,7 +90,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
               </div>
               
               <div className="flex flex-col items-center text-center">
-                <p className="text-xs uppercase tracking-widest text-mist-blue mb-2 font-medium">{product.collections[0] || 'Cosmetics'}</p>
+                <p className="text-xs uppercase tracking-widest text-mist-blue mb-2 font-medium">{product.collections[0] || t('catalog.cosmeticsFallback')}</p>
                 <Link to={`/product/${product.id}`}>
                   <h3 className="font-serif text-base sm:text-lg md:text-xl text-slate-stone mb-1 line-clamp-1 px-4 hover:text-stone-gray transition-colors">{product.name}</h3>
                 </Link>

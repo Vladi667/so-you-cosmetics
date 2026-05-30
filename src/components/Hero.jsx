@@ -1,7 +1,9 @@
 import React from 'react';
 import AutoPlayVideo from './AutoPlayVideo';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const Hero = () => {
+  const { t } = useLanguage();
   return (
     <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
       <AutoPlayVideo
@@ -18,25 +20,25 @@ const Hero = () => {
       
       <div className="relative z-20 text-center px-4 max-w-4xl mx-auto flex flex-col items-center mt-16 sm:mt-20">
         <h1 className="font-serif text-3xl sm:text-5xl md:text-7xl text-ivory mb-4 sm:mb-6 leading-tight opacity-0 animate-[fadeIn_1.5s_ease-out_forwards]" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
-          Natural Cosmetics,<br/>Handmade in Geneva
+          {t('hero.titleLine1')}<br/>{t('hero.titleLine2')}
         </h1>
-        
+
         <p className="font-sans text-sm sm:text-base md:text-xl text-ivory/90 mb-6 sm:mb-10 max-w-2xl opacity-0 animate-[fadeInUp_1.5s_ease-out_0.5s_forwards]" style={{ textShadow: '0 1px 12px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.2)' }}>
-          Artisanal soaps, bath rituals, body care and botanical wellness crafted with Swiss purity.
+          {t('hero.subtitle')}
         </p>
         
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 opacity-0 animate-[fadeInUp_2s_ease-out_1s_forwards] w-full sm:w-auto px-4 sm:px-0">
           <a href="#products" className="px-6 sm:px-8 py-3 sm:py-4 bg-white text-slate-stone font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-slate-stone hover:text-white transition-all duration-500 shadow-lg rounded-full text-center">
-            Discover the Collection
+            {t('hero.cta1')}
           </a>
           <a href="#workshops" className="px-6 sm:px-8 py-3 sm:py-4 border border-white/50 text-white font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-white/10 hover:border-white transition-all duration-500 backdrop-blur-sm rounded-full text-center">
-            Our Workshops
+            {t('hero.cta2')}
           </a>
         </div>
       </div>
 
       <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex flex-col items-center animate-pulse opacity-50 hover:opacity-100 transition-opacity duration-500 cursor-pointer hidden sm:flex">
-        <span className="text-white font-sans text-[10px] uppercase tracking-widest mb-3">Scroll</span>
+        <span className="text-white font-sans text-[10px] uppercase tracking-widest mb-3">{t('hero.scroll')}</span>
         <div className="w-[1px] h-16 bg-gradient-to-b from-white to-transparent"></div>
       </div>
     </section>
