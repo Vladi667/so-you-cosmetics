@@ -21,8 +21,8 @@ const CENTER = SIZE / 2;
 const tile = encodeURIComponent(
   `<svg xmlns='http://www.w3.org/2000/svg' width='${SIZE}' height='${SIZE}'>` +
     `<text x='50%' y='50%' transform='rotate(-30 ${CENTER} ${CENTER})' ` +
-    `font-family='Arial, Helvetica, sans-serif' font-size='26' font-weight='700' ` +
-    `letter-spacing='4' fill='%23000000' fill-opacity='0.09' ` +
+    `font-family='Arial, Helvetica, sans-serif' font-size='36' font-weight='700' ` +
+    `letter-spacing='4' fill='%23000000' fill-opacity='0.22' ` +
     `text-anchor='middle' dominant-baseline='middle'>${TEXT}</text>` +
   `</svg>`
 );
