@@ -190,8 +190,9 @@ function App() {
       )}
 
       {/* TEMPORARY: site-wide "TBA" watermark until the client pays.
-          Flip SHOW_WATERMARK (top of this file) to false to take it down. */}
-      {SHOW_WATERMARK && <Watermark />}
+          Hidden while the loading screen is up. Flip SHOW_WATERMARK (top of
+          this file) to false to take it down. */}
+      {SHOW_WATERMARK && !isLoading && <Watermark />}
     </div>
   );
 }

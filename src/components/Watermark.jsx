@@ -15,11 +15,14 @@ import React from 'react';
 const TEXT = 'TBA';
 
 // A single repeating SVG tile containing the rotated, semi-transparent text.
+// Larger tile => fewer, more spread-out marks; smaller font => smaller marks.
+const SIZE = 480;
+const CENTER = SIZE / 2;
 const tile = encodeURIComponent(
-  `<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'>` +
-    `<text x='50%' y='50%' transform='rotate(-30 130 130)' ` +
-    `font-family='Arial, Helvetica, sans-serif' font-size='44' font-weight='700' ` +
-    `letter-spacing='6' fill='%23000000' fill-opacity='0.10' ` +
+  `<svg xmlns='http://www.w3.org/2000/svg' width='${SIZE}' height='${SIZE}'>` +
+    `<text x='50%' y='50%' transform='rotate(-30 ${CENTER} ${CENTER})' ` +
+    `font-family='Arial, Helvetica, sans-serif' font-size='26' font-weight='700' ` +
+    `letter-spacing='4' fill='%23000000' fill-opacity='0.09' ` +
     `text-anchor='middle' dominant-baseline='middle'>${TEXT}</text>` +
   `</svg>`
 );
