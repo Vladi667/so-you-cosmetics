@@ -16,7 +16,7 @@ const TEXT = 'TBA';
 
 // A single repeating SVG tile containing the rotated, semi-transparent text.
 // Larger tile => fewer, more spread-out marks; smaller font => smaller marks.
-const SIZE = 480;
+const SIZE = 340;
 const CENTER = SIZE / 2;
 const tile = encodeURIComponent(
   `<svg xmlns='http://www.w3.org/2000/svg' width='${SIZE}' height='${SIZE}'>` +
