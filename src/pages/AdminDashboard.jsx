@@ -664,7 +664,8 @@ const AdminDashboard = ({ onLogout }) => {
                 <input type="text" placeholder="Catégories (séparées par des virgules)" value={productForm.collectionsText} onChange={e => setProductForm({...productForm, collectionsText: e.target.value})} className="px-4 py-2 border rounded" />
                 <div className="md:col-span-2">
                   <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Images (une URL par ligne)</label>
-                  <textarea placeholder="https://...jpg&#10;https://...png" value={productForm.imagesText} onChange={e => setProductForm({...productForm, imagesText: e.target.value})} className="px-4 py-2 border rounded w-full h-24"></textarea>
+                  <textarea placeholder="https://...jpg&#10;https://drive.google.com/file/d/.../view  (lien Google Drive accepté)" value={productForm.imagesText} onChange={e => setProductForm({...productForm, imagesText: e.target.value})} className="px-4 py-2 border rounded w-full h-24"></textarea>
+                  <p className="text-xs text-stone-gray mt-1">Vous pouvez coller un lien direct (.jpg/.png) <strong>ou</strong> un lien de partage Google Drive. ⚠️ Pour Drive, le fichier doit être partagé en « <strong>Tous les utilisateurs disposant du lien</strong> », sinon l'image ne s'affichera pas.</p>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Description (HTML accepté)</label>

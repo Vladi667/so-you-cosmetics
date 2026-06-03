@@ -311,6 +311,27 @@ function writeProductsFile(data) {
   if (data.categories) productsData.categories = data.categories;
 }
 
+// Turn a Google Drive *share* link into a directly-embeddable image URL.
+// Accepts the common shapes the admin might paste:
+//   https://drive.google.com/file/d/FILEID/view?usp=sharing
+//   https://drive.google.com/open?id=FILEID
+//   https://drive.google.com/uc?export=view&id=FILEID
+//   https://docs.google.com/...?id=FILEID
+// and rewrites them to https://drive.google.com/thumbnail?id=FILEID&sz=w1920
+// (renders in <img> for files shared as "Anyone with the link"). Non-Drive
+// URLs are returned unchanged.
+function normalizeImageUrl(url) {
+  if (typeof url !== 'string') return url;
+  const u = url.trim();
+  if (!/(?:drive|docs)\.google\.com/.test(u)) return u;
+  let m, id = null;
+  if ((m = u.match(/\/file\/d\/([a-zA-Z0-9_-]{10,})/))) id = m[1];
+  else if ((m = u.match(/[?&]id=([a-zA-Z0-9_-]{10,})/))) id = m[1];
+  else if ((m = u.match(/\/d\/([a-zA-Z0-9_-]{10,})/))) id = m[1];
+  if (!id) return u;
+  return `https://drive.google.com/thumbnail?id=${id}&sz=w1920`;
+}
+
 function normalizeProductInput(input, base = {}) {
   const toArray = (v) => {
     if (Array.isArray(v)) return v.map(s => String(s).trim()).filter(Boolean);
@@ -323,7 +344,7 @@ function normalizeProductInput(input, base = {}) {
   if (input.price !== undefined) out.price = Number(input.price) || 0;
   if (input.ribbon !== undefined) out.ribbon = input.ribbon || null;
   if (input.collections !== undefined) out.collections = toArray(input.collections);
-  if (input.images !== undefined) out.images = toArray(input.images);
+  if (input.images !== undefined) out.images = toArray(input.images).map(normalizeImageUrl);
   return out;
 }
 
