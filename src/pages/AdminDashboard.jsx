@@ -11,6 +11,7 @@ const AdminDashboard = ({ onLogout }) => {
   const [productForm, setProductForm] = useState({ id: null, name: '', price: '', ribbon: '', collectionsText: '', imagesText: '', description: '' });
   const [productSearch, setProductSearch] = useState('');
   const [productsPage, setProductsPage] = useState(1);
+  const [imageUploading, setImageUploading] = useState(false);
   const PRODUCTS_PER_PAGE = 25;
   const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', imagesText: '', description: '' };
   const [loading, setLoading] = useState(false);
@@ -66,6 +67,43 @@ const AdminDashboard = ({ onLogout }) => {
     fetch('/api/admin/logout', { method: 'POST', headers: fetchHeaders })
       .catch(() => {})
       .finally(() => onLogout());
+  };
+
+  // Upload one or more image files from the admin's computer; append the
+  // resulting public URLs to the product form's images textarea.
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setImageUploading(true);
+    try {
+      const urls = [];
+      for (const file of files) {
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const resp = await fetch('/api/admin/products/upload-image', {
+          method: 'POST',
+          headers: fetchHeaders,
+          body: JSON.stringify({ filename: file.name, data: dataUrl })
+        });
+        if (resp.status === 401) { onLogout(); throw new Error('Session expirée'); }
+        if (!resp.ok) {
+          const j = await resp.json().catch(() => ({}));
+          throw new Error(j.error || 'Échec du téléversement');
+        }
+        const j = await resp.json();
+        urls.push(j.url);
+      }
+      setProductForm(f => ({ ...f, imagesText: (f.imagesText ? f.imagesText + '\n' : '') + urls.join('\n') }));
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setImageUploading(false);
+      e.target.value = '';
+    }
   };
 
   const loadData = () => {
@@ -663,9 +701,16 @@ const AdminDashboard = ({ onLogout }) => {
                 <input type="text" placeholder="Badge / Ruban (ex: Hydrolat) — optionnel" value={productForm.ribbon} onChange={e => setProductForm({...productForm, ribbon: e.target.value})} className="px-4 py-2 border rounded" />
                 <input type="text" placeholder="Catégories (séparées par des virgules)" value={productForm.collectionsText} onChange={e => setProductForm({...productForm, collectionsText: e.target.value})} className="px-4 py-2 border rounded" />
                 <div className="md:col-span-2">
-                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Images (une URL par ligne)</label>
+                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Images</label>
+                  <div className="flex items-center gap-3 mb-2">
+                    <label className={`inline-flex items-center gap-2 px-4 py-2 rounded cursor-pointer text-sm font-medium ${imageUploading ? 'bg-gray-200 text-stone-gray cursor-wait' : 'bg-slate-stone text-white hover:opacity-90'}`}>
+                      {imageUploading ? 'Téléversement…' : '📤 Téléverser depuis mon ordinateur'}
+                      <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple disabled={imageUploading} onChange={handleImageUpload} className="hidden" />
+                    </label>
+                    <span className="text-xs text-stone-gray">PNG, JPG, WEBP · plusieurs fichiers possibles</span>
+                  </div>
                   <textarea placeholder="https://...jpg&#10;https://drive.google.com/file/d/.../view  (lien Google Drive accepté)" value={productForm.imagesText} onChange={e => setProductForm({...productForm, imagesText: e.target.value})} className="px-4 py-2 border rounded w-full h-24"></textarea>
-                  <p className="text-xs text-stone-gray mt-1">Vous pouvez coller un lien direct (.jpg/.png) <strong>ou</strong> un lien de partage Google Drive. ⚠️ Pour Drive, le fichier doit être partagé en « <strong>Tous les utilisateurs disposant du lien</strong> », sinon l'image ne s'affichera pas.</p>
+                  <p className="text-xs text-stone-gray mt-1">Téléversez des fichiers depuis votre ordinateur (recommandé), <strong>ou</strong> collez une URL d'image / un lien de partage Google Drive (une par ligne). Les images téléversées apparaissent automatiquement ci-dessus.</p>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Description (HTML accepté)</label>

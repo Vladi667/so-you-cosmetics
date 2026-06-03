@@ -1,9 +1,14 @@
 const express = require('express');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const router = express.Router();
 const db = require('./db');
 const emailService = require('./email');
 const imapService = require('./imap');
+
+// Directory for admin-uploaded product images (served at /uploads by index.js).
+const UPLOADS_DIR = path.join(__dirname, 'data', 'uploads');
 
 // Compare two strings in constant time; tolerates length mismatch
 function timingSafeEqualStr(a, b) {
@@ -793,6 +798,41 @@ router.delete('/admin/products/:id', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('deleteProduct error', err);
     res.status(500).json({ error: 'Failed to delete product' });
+  }
+});
+
+// 22. Admin Upload Product Image
+// Accepts { data: <base64 data-URL or raw base64>, filename } and saves it as a
+// file under server/data/uploads, returning its public /uploads/<name> URL.
+const UPLOAD_MIME_EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
+router.post('/admin/products/upload-image', requireAdmin, async (req, res) => {
+  try {
+    const { data, filename } = req.body || {};
+    if (!data || typeof data !== 'string') {
+      return res.status(400).json({ error: 'Aucune image reçue' });
+    }
+    // Accept "data:image/png;base64,XXXX" or raw base64.
+    let mime = 'image/png';
+    let b64 = data;
+    const m = data.match(/^data:([^;]+);base64,(.*)$/s);
+    if (m) { mime = m[1].toLowerCase(); b64 = m[2]; }
+    const ext = UPLOAD_MIME_EXT[mime];
+    if (!ext) {
+      return res.status(400).json({ error: 'Format non supporté (PNG, JPG, WEBP ou GIF uniquement)' });
+    }
+    const buf = Buffer.from(b64, 'base64');
+    if (!buf.length) return res.status(400).json({ error: 'Image vide ou invalide' });
+    if (buf.length > 12 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Image trop volumineuse (max 12 Mo)' });
+    }
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+    const safeBase = String(filename || 'image').replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 40) || 'image';
+    const name = `${safeBase}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
+    fs.writeFileSync(path.join(UPLOADS_DIR, name), buf);
+    res.status(201).json({ url: `/uploads/${name}` });
+  } catch (err) {
+    console.error('upload-image error', err);
+    res.status(500).json({ error: "Échec du téléversement de l'image" });
   }
 });
 
