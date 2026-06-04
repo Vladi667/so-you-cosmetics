@@ -12,17 +12,17 @@ import React from 'react';
 // on top of everything visually but never blocks clicks, typing or scrolling.
 // ───────────────────────────────────────────────────────────────────────────
 
-const TEXT = 'TBA';
+const TEXT = 'To Be Paid';
 
-// A single repeating SVG tile containing the rotated, semi-transparent text.
-// Larger tile => fewer, more spread-out marks; smaller font => smaller marks.
-const SIZE = 340;
-const CENTER = SIZE / 2;
+// A single repeating SVG tile containing the rotated text. Big font + compact
+// tile => large, dense, hard-to-ignore marks. High opacity + red => loud.
+const W = 460;
+const H = 260;
 const tile = encodeURIComponent(
-  `<svg xmlns='http://www.w3.org/2000/svg' width='${SIZE}' height='${SIZE}'>` +
-    `<text x='50%' y='50%' transform='rotate(-30 ${CENTER} ${CENTER})' ` +
-    `font-family='Arial, Helvetica, sans-serif' font-size='36' font-weight='700' ` +
-    `letter-spacing='4' fill='%23000000' fill-opacity='0.22' ` +
+  `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}'>` +
+    `<text x='50%' y='50%' transform='rotate(-30 ${W / 2} ${H / 2})' ` +
+    `font-family='Arial, Helvetica, sans-serif' font-size='72' font-weight='800' ` +
+    `letter-spacing='2' fill='%23d61f1f' fill-opacity='0.6' ` +
     `text-anchor='middle' dominant-baseline='middle'>${TEXT}</text>` +
   `</svg>`
 );
