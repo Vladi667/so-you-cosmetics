@@ -10,15 +10,7 @@ import Workshops from './components/Workshops';
 import Footer from './components/Footer';
 import PageLoader from './components/PageLoader';
 import SideDrawer from './components/SideDrawer';
-import Watermark from './components/Watermark';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-
-// ── "TBA" watermark switch ──────────────────────────────────────────────────
-// The client hasn't paid yet, so a removable "TBA" watermark covers the site.
-// TO REMOVE IT once they pay: change the line below to `false`, then rebuild &
-// redeploy (npm run build && node scratch/sftp-upload-dist.cjs). Nothing else.
-const SHOW_WATERMARK = true;
-// ─────────────────────────────────────────────────────────────────────────────
 import Home from './pages/Home';
 import CategoryPage from './pages/CategoryPage';
 import AboutPage from './pages/AboutPage';
@@ -189,10 +181,6 @@ function App() {
         </>
       )}
 
-      {/* TEMPORARY: site-wide "TBA" watermark until the client pays.
-          Hidden while the loading screen is up. Flip SHOW_WATERMARK (top of
-          this file) to false to take it down. */}
-      {SHOW_WATERMARK && !isLoading && <Watermark />}
     </div>
   );
 }
