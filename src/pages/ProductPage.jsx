@@ -11,7 +11,7 @@ const placeholders = [
 ];
 
 const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
-  const { t } = useLanguage();
+  const { t, tCategory } = useLanguage();
   const { id } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
@@ -87,7 +87,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
             <Link to="/" className="hover:text-slate-stone transition-colors">{t('product.home')}</Link>
             <span>/</span>
             <Link to={`/category/${product.collections[0] || 'All'}`} className="hover:text-slate-stone transition-colors">
-              {product.collections[0] || t('product.shopFallback')}
+              {product.collections[0] ? tCategory(product.collections[0]) : t('product.shopFallback')}
             </Link>
             <span>/</span>
             <span className="text-slate-stone font-medium truncate max-w-[200px] sm:max-w-xs">{product.name}</span>
@@ -137,19 +137,26 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
               <div className="mb-8">
                 <div className="flex flex-wrap gap-2 mb-4">
                   {product.collections.map((cat, idx) => (
-                    <Link 
-                      key={idx} 
+                    <Link
+                      key={idx}
                       to={`/category/${cat}`}
                       className="text-[10px] tracking-widest uppercase text-stone-gray hover:text-slate-stone transition-colors bg-white px-3 py-1 rounded-full border border-slate-stone/10"
                     >
-                      {cat}
+                      {tCategory(cat)}
                     </Link>
                   ))}
                 </div>
                 <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-slate-stone leading-tight mb-4 md:mb-6">
                   {product.name}
                 </h1>
-                <p className="font-sans text-2xl text-stone-gray font-light">CHF {product.price.toFixed(2)}</p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <p className="font-sans text-2xl text-stone-gray font-light">CHF {product.price.toFixed(2)}</p>
+                  {product.inStock === false && (
+                    <span className="inline-block bg-red-100 text-red-700 text-xs tracking-widest uppercase px-3 py-1 rounded-full font-medium">
+                      {t('catalog.outOfStock')}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="h-px w-full bg-slate-stone/10 my-8"></div>
@@ -184,11 +191,16 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   </button>
                 </div>
                 
-                <button 
+                <button
                   onClick={handleAddToCart}
-                  className="flex-grow bg-slate-stone text-white rounded-full py-4 px-8 font-sans text-xs tracking-widest uppercase hover:bg-stone-gray transition-all duration-500 shadow-xl hover:shadow-2xl hover:-translate-y-1"
+                  disabled={product.inStock === false}
+                  className={`flex-grow rounded-full py-4 px-8 font-sans text-xs tracking-widest uppercase transition-all duration-500 shadow-xl ${
+                    product.inStock === false
+                      ? 'bg-stone-gray/40 text-white cursor-not-allowed'
+                      : 'bg-slate-stone text-white hover:bg-stone-gray hover:shadow-2xl hover:-translate-y-1'
+                  }`}
                 >
-                  {t('product.addToCart')}
+                  {product.inStock === false ? t('catalog.outOfStock') : t('product.addToCart')}
                 </button>
                 
                 <button 
@@ -235,7 +247,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                     </Link>
                     <div className="p-3 sm:p-6 flex flex-col flex-grow">
                       <Link to={`/product/${p.id}`} className="block">
-                        <p className="font-sans text-[9px] sm:text-[10px] tracking-[0.2em] uppercase text-stone-gray mb-1 sm:mb-2">{p.collections[0] || 'So You'}</p>
+                        <p className="font-sans text-[9px] sm:text-[10px] tracking-[0.2em] uppercase text-stone-gray mb-1 sm:mb-2">{p.collections[0] ? tCategory(p.collections[0]) : 'So You'}</p>
                         <h3 className="font-serif text-sm sm:text-xl text-slate-stone mb-2 sm:mb-3 line-clamp-2 group-hover:text-stone-gray transition-colors">{p.name}</h3>
                       </Link>
                       <div className="mt-auto flex items-center justify-between pt-2 sm:pt-4 border-t border-slate-stone/10">

@@ -345,6 +345,13 @@ function normalizeProductInput(input, base = {}) {
   if (input.ribbon !== undefined) out.ribbon = input.ribbon || null;
   if (input.collections !== undefined) out.collections = toArray(input.collections);
   if (input.images !== undefined) out.images = toArray(input.images).map(normalizeImageUrl);
+  // Stock count (optional, admin-only) and explicit in/out-of-stock flag.
+  if (input.stock !== undefined) {
+    out.stock = input.stock === '' || input.stock === null ? null : (Number(input.stock) || 0);
+  }
+  if (input.inStock !== undefined) {
+    out.inStock = !!input.inStock;
+  }
   return out;
 }
 
@@ -355,7 +362,9 @@ async function createProduct(input) {
     price: 0,
     ribbon: null,
     collections: [],
-    images: []
+    images: [],
+    stock: null,
+    inStock: true
   });
 
   if (pool) {

@@ -23,7 +23,7 @@ const normalizeText = (s) =>
 const stripHtml = (s) => (s || '').toString().replace(/<[^>]*>/g, ' ');
 
 function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, toggleFavorite, favorites, searchQuery = '' }) {
-  const { t } = useLanguage();
+  const { t, tCategory } = useLanguage();
   const [productsList, setProductsList] = useState([]);
   const [activeCategory, setActiveCategory] = useState(globalActiveCategory);
   const [displayedProducts, setDisplayedProducts] = useState([]);
@@ -151,7 +151,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                   : 'bg-transparent text-slate-stone border-slate-stone/20 hover:border-slate-stone/50 hover:bg-slate-stone/5'
                 }`}
               >
-                {category}
+                {tCategory(category)}
               </button>
             ))}
           </div>
@@ -185,6 +185,13 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                       </span>
                     </div>
                   )}
+                  {product.inStock === false && (
+                    <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10">
+                      <span className="inline-block bg-red-600/95 text-white text-[9px] sm:text-xs tracking-widest uppercase px-2 py-1 sm:px-3 sm:py-1.5 rounded-full shadow-sm font-medium">
+                        {t('catalog.outOfStock')}
+                      </span>
+                    </div>
+                  )}
                   {/* Hover Overlay — on mobile the card image is directly tappable */}
                   <Link to={`/product/${product.id}`} className="absolute inset-0 bg-slate-stone/10 opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center md:backdrop-blur-[2px]">
                     <span className="transform translate-y-4 md:group-hover:translate-y-0 opacity-0 md:group-hover:opacity-100 transition-all duration-500 bg-white text-slate-stone px-8 py-3 rounded-full font-medium tracking-wide shadow-lg hover:bg-slate-stone hover:text-white hidden md:inline">
@@ -196,7 +203,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                 <div className="p-3 sm:p-6 flex flex-col flex-grow">
                   <div className="mb-2">
                     <p className="text-[9px] sm:text-xs text-slate-stone/60 uppercase tracking-widest mb-0.5 sm:mb-1 truncate">
-                      {product.collections[0] || t('catalog.cosmeticsFallback')}
+                      {product.collections[0] ? tCategory(product.collections[0]) : t('catalog.cosmeticsFallback')}
                     </p>
                     <Link to={`/product/${product.id}`}>
                       <h3 className="text-sm sm:text-lg font-serif text-slate-stone leading-tight line-clamp-2 hover:text-stone-gray transition-colors">
@@ -217,14 +224,16 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
                       </button>
-                      <button 
+                      <button
                         onClick={(e) => {
+                          if (product.inStock === false) return;
                           const btn = e.currentTarget;
                           btn.classList.add('scale-110');
                           setTimeout(() => btn.classList.remove('scale-110'), 200);
                           addToCart(product);
                         }}
-                        className="text-slate-stone/60 hover:text-slate-stone transition-all duration-300"
+                        disabled={product.inStock === false}
+                        className={`transition-all duration-300 ${product.inStock === false ? 'text-slate-stone/20 cursor-not-allowed' : 'text-slate-stone/60 hover:text-slate-stone'}`}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />

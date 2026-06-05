@@ -55,8 +55,24 @@ export const LanguageProvider = ({ children }) => {
     [language]
   );
 
+  // Translate a shop category label. Categories travel through the app as their
+  // canonical FR names (URLs, product.collections, filter logic), so the lookup
+  // accepts the FR name and returns the display label for the current language,
+  // falling back to the FR name itself when no translation exists.
+  const tCategory = useCallback(
+    (name) => {
+      if (!name) return name;
+      const map = translations[language] && translations[language].categories;
+      if (map && map[name]) return map[name];
+      const fr = translations[DEFAULT_LANGUAGE] && translations[DEFAULT_LANGUAGE].categories;
+      if (fr && fr[name]) return fr[name];
+      return name;
+    },
+    [language]
+  );
+
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, languages: LANGUAGES }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t, tCategory, languages: LANGUAGES }}>
       {children}
     </LanguageContext.Provider>
   );

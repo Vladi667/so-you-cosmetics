@@ -9,7 +9,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 const NAV_LABELS = { 'About Us': 'nav.about', Workshops: 'nav.workshops', Contact: 'nav.contact' };
 
 const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick }) => {
-  const { t } = useLanguage();
+  const { t, tCategory } = useLanguage();
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -133,7 +133,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
                           : 'text-slate-stone/70 hover:text-slate-stone hover:bg-mist-white border-transparent hover:border-slate-stone/20'
                       }`}
                     >
-                      {item}
+                      {tCategory(item)}
                     </button>
                   ))}
                 </div>

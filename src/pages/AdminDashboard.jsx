@@ -8,12 +8,12 @@ const AdminDashboard = ({ onLogout }) => {
   const [workshops, setWorkshops] = useState([]);
   const [workshopForm, setWorkshopForm] = useState({ id: null, title: '', description: '', price: '', duration: '', image_url: '' });
   const [products, setProducts] = useState([]);
-  const [productForm, setProductForm] = useState({ id: null, name: '', price: '', ribbon: '', collectionsText: '', imagesText: '', description: '' });
+  const [productForm, setProductForm] = useState({ id: null, name: '', price: '', ribbon: '', collectionsText: '', imagesText: '', description: '', stock: '', inStock: true });
   const [productSearch, setProductSearch] = useState('');
   const [productsPage, setProductsPage] = useState(1);
   const [imageUploading, setImageUploading] = useState(false);
   const PRODUCTS_PER_PAGE = 25;
-  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', imagesText: '', description: '' };
+  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', imagesText: '', description: '', stock: '', inStock: true };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -682,7 +682,9 @@ const AdminDashboard = ({ onLogout }) => {
                   ribbon: productForm.ribbon,
                   description: productForm.description,
                   collections: productForm.collectionsText,
-                  images: productForm.imagesText
+                  images: productForm.imagesText,
+                  stock: productForm.stock === '' ? null : productForm.stock,
+                  inStock: !!productForm.inStock
                 };
                 fetch(url, { method, headers: fetchHeaders, body: JSON.stringify(payload) })
                   .then(res => {
@@ -716,6 +718,16 @@ const AdminDashboard = ({ onLogout }) => {
                   <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Description (HTML accepté)</label>
                   <textarea required placeholder="Description du produit" value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} className="px-4 py-2 border rounded w-full h-40"></textarea>
                 </div>
+                <div>
+                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Stock (interne, non affiché)</label>
+                  <input type="number" min="0" step="1" placeholder="ex: 12" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                </div>
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-red-50 border border-red-200 rounded w-full">
+                    <input type="checkbox" checked={!productForm.inStock} onChange={e => setProductForm({...productForm, inStock: !e.target.checked})} className="w-4 h-4 accent-red-600" />
+                    <span className="text-sm text-red-700 font-medium">Marquer le produit comme épuisé</span>
+                  </label>
+                </div>
                 <div className="md:col-span-2 flex gap-4">
                   <button type="submit" className="px-6 py-2 bg-slate-stone text-white rounded">{productForm.id ? 'Enregistrer les modifications' : 'Ajouter le produit'}</button>
                   {productForm.id && <button type="button" onClick={() => setProductForm(emptyProductForm)} className="px-6 py-2 bg-gray-200 rounded">Annuler</button>}
@@ -747,7 +759,12 @@ const AdminDashboard = ({ onLogout }) => {
                     <tr key={p.id} className="border-b align-top">
                       <td className="p-4 flex items-center gap-3">
                         {p.images && p.images[0] && <img src={p.images[0]} alt="" className="w-10 h-10 object-cover rounded" />}
-                        <span className="font-medium">{p.name}</span>
+                        <div className="flex flex-col gap-1">
+                          <span className="font-medium">{p.name}</span>
+                          {p.inStock === false && (
+                            <span className="inline-block self-start bg-red-100 text-red-700 text-[10px] tracking-widest uppercase px-2 py-0.5 rounded font-medium">Épuisé</span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-4 text-sm text-stone-gray">{(p.collections || []).join(', ')}</td>
                       <td className="p-4 whitespace-nowrap">CHF {p.price}</td>
@@ -761,7 +778,9 @@ const AdminDashboard = ({ onLogout }) => {
                               ribbon: p.ribbon || '',
                               collectionsText: (p.collections || []).join(', '),
                               imagesText: (p.images || []).join('\n'),
-                              description: p.description || ''
+                              description: p.description || '',
+                              stock: p.stock == null ? '' : String(p.stock),
+                              inStock: p.inStock !== false
                             });
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }} className="text-blue-500 underline">Modifier</button>

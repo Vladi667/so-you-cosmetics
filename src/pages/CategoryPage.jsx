@@ -4,7 +4,7 @@ import Catalog from '../components/Catalog';
 import { useLanguage } from '../i18n/LanguageContext';
 
 const CategoryPage = ({ addToCart, toggleFavorite, favorites }) => {
-  const { t } = useLanguage();
+  const { t, tCategory } = useLanguage();
   const { categoryName } = useParams();
   
   // Decode the URL parameter just in case
@@ -21,7 +21,7 @@ const CategoryPage = ({ addToCart, toggleFavorite, favorites }) => {
           <div className="flex items-center gap-4 text-xs tracking-widest uppercase text-stone-gray mb-8">
             <Link to="/" className="hover:text-slate-stone transition-colors">{t('category.home')}</Link>
             <span>/</span>
-            <span className="text-slate-stone font-medium">{decodedCategory}</span>
+            <span className="text-slate-stone font-medium">{tCategory(decodedCategory)}</span>
           </div>
         </div>
         

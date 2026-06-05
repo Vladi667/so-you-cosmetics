@@ -6,7 +6,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { getProducts } from '../services/products';
 
 const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
-  const { t } = useLanguage();
+  const { t, tCategory } = useLanguage();
   const [productsList, setProductsList] = useState([]);
 
   useEffect(() => {
@@ -90,7 +90,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
               </div>
               
               <div className="flex flex-col items-center text-center">
-                <p className="text-xs uppercase tracking-widest text-mist-blue mb-2 font-medium">{product.collections[0] || t('catalog.cosmeticsFallback')}</p>
+                <p className="text-xs uppercase tracking-widest text-mist-blue mb-2 font-medium">{product.collections[0] ? tCategory(product.collections[0]) : t('catalog.cosmeticsFallback')}</p>
                 <Link to={`/product/${product.id}`}>
                   <h3 className="font-serif text-base sm:text-lg md:text-xl text-slate-stone mb-1 line-clamp-1 px-4 hover:text-stone-gray transition-colors">{product.name}</h3>
                 </Link>

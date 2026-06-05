@@ -7,7 +7,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, tCategory } = useLanguage();
   const [shopExpanded, setShopExpanded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -167,7 +167,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                         }`}
                         style={{ transitionDelay: shopExpanded ? `${idx * 30}ms` : '0ms' }}
                       >
-                        {cat}
+                        {tCategory(cat)}
                       </button>
                     ))}
                   </div>
