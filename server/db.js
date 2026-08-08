@@ -121,9 +121,18 @@ if (isProductionDb) {
   console.log('Database: Running locally using File-based JSON Database.');
 }
 
+// Which optional columns are actually available on the live schema. Writes are
+// built from this: if a migration could not run (e.g. the database user has no
+// ALTER privilege), we must fall back to the older column set rather than issue
+// an INSERT naming a column that does not exist — that would fail, hit the
+// JSON-file fallback, and quietly write products to a file the MySQL-backed
+// catalogue never reads.
+const schema = { productStock: false };
+
 // Add a column only if it is missing. `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
 // is MariaDB-only syntax and throws on stock MySQL, so we check the catalog
-// first — this works on both.
+// first — this works on both. Returns true if the column is available
+// afterwards (whether it already existed or we just created it).
 async function ensureColumn(conn, table, column, definition) {
   try {
     const [rows] = await conn.query(
@@ -131,12 +140,12 @@ async function ensureColumn(conn, table, column, definition) {
        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
       [table, column]
     );
-    if (rows[0].n > 0) return false;
+    if (rows[0].n > 0) return true;
     await conn.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
     console.log(`Database: added missing column ${table}.${column}`);
     return true;
   } catch (err) {
-    console.error(`Database: failed to ensure column ${table}.${column}`, err);
+    console.error(`Database: failed to ensure column ${table}.${column}`, err.message);
     return false;
   }
 }
@@ -163,8 +172,12 @@ async function initProductionDatabase() {
 
     // Migrate tables created before stock tracking existed. Without this the
     // admin's stock/"épuisé" edits are accepted by the API and silently dropped.
-    await ensureColumn(conn, 'products', 'stock', 'INT NULL');
-    await ensureColumn(conn, 'products', 'in_stock', 'TINYINT(1) NOT NULL DEFAULT 1');
+    const hasStock = await ensureColumn(conn, 'products', 'stock', 'INT NULL');
+    const hasInStock = await ensureColumn(conn, 'products', 'in_stock', 'TINYINT(1) NOT NULL DEFAULT 1');
+    schema.productStock = hasStock && hasInStock;
+    if (!schema.productStock) {
+      console.error('Database: products.stock/in_stock unavailable — stock levels will NOT be saved. Check that the database user has ALTER privileges.');
+    }
 
     // Create orders table
     await conn.query(`
@@ -260,19 +273,23 @@ async function initProductionDatabase() {
     if (rows[0].count === 0) {
       console.log('Database: Seeding MySQL products table from products.json...');
       for (const prod of productsData.products) {
+        const cols = ['id', 'name', 'description', 'price', 'ribbon', 'collections', 'images'];
+        const vals = [
+          prod.id,
+          prod.name,
+          prod.description,
+          prod.price,
+          prod.ribbon || null,
+          JSON.stringify(prod.collections),
+          JSON.stringify(prod.images)
+        ];
+        if (schema.productStock) {
+          cols.push('stock', 'in_stock');
+          vals.push(prod.stock == null ? null : Number(prod.stock), prod.inStock === false ? 0 : 1);
+        }
         await conn.query(
-          'INSERT INTO products (id, name, description, price, ribbon, collections, images, stock, in_stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [
-            prod.id,
-            prod.name,
-            prod.description,
-            prod.price,
-            prod.ribbon || null,
-            JSON.stringify(prod.collections),
-            JSON.stringify(prod.images),
-            prod.stock == null ? null : Number(prod.stock),
-            prod.inStock === false ? 0 : 1
-          ]
+          `INSERT INTO products (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`,
+          vals
         );
       }
       console.log(`Database: Successfully seeded ${productsData.products.length} products.`);
@@ -451,9 +468,15 @@ async function createProduct(input) {
 
   if (pool) {
     try {
+      const cols = ['id', 'name', 'description', 'price', 'ribbon', 'collections', 'images'];
+      const vals = [product.id, product.name, product.description, product.price, product.ribbon, JSON.stringify(product.collections), JSON.stringify(product.images)];
+      if (schema.productStock) {
+        cols.push('stock', 'in_stock');
+        vals.push(product.stock ?? null, product.inStock === false ? 0 : 1);
+      }
       await pool.query(
-        'INSERT INTO products (id, name, description, price, ribbon, collections, images, stock, in_stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [product.id, product.name, product.description, product.price, product.ribbon, JSON.stringify(product.collections), JSON.stringify(product.images), product.stock, product.inStock === false ? 0 : 1]
+        `INSERT INTO products (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`,
+        vals
       );
       return product;
     } catch (err) {
@@ -473,10 +496,14 @@ async function updateProduct(id, input) {
       const existing = await getProductById(id);
       if (!existing) throw new Error('Product not found');
       const merged = normalizeProductInput(input, existing);
-      await pool.query(
-        'UPDATE products SET name = ?, description = ?, price = ?, ribbon = ?, collections = ?, images = ?, stock = ?, in_stock = ? WHERE id = ?',
-        [merged.name, merged.description, merged.price, merged.ribbon, JSON.stringify(merged.collections), JSON.stringify(merged.images), merged.stock ?? null, merged.inStock === false ? 0 : 1, id]
-      );
+      const sets = ['name = ?', 'description = ?', 'price = ?', 'ribbon = ?', 'collections = ?', 'images = ?'];
+      const vals = [merged.name, merged.description, merged.price, merged.ribbon, JSON.stringify(merged.collections), JSON.stringify(merged.images)];
+      if (schema.productStock) {
+        sets.push('stock = ?', 'in_stock = ?');
+        vals.push(merged.stock ?? null, merged.inStock === false ? 0 : 1);
+      }
+      vals.push(id);
+      await pool.query(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`, vals);
       return merged;
     } catch (err) {
       console.error('MySQL updateProduct failed, falling back to JSON file', err);
