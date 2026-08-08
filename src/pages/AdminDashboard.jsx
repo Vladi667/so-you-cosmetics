@@ -8,12 +8,13 @@ const AdminDashboard = ({ onLogout }) => {
   const [workshops, setWorkshops] = useState([]);
   const [workshopForm, setWorkshopForm] = useState({ id: null, title: '', description: '', price: '', duration: '', image_url: '' });
   const [products, setProducts] = useState([]);
-  const [productForm, setProductForm] = useState({ id: null, name: '', price: '', ribbon: '', collectionsText: '', imagesText: '', description: '', stock: '', inStock: true });
+  const [productForm, setProductForm] = useState({ id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true });
   const [productSearch, setProductSearch] = useState('');
   const [productsPage, setProductsPage] = useState(1);
   const [imageUploading, setImageUploading] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState('');
   const PRODUCTS_PER_PAGE = 25;
-  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', imagesText: '', description: '', stock: '', inStock: true };
+  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -70,7 +71,7 @@ const AdminDashboard = ({ onLogout }) => {
   };
 
   // Upload one or more image files from the admin's computer; append the
-  // resulting public URLs to the product form's images textarea.
+  // resulting public URLs to the product form's image list.
   const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -97,7 +98,7 @@ const AdminDashboard = ({ onLogout }) => {
         const j = await resp.json();
         urls.push(j.url);
       }
-      setProductForm(f => ({ ...f, imagesText: (f.imagesText ? f.imagesText + '\n' : '') + urls.join('\n') }));
+      setProductForm(f => ({ ...f, images: [...f.images, ...urls] }));
     } catch (err) {
       alert(err.message);
     } finally {
@@ -278,7 +279,12 @@ const AdminDashboard = ({ onLogout }) => {
       .then(({ ok, data }) => {
         setFulfillSaving(false);
         if (!ok) throw new Error(data.error || 'Erreur');
-        setFulfillStatus({ success: fulfillForm.type === 'pickup' ? 'Client averti par e-mail : commande prête à retirer.' : 'Client averti par e-mail avec le numéro de suivi.', error: '' });
+        // Only claim the customer was notified if the server actually sent it.
+        if (data.emailSent === false) {
+          setFulfillStatus({ success: '', error: "Commande mise à jour, mais l'e-mail au client n'a pas pu être envoyé." });
+        } else {
+          setFulfillStatus({ success: fulfillForm.type === 'pickup' ? 'Client averti par e-mail : commande prête à retirer.' : 'Client averti par e-mail avec le numéro de suivi.', error: '' });
+        }
         // Reflect updated status in the orders list + currently selected order
         setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: data.order.status, fulfillment: data.order.fulfillment } : o));
         setSelectedOrder(prev => prev ? { ...prev, status: data.order.status, fulfillment: data.order.fulfillment } : prev);
@@ -682,7 +688,10 @@ const AdminDashboard = ({ onLogout }) => {
                   ribbon: productForm.ribbon,
                   description: productForm.description,
                   collections: productForm.collectionsText,
-                  images: productForm.imagesText,
+                  images: productForm.images,
+                  // Only an empty list the admin created on purpose may wipe the
+                  // product's images; the server ignores an empty list otherwise.
+                  clearImages: productForm.images.length === 0,
                   stock: productForm.stock === '' ? null : productForm.stock,
                   inStock: !!productForm.inStock
                 };
@@ -711,8 +720,65 @@ const AdminDashboard = ({ onLogout }) => {
                     </label>
                     <span className="text-xs text-stone-gray">PNG, JPG, WEBP · plusieurs fichiers possibles</span>
                   </div>
-                  <textarea placeholder="https://...jpg&#10;https://drive.google.com/file/d/.../view  (lien Google Drive accepté)" value={productForm.imagesText} onChange={e => setProductForm({...productForm, imagesText: e.target.value})} className="px-4 py-2 border rounded w-full h-24"></textarea>
-                  <p className="text-xs text-stone-gray mt-1">Téléversez des fichiers depuis votre ordinateur (recommandé), <strong>ou</strong> collez une URL d'image / un lien de partage Google Drive (une par ligne). Les images téléversées apparaissent automatiquement ci-dessus.</p>
+                  {productForm.images.length > 0 ? (
+                    <div className="flex flex-wrap gap-3 mb-3">
+                      {productForm.images.map((url, idx) => (
+                        <div key={`${url}-${idx}`} className="relative group">
+                          <img
+                            src={url}
+                            alt={`Image ${idx + 1}`}
+                            className="w-24 h-24 object-cover rounded border border-slate-stone/10 bg-mist-white"
+                            onError={e => { e.currentTarget.style.opacity = '0.25'; }}
+                          />
+                          {idx === 0 && (
+                            <span className="absolute bottom-1 left-1 bg-slate-stone/90 text-white text-[9px] tracking-wider uppercase px-1.5 py-0.5 rounded">Principale</span>
+                          )}
+                          <button
+                            type="button"
+                            title="Retirer cette image"
+                            onClick={() => setProductForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }))}
+                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 text-white text-xs leading-none shadow hover:bg-red-700"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">
+                      Aucune image. Si vous enregistrez ainsi, le produit s'affichera sans photo.
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      placeholder="…ou collez une URL d'image / un lien Google Drive"
+                      value={imageUrlInput}
+                      onChange={e => setImageUrlInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key !== 'Enter') return;
+                        e.preventDefault();
+                        const v = imageUrlInput.trim();
+                        if (!v) return;
+                        setProductForm(f => ({ ...f, images: [...f.images, v] }));
+                        setImageUrlInput('');
+                      }}
+                      className="px-4 py-2 border rounded flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const v = imageUrlInput.trim();
+                        if (!v) return;
+                        setProductForm(f => ({ ...f, images: [...f.images, v] }));
+                        setImageUrlInput('');
+                      }}
+                      className="px-4 py-2 bg-gray-200 rounded text-sm whitespace-nowrap"
+                    >
+                      Ajouter l'URL
+                    </button>
+                  </div>
+                  <p className="text-xs text-stone-gray mt-1">La première image est celle affichée sur la boutique. Cliquez sur ✕ pour retirer une image ; les autres champs peuvent être modifiés sans y toucher.</p>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Description (HTML accepté)</label>
@@ -777,7 +843,7 @@ const AdminDashboard = ({ onLogout }) => {
                               price: p.price ?? '',
                               ribbon: p.ribbon || '',
                               collectionsText: (p.collections || []).join(', '),
-                              imagesText: (p.images || []).join('\n'),
+                              images: Array.isArray(p.images) ? [...p.images] : [],
                               description: p.description || '',
                               stock: p.stock == null ? '' : String(p.stock),
                               inStock: p.inStock !== false

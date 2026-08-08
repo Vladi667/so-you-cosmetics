@@ -5,6 +5,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 
 const apiRouter = require('./routes');
+const { ensureUploadsDir } = require('./uploads');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -23,10 +24,9 @@ app.use(express.json({
   verify: (req, _res, buf) => { req.rawBody = buf; }
 }));
 
-// Serve admin-uploaded product images. Stored under server/data/uploads so they
-// survive deploys (dist is overwritten on each deploy) and are never committed.
-const uploadsRoot = path.join(__dirname, 'data', 'uploads');
-require('fs').mkdirSync(uploadsRoot, { recursive: true });
+// Serve admin-uploaded product images. Location is shared with routes.js and
+// overridable via UPLOADS_DIR so it can point at a persistent volume.
+const uploadsRoot = ensureUploadsDir();
 app.use('/uploads', express.static(uploadsRoot));
 
 // Serve ACME HTTP-01 challenge files from the filesystem (for Let's Encrypt SSL validation).
@@ -54,5 +54,6 @@ app.listen(PORT, () => {
   console.log(`  SoYou Cosmetics Server is now running!`);
   console.log(`  Local URL:  http://localhost:${PORT}`);
   console.log(`  Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`  Uploads dir: ${uploadsRoot}`);
   console.log(`=========================================`);
 });

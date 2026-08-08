@@ -121,6 +121,26 @@ if (isProductionDb) {
   console.log('Database: Running locally using File-based JSON Database.');
 }
 
+// Add a column only if it is missing. `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
+// is MariaDB-only syntax and throws on stock MySQL, so we check the catalog
+// first — this works on both.
+async function ensureColumn(conn, table, column, definition) {
+  try {
+    const [rows] = await conn.query(
+      `SELECT COUNT(*) AS n FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+      [table, column]
+    );
+    if (rows[0].n > 0) return false;
+    await conn.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
+    console.log(`Database: added missing column ${table}.${column}`);
+    return true;
+  } catch (err) {
+    console.error(`Database: failed to ensure column ${table}.${column}`, err);
+    return false;
+  }
+}
+
 async function initProductionDatabase() {
   try {
     const conn = await pool.getConnection();
@@ -135,9 +155,16 @@ async function initProductionDatabase() {
         price DECIMAL(10,2) NOT NULL,
         ribbon VARCHAR(100),
         collections TEXT,
-        images TEXT
+        images TEXT,
+        stock INT NULL,
+        in_stock TINYINT(1) NOT NULL DEFAULT 1
       )
     `);
+
+    // Migrate tables created before stock tracking existed. Without this the
+    // admin's stock/"épuisé" edits are accepted by the API and silently dropped.
+    await ensureColumn(conn, 'products', 'stock', 'INT NULL');
+    await ensureColumn(conn, 'products', 'in_stock', 'TINYINT(1) NOT NULL DEFAULT 1');
 
     // Create orders table
     await conn.query(`
@@ -149,9 +176,13 @@ async function initProductionDatabase() {
         items TEXT NOT NULL,
         status VARCHAR(50) DEFAULT 'Pending',
         stripe_payment_intent VARCHAR(255),
+        fulfillment TEXT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Migrate orders tables created before pickup/shipping tracking existed.
+    await ensureColumn(conn, 'orders', 'fulfillment', 'TEXT NULL');
 
     // Create bookings table
     await conn.query(`
@@ -230,7 +261,7 @@ async function initProductionDatabase() {
       console.log('Database: Seeding MySQL products table from products.json...');
       for (const prod of productsData.products) {
         await conn.query(
-          'INSERT INTO products (id, name, description, price, ribbon, collections, images) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          'INSERT INTO products (id, name, description, price, ribbon, collections, images, stock, in_stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
           [
             prod.id,
             prod.name,
@@ -238,7 +269,9 @@ async function initProductionDatabase() {
             prod.price,
             prod.ribbon || null,
             JSON.stringify(prod.collections),
-            JSON.stringify(prod.images)
+            JSON.stringify(prod.images),
+            prod.stock == null ? null : Number(prod.stock),
+            prod.inStock === false ? 0 : 1
           ]
         );
       }
@@ -256,17 +289,63 @@ async function initProductionDatabase() {
 // database actions
 // ==========================================
 
+// Parse a TEXT/JSON column that should hold an array of strings. A malformed
+// value must never throw: previously one bad row made the whole catalogue fall
+// back to the bundled static JSON, which is how edited products appeared to
+// "lose" their images.
+function parseArrayColumn(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  }
+  return [];
+}
+
+// Map a MySQL products row onto the shape the app uses everywhere else
+// (camelCase `inStock`, arrays for collections/images).
+function mapProductRow(r) {
+  const { in_stock, ...rest } = r;
+  return {
+    ...rest,
+    price: parseFloat(r.price),
+    collections: parseArrayColumn(r.collections),
+    images: parseArrayColumn(r.images),
+    stock: r.stock == null ? null : Number(r.stock),
+    inStock: in_stock === undefined || in_stock === null ? true : !!in_stock
+  };
+}
+
+// Map a MySQL orders row onto the shape the app uses. `items` and `fulfillment`
+// are JSON-encoded TEXT columns; a malformed value must degrade gracefully
+// rather than throw, and `fulfillment` must be an object — the admin reads
+// .type/.carrier/.tracking_number off it directly.
+function mapOrderRow(r) {
+  let fulfillment = null;
+  if (r.fulfillment) {
+    if (typeof r.fulfillment === 'string') {
+      try { fulfillment = JSON.parse(r.fulfillment); } catch (_) { fulfillment = null; }
+    } else {
+      fulfillment = r.fulfillment;
+    }
+  }
+  let items = r.items;
+  if (typeof items === 'string') {
+    try { items = JSON.parse(items); } catch (_) { items = []; }
+  }
+  return { ...r, total: parseFloat(r.total), items, fulfillment };
+}
+
 // 1. Get Products
 async function getProducts() {
   if (pool) {
     try {
       const [rows] = await pool.query('SELECT * FROM products');
-      return rows.map(r => ({
-        ...r,
-        price: parseFloat(r.price),
-        collections: typeof r.collections === 'string' ? JSON.parse(r.collections) : r.collections,
-        images: typeof r.images === 'string' ? JSON.parse(r.images) : r.images
-      }));
+      return rows.map(mapProductRow);
     } catch (err) {
       console.error('MySQL getProducts failed, falling back to JSON file', err);
     }
@@ -279,15 +358,7 @@ async function getProductById(id) {
   if (pool) {
     try {
       const [rows] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
-      if (rows.length > 0) {
-        const r = rows[0];
-        return {
-          ...r,
-          price: parseFloat(r.price),
-          collections: typeof r.collections === 'string' ? JSON.parse(r.collections) : r.collections,
-          images: typeof r.images === 'string' ? JSON.parse(r.images) : r.images
-        };
-      }
+      if (rows.length > 0) return mapProductRow(rows[0]);
       return null;
     } catch (err) {
       console.error('MySQL getProductById failed, falling back to JSON file', err);
@@ -344,7 +415,18 @@ function normalizeProductInput(input, base = {}) {
   if (input.price !== undefined) out.price = Number(input.price) || 0;
   if (input.ribbon !== undefined) out.ribbon = input.ribbon || null;
   if (input.collections !== undefined) out.collections = toArray(input.collections);
-  if (input.images !== undefined) out.images = toArray(input.images).map(normalizeImageUrl);
+  if (input.images !== undefined) {
+    const next = toArray(input.images).map(normalizeImageUrl);
+    const had = Array.isArray(base.images) && base.images.length > 0;
+    // Refuse to silently wipe a product's images. A client bug (or a stale form
+    // that never loaded them) must not destroy them; clearing is only honoured
+    // when the caller says so explicitly via `clearImages`.
+    if (next.length === 0 && had && !input.clearImages) {
+      console.warn(`Product update sent an empty image list for "${base.name || base.id}" without clearImages — keeping the existing ${base.images.length} image(s).`);
+    } else {
+      out.images = next;
+    }
+  }
   // Stock count (optional, admin-only) and explicit in/out-of-stock flag.
   if (input.stock !== undefined) {
     out.stock = input.stock === '' || input.stock === null ? null : (Number(input.stock) || 0);
@@ -370,8 +452,8 @@ async function createProduct(input) {
   if (pool) {
     try {
       await pool.query(
-        'INSERT INTO products (id, name, description, price, ribbon, collections, images) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [product.id, product.name, product.description, product.price, product.ribbon, JSON.stringify(product.collections), JSON.stringify(product.images)]
+        'INSERT INTO products (id, name, description, price, ribbon, collections, images, stock, in_stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [product.id, product.name, product.description, product.price, product.ribbon, JSON.stringify(product.collections), JSON.stringify(product.images), product.stock, product.inStock === false ? 0 : 1]
       );
       return product;
     } catch (err) {
@@ -392,8 +474,8 @@ async function updateProduct(id, input) {
       if (!existing) throw new Error('Product not found');
       const merged = normalizeProductInput(input, existing);
       await pool.query(
-        'UPDATE products SET name = ?, description = ?, price = ?, ribbon = ?, collections = ?, images = ? WHERE id = ?',
-        [merged.name, merged.description, merged.price, merged.ribbon, JSON.stringify(merged.collections), JSON.stringify(merged.images), id]
+        'UPDATE products SET name = ?, description = ?, price = ?, ribbon = ?, collections = ?, images = ?, stock = ?, in_stock = ? WHERE id = ?',
+        [merged.name, merged.description, merged.price, merged.ribbon, JSON.stringify(merged.collections), JSON.stringify(merged.images), merged.stock ?? null, merged.inStock === false ? 0 : 1, id]
       );
       return merged;
     } catch (err) {
@@ -689,11 +771,7 @@ async function getOrders() {
   if (pool) {
     try {
       const [rows] = await pool.query('SELECT * FROM orders ORDER BY created_at DESC');
-      return rows.map(r => ({
-        ...r,
-        total: parseFloat(r.total),
-        items: typeof r.items === 'string' ? JSON.parse(r.items) : r.items
-      }));
+      return rows.map(mapOrderRow);
     } catch (err) {
       console.error('MySQL getOrders failed, falling back to JSON file', err);
     }
@@ -710,13 +788,7 @@ async function getOrderById(orderId) {
     try {
       const [rows] = await pool.query('SELECT * FROM orders WHERE id = ?', [orderId]);
       if (!rows.length) return null;
-      const r = rows[0];
-      return {
-        ...r,
-        total: parseFloat(r.total),
-        items: typeof r.items === 'string' ? JSON.parse(r.items) : r.items,
-        fulfillment: r.fulfillment ? (typeof r.fulfillment === 'string' ? JSON.parse(r.fulfillment) : r.fulfillment) : null
-      };
+      return mapOrderRow(rows[0]);
     } catch (err) {
       console.error('MySQL getOrderById failed, falling back to JSON file', err);
     }
@@ -905,20 +977,17 @@ function getInboxConfig() {
 // and also update top-level status if provided.
 async function updateOrderFulfillment(orderId, patch) {
   if (pool) {
-    try {
-      // We piggy-back on the existing `items` JSON column? No — safer: store as
-      // an extra TEXT column added on the fly. For now, the MySQL path stores
-      // fulfillment as a JSON-encoded string in a new column we create lazily.
-      await pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS fulfillment TEXT NULL");
-      const existing = await getOrderById(orderId);
-      if (!existing) return null;
-      const merged = { ...(existing.fulfillment || {}), ...patch };
-      const status = patch.status || existing.status;
-      await pool.query('UPDATE orders SET fulfillment = ?, status = ? WHERE id = ?', [JSON.stringify(merged), status, orderId]);
-      return { ...existing, fulfillment: merged, status };
-    } catch (err) {
-      console.error('MySQL updateOrderFulfillment failed, falling back to JSON file', err);
-    }
+    // The `fulfillment` column is created/migrated in initProductionDatabase.
+    // Note there is deliberately no JSON-file fallback here: when MySQL is the
+    // active store, the orders.json file is not the source of truth, so writing
+    // to it would report success while leaving the real order untouched. Better
+    // to surface the failure so the admin knows the order was not updated.
+    const existing = await getOrderById(orderId);
+    if (!existing) return null;
+    const merged = { ...(existing.fulfillment || {}), ...patch };
+    const status = patch.status || existing.status;
+    await pool.query('UPDATE orders SET fulfillment = ?, status = ? WHERE id = ?', [JSON.stringify(merged), status, orderId]);
+    return { ...existing, fulfillment: merged, status };
   }
 
   const data = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));

@@ -8,7 +8,7 @@ const emailService = require('./email');
 const imapService = require('./imap');
 
 // Directory for admin-uploaded product images (served at /uploads by index.js).
-const UPLOADS_DIR = path.join(__dirname, 'data', 'uploads');
+const { UPLOADS_DIR, ensureUploadsDir } = require('./uploads');
 
 // Compare two strings in constant time; tolerates length mismatch
 function timingSafeEqualStr(a, b) {
@@ -93,11 +93,18 @@ router.get('/workshops', async (req, res) => {
   }
 });
 
+// The storefront only needs to know *whether* an item is available, never how
+// many are left — the admin UI labels the count "interne, non affiché".
+function stripInternalFields(product) {
+  const { stock, ...pub } = product;
+  return pub;
+}
+
 // 1. Get Products
 router.get('/products', async (req, res) => {
   try {
     const products = await db.getProducts();
-    res.json(products);
+    res.json(products.map(stripInternalFields));
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve products' });
   }
@@ -110,13 +117,24 @@ router.get('/products/:id', async (req, res) => {
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
-    res.json(product);
+    res.json(stripInternalFields(product));
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve product details' });
   }
 });
 
 // Email body for the "payment received / order confirmed" message.
+// Orders are stored with `customer_name` / `customer_email` (both in MySQL and
+// in orders.json), but the create-order request body uses `name` / `email`.
+// Read them through this helper so a stored order is never addressed with the
+// request-body field names — that silently produced `to: undefined`.
+function orderContact(order) {
+  return {
+    name: order.customer_name || order.name || 'cher client',
+    email: order.customer_email || order.email || ''
+  };
+}
+
 // Used both by the order-create flow (when SumUp is mocked) and by the
 // SumUp webhook (in production), so the customer's purchase email is identical.
 function buildPaymentConfirmedEmail({ name, orderId, total }) {
@@ -292,10 +310,15 @@ router.post('/sumup/webhook', async (req, res) => {
     }
 
     await db.updateOrderStatus(order.id, 'paid');
+    const { name, email } = orderContact(order);
+    if (!email) {
+      console.error(`SumUp webhook: order ${order.id} is marked paid but has no customer email — confirmation not sent.`);
+      return;
+    }
     await emailService.sendMail({
-      to: order.email,
+      to: email,
       subject: `Merci pour votre achat ${order.id} - SoYou Cosmetics`,
-      html: buildPaymentConfirmedEmail({ name: order.name, orderId: order.id, total: order.total })
+      html: buildPaymentConfirmedEmail({ name, orderId: order.id, total: order.total })
     });
   } catch (err) {
     console.error('SumUp webhook handler error:', err);
@@ -688,8 +711,12 @@ router.post('/admin/orders/:id/fulfill', requireAdmin, async (req, res) => {
     };
     const newStatus = type === 'pickup' ? 'ReadyForPickup' : 'Shipped';
     const updated = await db.updateOrderFulfillment(order.id, { ...fulfillment, status: newStatus });
+    // Never tell the customer their order shipped if we failed to record it.
+    if (!updated) {
+      return res.status(500).json({ error: "La commande n'a pas pu être mise à jour ; aucun email n'a été envoyé." });
+    }
 
-    const customerName = order.customer_name || order.name || 'cher client';
+    const { name: customerName, email: customerEmail } = orderContact(order);
     let subject, html;
     if (type === 'pickup') {
       subject = `Votre commande ${order.id} est prête à être retirée !`;
@@ -699,13 +726,23 @@ router.post('/admin/orders/:id/fulfill', requireAdmin, async (req, res) => {
       html = buildShippedEmail({ name: customerName, orderId: order.id, carrier, trackingNumber: tracking_number });
     }
 
-    try {
-      await emailService.sendMail({ to: order.customer_email || order.email, subject, html });
-    } catch (mailErr) {
-      console.error('Failed to send fulfillment email:', mailErr);
+    let emailSent = false;
+    if (customerEmail) {
+      try {
+        await emailService.sendMail({ to: customerEmail, subject, html });
+        emailSent = true;
+      } catch (mailErr) {
+        console.error('Failed to send fulfillment email:', mailErr);
+      }
+    } else {
+      console.error(`Order ${order.id} has no customer email — fulfillment notification not sent.`);
     }
 
-    res.json({ message: 'Commande mise à jour et email envoyé', order: updated });
+    res.json({
+      message: emailSent ? 'Commande mise à jour et email envoyé' : "Commande mise à jour, mais l'email n'a pas pu être envoyé.",
+      emailSent,
+      order: updated
+    });
   } catch (err) {
     console.error('Fulfillment error:', err);
     res.status(500).json({ error: 'Erreur lors de la mise à jour de la commande' });
@@ -825,7 +862,7 @@ router.post('/admin/products/upload-image', requireAdmin, async (req, res) => {
     if (buf.length > 12 * 1024 * 1024) {
       return res.status(413).json({ error: 'Image trop volumineuse (max 12 Mo)' });
     }
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+    ensureUploadsDir();
     const safeBase = String(filename || 'image').replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 40) || 'image';
     const name = `${safeBase}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
     fs.writeFileSync(path.join(UPLOADS_DIR, name), buf);
