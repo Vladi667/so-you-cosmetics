@@ -90,24 +90,23 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
       }`}>
         <div className="container mx-auto px-4 sm:px-6 md:px-12 flex items-center">
           <button onClick={() => onCategorySelect('All')} className="transition-all duration-200 hover:opacity-85 active:scale-95 py-1 flex items-center transform-gpu">
-            <Logo 
+            {/* The white logo sits over the hero video, so it disappears on a
+                light frame or before the video paints. A soft shadow keeps it
+                readable on any background — the client reported it as
+                "quasi illisible". */}
+            <Logo
               className={`h-5 sm:h-8 w-auto transition-colors duration-500 ${
-                scrolled || !isContentPage ? 'text-white' : 'text-slate-stone'
-              }`} 
+                scrolled || !isContentPage
+                  ? 'text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]'
+                  : 'text-slate-stone'
+              }`}
             />
           </button>
           
-          {/* Desktop navigation — hidden below lg */}
+          {/* Desktop navigation — hidden below lg.
+              No "Accueil" link: the client asked for the logo to serve as the
+              home button, so a text duplicate would be redundant. */}
           <div className="hidden lg:flex ml-auto space-x-10 items-center mr-10">
-            <button 
-              onClick={() => onCategorySelect('Home')} 
-              className={`font-sans text-[11px] tracking-[0.2em] uppercase py-1 cursor-pointer transition-all duration-300 active:scale-95 relative transform-gpu
-                after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1.5px] after:bg-current after:transition-transform after:duration-300 after:origin-left
-                ${isLinkActive('Home') ? 'after:scale-x-100' : 'after:scale-x-0 hover:after:scale-x-100'} ${getLinkColor('Home')}`}
-            >
-              {t('nav.home')}
-            </button>
-            
             <div className="relative group py-4">
               <button 
                 className={`font-sans text-[11px] tracking-[0.2em] uppercase py-1 cursor-pointer transition-all duration-300 active:scale-95 relative flex items-center gap-1.5 transform-gpu

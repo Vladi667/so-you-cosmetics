@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getProducts } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
+import ProductBadge from '../components/ProductBadge';
+import { descriptionToHtml } from '../utils/description';
 
 const placeholders = [
   'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=600&q=80',
@@ -103,9 +105,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 <div className="aspect-[4/5] w-full rounded-3xl overflow-hidden bg-white shadow-sm mb-6 relative group">
                   {product.ribbon && (
                     <div className="absolute top-6 left-6 z-10">
-                      <span className="inline-block bg-white/90 backdrop-blur-md text-slate-stone text-xs tracking-widest uppercase px-4 py-2 rounded-full shadow-sm font-medium">
-                        {product.ribbon}
-                      </span>
+                      <ProductBadge ribbon={product.ribbon} size="lg" />
                     </div>
                   )}
                   <img 
@@ -163,9 +163,13 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
 
               {/* HTML Description */}
               {product.description ? (
-                <div 
-                  className="prose prose-sm prose-slate max-w-none font-sans font-light text-stone-gray leading-relaxed mb-10"
-                  dangerouslySetInnerHTML={{ __html: product.description }}
+                <div
+                  className="prose prose-sm prose-slate max-w-none font-sans font-light text-stone-gray leading-relaxed mb-10
+                             prose-headings:font-serif prose-headings:text-slate-stone prose-headings:font-normal
+                             prose-h2:text-xl prose-h3:text-lg prose-h4:text-base
+                             prose-strong:text-slate-stone prose-strong:font-medium
+                             prose-p:mb-4 prose-ul:my-4 prose-li:marker:text-stone-gray/50"
+                  dangerouslySetInnerHTML={{ __html: descriptionToHtml(product.description) }}
                 />
               ) : (
                 <p className="font-sans font-light text-stone-gray leading-relaxed mb-10">
@@ -239,9 +243,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                       <img src={img} alt={p.name} className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-in-out" />
                       {p.ribbon && (
                         <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10">
-                          <span className="inline-block bg-white/90 backdrop-blur-sm text-slate-stone text-[9px] sm:text-xs tracking-widest uppercase px-2 py-1 sm:px-3 sm:py-1.5 rounded-full shadow-sm">
-                            {p.ribbon}
-                          </span>
+                          <ProductBadge ribbon={p.ribbon} />
                         </div>
                       )}
                     </Link>

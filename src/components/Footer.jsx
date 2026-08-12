@@ -8,10 +8,13 @@ const SOCIAL = {
   facebook: 'https://www.facebook.com/share/1JV7jPXXqX/?mibextid=wwXIfr'
 };
 
+// Order requested by the client: So You · Boutique · Notre histoire · Ateliers · Contact.
+// The Journal entry joins this list when the Journal section itself is built.
 const EXPLORE_LINKS = [
+  { key: 'home', to: '/' },
   { key: 'products', to: '/category/All' },
-  { key: 'workshops', to: '/workshops' },
   { key: 'about', to: '/about' },
+  { key: 'workshops', to: '/workshops' },
   { key: 'contact', to: '/contact' }
 ];
 
@@ -83,12 +86,14 @@ const Footer = () => {
               </a>
             </div>
             <div className="space-y-2 text-sm text-mist-white/60 font-light">
-              <p>3 ave. Pictet-De-Rochemont, 1207 Genève</p>
+              <p>{t('footer.address')}</p>
               <p><a href="tel:+41225566992" className="hover:text-white transition-colors duration-300">022 556 69 92</a></p>
             </div>
           </div>
 
-          <div>
+          {/* Client asked for the EXPLORER block centred; the brand/address
+              column above stays left-aligned. */}
+          <div className="text-center">
             <h4 className="font-sans font-medium uppercase tracking-[0.2em] text-[10px] mb-8 text-alpine-silver">{t('footer.explore')}</h4>
             <ul className="space-y-4">
               {EXPLORE_LINKS.map((item) => (

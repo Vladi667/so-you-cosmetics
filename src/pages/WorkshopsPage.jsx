@@ -59,7 +59,7 @@ const WorkshopsPage = () => {
         <div className="absolute inset-0 bg-slate-stone overflow-hidden">
           <AutoPlayVideo
             src="/workshop.mp4"
-            className="w-full h-full object-cover opacity-70 mix-blend-overlay scale-105 sepia-[.03]"
+            className="w-full h-full object-cover opacity-85 brightness-125 contrast-95 mix-blend-overlay scale-105 sepia-[.03]"
           />
           {/* Vignette */}
           <div className="absolute inset-0 z-10" style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.45) 100%)' }}></div>
@@ -182,9 +182,9 @@ const WorkshopsPage = () => {
           <img
             src="/workshop_crafting.png"
             alt="Atelier Background"
-            className="w-full h-full object-cover opacity-30 mix-blend-overlay"
+            className="w-full h-full object-cover opacity-50 brightness-125 contrast-95 mix-blend-overlay"
           />
-          <div className="absolute inset-0 bg-slate-stone/50"></div>
+          <div className="absolute inset-0 bg-slate-stone/35"></div>
         </div>
         <div className="relative z-10 container mx-auto px-6 text-center reveal">
           <h2 className="font-serif text-2xl sm:text-5xl md:text-7xl text-white mb-6 sm:mb-10 drop-shadow-lg">{t('workshopsPage.ctaTitle')}</h2>

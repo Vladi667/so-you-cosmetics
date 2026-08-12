@@ -49,7 +49,7 @@ const LegalLayout = ({ title, intro, sections = [], lastUpdated }) => {
           <div className="mt-16 pt-8 border-t border-slate-stone/10">
             <p className="font-sans text-stone-gray/60 text-sm">
               {t('legal.contactQuestionPrefix')}
-              <a href="mailto:contact@soyou.ch" className="text-slate-stone hover:underline">contact@soyou.ch</a>{t('legal.contactQuestionSuffix')}
+              <a href="mailto:contact@soyoucosmetics.com" className="text-slate-stone hover:underline">contact@soyoucosmetics.com</a>{t('legal.contactQuestionSuffix')}
             </p>
           </div>
         </div>

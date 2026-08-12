@@ -20,7 +20,7 @@ const translations = {
     nav: {
       home: 'Accueil',
       shop: 'Boutique',
-      about: 'À Propos',
+      about: 'Notre histoire',
       workshops: 'Ateliers',
       contact: 'Contact',
       search: 'Rechercher',
@@ -37,14 +37,15 @@ const translations = {
       subtitle: 'Savons artisanaux, rituels de bain, soins du corps et bien-être botanique, élaborés avec la pureté suisse.',
       cta1: 'Découvrir la Collection',
       cta2: 'Nos Ateliers',
+      marieClaire: 'Article Marie Claire',
       scroll: 'Défiler',
     },
     brandEssence: {
       marquee: 'PURETÉ SUISSE & SAVOIR-FAIRE ARTISANAL • ZÉRO COMPROMIS SUR LA QUALITÉ • COSMÉTIQUE 100% NATURELLE • ',
     },
     signature: {
-      title: 'Collection Signature',
-      subtitle: 'Nos formulations botaniques les plus précieuses, sélectionnées pour votre rituel quotidien.',
+      title: 'Nos coups de cœur',
+      subtitle: '',
       add: 'Ajouter',
     },
     handmade: {
@@ -89,6 +90,7 @@ const translations = {
       loadMore: 'Voir plus',
       cosmeticsFallback: 'Cosmétiques',
       outOfStock: 'Épuisé',
+      badges: { 'coming-soon': 'Bientôt disponible', 'best-seller': 'Meilleure vente' },
     },
     categories: {
       All: 'Tous',
@@ -106,15 +108,16 @@ const translations = {
       'Soin des cheveux': 'Soin des cheveux',
     },
     footer: {
-      tagline: 'Cosmétiques naturels et artisanaux faits main à Genève. Formulés avec la pureté suisse pour votre rituel de bien-être quotidien.',
+      tagline: 'Cosmétiques naturels Swiss Made',
       explore: 'Explorer',
-      links: { products: 'Produits', workshops: 'Ateliers', about: 'À propos', contact: 'Contact' },
+      address: '3 av. Pictet-De-Rochemont, 1207 Genève',
+      links: { home: 'So You', products: 'Boutique', about: 'Notre histoire', workshops: 'Ateliers', contact: 'Contact' },
       newsletter: 'Newsletter',
       newsletterText: 'Rejoignez notre communauté pour des conseils bien-être botanique et des offres exclusives.',
       emailPlaceholder: 'Votre adresse e-mail',
       subscribe: 'S\'inscrire',
       subscribed: '✓ Inscrit',
-      rights: (year) => `© ${year} So You Cosmetics. Fait main à Genève.`,
+      rights: (year) => `© ${year} So You Cosmetics Genève. Tous droits réservés.`,
       terms: 'Conditions Générales',
       privacy: 'Politique de Confidentialité',
     },
@@ -147,14 +150,14 @@ const translations = {
       shopFallback: 'Boutique',
       addToCart: 'Ajouter au panier',
       shippingTitle: 'Livraison Suisse',
-      shippingText: "Livraison offerte dès CHF 100.- d'achat. Expédition sous 2 à 4 jours ouvrés.",
+      shippingText: "Livraison offerte dès CHF 150.- d'achat. Expédition sous 2 à 4 jours ouvrés.",
       defaultDesc: 'Un produit artisanal So You, fait main avec amour à Genève.',
       youMayAlsoLike: 'Vous aimerez aussi',
     },
     category: { home: 'Accueil' },
     search: { home: 'Accueil', label: 'Recherche :' },
     legal: {
-      brand: 'SoYou Cosmetics',
+      brand: 'So You Cosmetics',
       lastUpdatedLabel: 'Dernière mise à jour :',
       contactQuestionPrefix: 'Pour toute question, contactez-nous à ',
       contactQuestionSuffix: '.',
@@ -195,7 +198,7 @@ const translations = {
       quote: '"Créez vos propres cosmétiques naturels"',
       introTitleLine1: "L'Art de la",
       introTitleLine2: 'Fabrication',
-      introP1: 'Les ateliers sont dispensés sur demande, les samedis ou exceptionnellement les dimanches. Ils sont également personnalisables selon les besoins de chacun.',
+      introP1: 'Les ateliers sont proposés sur rendez-vous, généralement le mercredi et le samedi, avec quelques disponibilités le dimanche et le lundi. Ils sont également personnalisables selon les besoins de chacun.',
       introQuote: '"Chacun repart avec sa propre fabrication."',
       nextWorkshops: 'Nos Prochains Ateliers',
       reserveThis: 'Réserver cet atelier',
@@ -203,9 +206,9 @@ const translations = {
       detailsSubtitle: 'Un moment privilégié de création, rien que pour vous.',
       details: [
         { label: 'Format', value: 'One-to-one ou 2 personnes maximum' },
-        { label: 'Tarifs', value: 'CHF 150 — CHF 450 par personne' },
-        { label: 'Durée', value: "2 à 6 heures selon l'atelier choisi" },
-        { label: 'Jours', value: 'Samedis, ou exceptionnellement dimanches' },
+        { label: 'Tarifs', value: "CHF 95 — CHF 450 par personne selon l'atelier choisi" },
+        { label: 'Durée', value: "1 à 6 heures selon l'atelier choisi" },
+        { label: 'Jours', value: 'Mercredi, samedi, dimanche et lundi' },
       ],
       ctaTitle: 'Réservez Votre Atelier',
       ctaText: 'Contactez-nous pour de plus amples renseignements et réservez votre moment de création.',
@@ -258,12 +261,12 @@ const translations = {
     terms: {
       title: 'Conditions Générales de Vente',
       lastUpdated: 'Mai 2026',
-      intro: "Les présentes conditions générales de vente (CGV) régissent la vente des produits et des prestations (ateliers) proposés par SoYou Cosmetics, en ligne sur soyoucosmetics.com et en boutique à Genève. Toute commande implique l'acceptation pleine et entière des présentes CGV.",
+      intro: "Les présentes conditions générales de vente (CGV) régissent la vente des produits et des prestations (ateliers) proposés par So You Cosmetics, en ligne sur soyoucosmetics.com et en boutique à Genève. Toute commande implique l'acceptation pleine et entière des présentes CGV.",
       sections: [
         { heading: '1. Identité du vendeur', body: [
-          'Boutique Soap Opera by SoYou Cosmetics',
-          '3 ave. Pictet-De-Rochemont, 1207 Genève, Suisse',
-          'Téléphone : 022 556 69 92 — E-mail : contact@soyou.ch',
+          'Boutique Soap Opera by So You Cosmetics',
+          '3 av. Pictet-De-Rochemont, 1207 Genève, Suisse',
+          'Téléphone : 022 556 69 92 — E-mail : contact@soyoucosmetics.com',
           'Cosmétiques naturels faits main à Genève.',
         ]},
         { heading: '2. Produits', body: [
@@ -276,29 +279,29 @@ const translations = {
         ]},
         { heading: '4. Commandes', body: [
           'La commande est validée après confirmation du panier et du paiement. Un récapitulatif vous est adressé par e-mail.',
-          "SoYou Cosmetics se réserve le droit de refuser ou d'annuler toute commande en cas de rupture de stock, d'erreur manifeste de prix ou de litige antérieur avec le client.",
+          "So You Cosmetics se réserve le droit de refuser ou d'annuler toute commande en cas de rupture de stock, d'erreur manifeste de prix ou de litige antérieur avec le client.",
         ]},
         { heading: '5. Paiement', body: [
-          'Le paiement s\'effectue en ligne par carte bancaire via notre prestataire de paiement sécurisé SumUp. Les données de votre carte sont traitées directement par le prestataire et ne sont jamais conservées par SoYou Cosmetics.',
+          'Le paiement s\'effectue en ligne par carte bancaire via notre prestataire de paiement sécurisé SumUp. Les données de votre carte sont traitées directement par le prestataire et ne sont jamais conservées par So You Cosmetics.',
           'La commande est traitée après confirmation du paiement.',
         ]},
         { heading: '6. Livraison et retrait en boutique', body: [
-          "Nous livrons en Suisse. La livraison est offerte dès CHF 100.- d'achat. Les commandes sont généralement expédiées sous 2 à 4 jours ouvrés, hors jours fériés et périodes de vacances.",
-          'Le retrait gratuit en boutique est possible au 3 ave. Pictet-De-Rochemont, 1207 Genève, aux horaires d\'ouverture. Les délais de livraison sont donnés à titre indicatif et un éventuel retard ne saurait donner lieu à annulation ou indemnité.',
+          "Nous livrons en Suisse. La livraison est offerte dès CHF 150.- d'achat. Les commandes sont généralement expédiées sous 2 à 4 jours ouvrés, hors jours fériés et périodes de vacances.",
+          'Le retrait gratuit en boutique est possible au 3 av. Pictet-De-Rochemont, 1207 Genève, aux horaires d\'ouverture. Les délais de livraison sont donnés à titre indicatif et un éventuel retard ne saurait donner lieu à annulation ou indemnité.',
         ]},
         { heading: '7. Retours et échanges', body: [
           "Conformément au droit suisse, les achats à distance ne bénéficient pas d'un droit de rétractation légal. Par geste commercial, un produit non ouvert et en parfait état peut être retourné dans un délai de 14 jours suivant sa réception, après accord préalable de notre part ; les frais de retour sont à la charge du client.",
           "Pour des raisons d'hygiène, les cosmétiques descellés, ouverts ou utilisés ne peuvent être ni repris ni échangés.",
         ]},
         { heading: '8. Garantie et réclamations', body: [
-          'Les produits sont garantis contre les défauts conformément aux articles 197 et suivants du Code des obligations suisse. Tout défaut ou erreur de livraison doit nous être signalé sans délai à contact@soyou.ch, accompagné si possible de photographies.',
+          'Les produits sont garantis contre les défauts conformément aux articles 197 et suivants du Code des obligations suisse. Tout défaut ou erreur de livraison doit nous être signalé sans délai à contact@soyoucosmetics.com, accompagné si possible de photographies.',
         ]},
         { heading: '9. Ateliers', body: [
-          'Les ateliers sont proposés sur réservation, généralement le samedi ou exceptionnellement le dimanche. Le tarif et la durée sont précisés au moment de la réservation.',
-          "Toute annulation par le client doit être communiquée au moins 48 heures à l'avance ; à défaut, l'atelier pourra être facturé. En cas d'annulation par SoYou Cosmetics, une nouvelle date vous est proposée ou le montant vous est remboursé.",
+          'Les ateliers sont proposés sur réservation, généralement le mercredi et le samedi, avec quelques disponibilités le dimanche et le lundi. Le tarif et la durée sont précisés au moment de la réservation.',
+          "Toute annulation par le client doit être communiquée au moins 48 heures à l'avance ; à défaut, l'atelier pourra être facturé. En cas d'annulation par So You Cosmetics, une nouvelle date vous est proposée ou le montant vous est remboursé.",
         ]},
         { heading: '10. Responsabilité', body: [
-          "Nos produits étant naturels et artisanaux, il appartient au client de vérifier la compatibilité des ingrédients avec sa peau. SoYou Cosmetics ne saurait être tenue responsable d'une réaction liée à une allergie ou à un usage non conforme. Dans les limites permises par la loi, notre responsabilité est limitée au montant de la commande concernée.",
+          "Nos produits étant naturels et artisanaux, il appartient au client de vérifier la compatibilité des ingrédients avec sa peau. So You Cosmetics ne saurait être tenue responsable d'une réaction liée à une allergie ou à un usage non conforme. Dans les limites permises par la loi, notre responsabilité est limitée au montant de la commande concernée.",
         ]},
         { heading: '11. Protection des données', body: [
           'Le traitement de vos données personnelles est décrit dans notre Politique de Confidentialité, qui fait partie intégrante des présentes CGV.',
@@ -311,11 +314,11 @@ const translations = {
     privacy: {
       title: 'Politique de Confidentialité',
       lastUpdated: 'Mai 2026',
-      intro: "SoYou Cosmetics accorde une grande importance à la protection de votre sphère privée. La présente politique explique quelles données personnelles nous collectons, dans quel but et comment elles sont protégées, conformément à la Loi fédérale sur la protection des données (nLPD).",
+      intro: "So You Cosmetics accorde une grande importance à la protection de votre sphère privée. La présente politique explique quelles données personnelles nous collectons, dans quel but et comment elles sont protégées, conformément à la Loi fédérale sur la protection des données (nLPD).",
       sections: [
         { heading: '1. Responsable du traitement', body: [
-          'Boutique Soap Opera by SoYou Cosmetics, 3 ave. Pictet-De-Rochemont, 1207 Genève, Suisse.',
-          'Pour toute question relative à vos données : contact@soyou.ch — 022 556 69 92.',
+          'Boutique Soap Opera by So You Cosmetics, 3 av. Pictet-De-Rochemont, 1207 Genève, Suisse.',
+          'Pour toute question relative à vos données : contact@soyoucosmetics.com — 022 556 69 92.',
         ]},
         { heading: '2. Données que nous collectons', body: [
           'Nous collectons uniquement les données nécessaires à nos services :',
@@ -361,11 +364,11 @@ const translations = {
           'Nous mettons en œuvre des mesures techniques et organisationnelles appropriées (connexion sécurisée HTTPS, accès restreint aux données) afin de protéger vos informations contre tout accès, perte ou utilisation non autorisés.',
         ]},
         { heading: '10. Vos droits', body: [
-          "Conformément à la nLPD, vous disposez d'un droit d'accès, de rectification, d'effacement et d'opposition concernant vos données personnelles. Vous pouvez exercer ces droits à tout moment en écrivant à contact@soyou.ch.",
+          "Conformément à la nLPD, vous disposez d'un droit d'accès, de rectification, d'effacement et d'opposition concernant vos données personnelles. Vous pouvez exercer ces droits à tout moment en écrivant à contact@soyoucosmetics.com.",
           'Vous avez également le droit de vous adresser au Préposé fédéral à la protection des données et à la transparence (PFPDT).',
         ]},
         { heading: '11. Newsletter', body: [
-          'Chaque newsletter contient un lien de désinscription. Vous pouvez aussi demander votre retrait à tout moment par e-mail à contact@soyou.ch.',
+          'Chaque newsletter contient un lien de désinscription. Vous pouvez aussi demander votre retrait à tout moment par e-mail à contact@soyoucosmetics.com.',
         ]},
         { heading: '12. Modifications', body: [
           'La présente politique peut être mise à jour. La version applicable est celle publiée sur cette page.',
@@ -378,7 +381,7 @@ const translations = {
     nav: {
       home: 'Home',
       shop: 'Shop',
-      about: 'About Us',
+      about: 'Our Story',
       workshops: 'Workshops',
       contact: 'Contact',
       search: 'Search',
@@ -395,14 +398,15 @@ const translations = {
       subtitle: 'Artisanal soaps, bath rituals, body care and botanical wellness crafted with Swiss purity.',
       cta1: 'Discover the Collection',
       cta2: 'Our Workshops',
+      marieClaire: 'Marie Claire feature',
       scroll: 'Scroll',
     },
     brandEssence: {
       marquee: 'SWISS PURITY & ARTISANAL CRAFT • ZERO COMPROMISE ON QUALITY • 100% NATURAL COSMETICS • ',
     },
     signature: {
-      title: 'Signature Collection',
-      subtitle: 'Our most exquisite botanical formulations, curated for your daily ritual.',
+      title: 'The ones we love',
+      subtitle: '',
       add: 'Add',
     },
     handmade: {
@@ -447,6 +451,7 @@ const translations = {
       loadMore: 'Load More',
       cosmeticsFallback: 'Cosmetics',
       outOfStock: 'Out of stock',
+      badges: { 'coming-soon': 'Coming Soon', 'best-seller': 'Best Seller' },
     },
     categories: {
       All: 'All',
@@ -464,15 +469,16 @@ const translations = {
       'Soin des cheveux': 'Hair Care',
     },
     footer: {
-      tagline: 'Natural, artisanal cosmetics handmade in Geneva. Formulated with Swiss purity for your daily wellness ritual.',
+      tagline: 'Natural cosmetics Made in Switzerland',
       explore: 'Explore',
-      links: { products: 'Products', workshops: 'Workshops', about: 'About', contact: 'Contact' },
+      address: '3 av. Pictet-De-Rochemont, 1207 Geneva',
+      links: { home: 'So You', products: 'Shop', about: 'Our Story', workshops: 'Atelier', contact: 'Contact' },
       newsletter: 'Newsletter',
       newsletterText: 'Join our community for botanical wellness tips and exclusive offers.',
       emailPlaceholder: 'Your email address',
       subscribe: 'Subscribe',
       subscribed: '✓ Subscribed',
-      rights: (year) => `© ${year} So You Cosmetics. Handmade in Geneva.`,
+      rights: (year) => `© ${year} So You Cosmetics Geneva. All rights reserved.`,
       terms: 'Terms & Conditions',
       privacy: 'Privacy Policy',
     },
@@ -505,14 +511,14 @@ const translations = {
       shopFallback: 'Shop',
       addToCart: 'Add to cart',
       shippingTitle: 'Swiss Delivery',
-      shippingText: 'Free delivery on orders over CHF 100.-. Shipped within 2 to 4 business days.',
+      shippingText: 'Free delivery on orders over CHF 150.-. Shipped within 2 to 4 business days.',
       defaultDesc: 'An artisanal So You product, handmade with love in Geneva.',
       youMayAlsoLike: 'You may also like',
     },
     category: { home: 'Home' },
     search: { home: 'Home', label: 'Search:' },
     legal: {
-      brand: 'SoYou Cosmetics',
+      brand: 'So You Cosmetics',
       lastUpdatedLabel: 'Last updated:',
       contactQuestionPrefix: 'For any questions, contact us at ',
       contactQuestionSuffix: '.',
@@ -553,7 +559,7 @@ const translations = {
       quote: '“Create your own natural cosmetics”',
       introTitleLine1: 'The Art of',
       introTitleLine2: 'Making',
-      introP1: 'Workshops are held on request, on Saturdays or exceptionally on Sundays. They can also be customised to suit everyone\'s needs.',
+      introP1: 'Workshops are available by appointment, usually on Wednesdays and Saturdays, with limited availability on Sundays and Mondays. They can also be customised to suit everyone\'s needs.',
       introQuote: '“Everyone leaves with their own creation.”',
       nextWorkshops: 'Our Upcoming Workshops',
       reserveThis: 'Book this workshop',
@@ -561,9 +567,9 @@ const translations = {
       detailsSubtitle: 'A special moment of creation, just for you.',
       details: [
         { label: 'Format', value: 'One-to-one or 2 people maximum' },
-        { label: 'Pricing', value: 'CHF 150 — CHF 450 per person' },
-        { label: 'Duration', value: '2 to 6 hours depending on the workshop' },
-        { label: 'Days', value: 'Saturdays, or exceptionally Sundays' },
+        { label: 'Pricing', value: 'CHF 95 — CHF 450 per person depending on the workshop' },
+        { label: 'Duration', value: '1 to 6 hours depending on the workshop' },
+        { label: 'Days', value: 'Wednesdays, Saturdays, Sundays and Mondays' },
       ],
       ctaTitle: 'Book Your Workshop',
       ctaText: 'Contact us for more information and book your moment of creation.',
@@ -616,12 +622,12 @@ const translations = {
     terms: {
       title: 'Terms & Conditions of Sale',
       lastUpdated: 'May 2026',
-      intro: 'These terms and conditions of sale govern the sale of the products and services (workshops) offered by SoYou Cosmetics, online at soyoucosmetics.com and in the Geneva boutique. Any order implies full acceptance of these terms.',
+      intro: 'These terms and conditions of sale govern the sale of the products and services (workshops) offered by So You Cosmetics, online at soyoucosmetics.com and in the Geneva boutique. Any order implies full acceptance of these terms.',
       sections: [
         { heading: '1. Seller identity', body: [
-          'Boutique Soap Opera by SoYou Cosmetics',
-          '3 ave. Pictet-De-Rochemont, 1207 Geneva, Switzerland',
-          'Phone: 022 556 69 92 — Email: contact@soyou.ch',
+          'Boutique Soap Opera by So You Cosmetics',
+          '3 av. Pictet-De-Rochemont, 1207 Geneva, Switzerland',
+          'Phone: 022 556 69 92 — Email: contact@soyoucosmetics.com',
           'Natural cosmetics handmade in Geneva.',
         ]},
         { heading: '2. Products', body: [
@@ -634,29 +640,29 @@ const translations = {
         ]},
         { heading: '4. Orders', body: [
           'The order is confirmed once the cart and payment are validated. A summary is sent to you by email.',
-          'SoYou Cosmetics reserves the right to refuse or cancel any order in the event of a stock shortage, an obvious pricing error or a prior dispute with the customer.',
+          'So You Cosmetics reserves the right to refuse or cancel any order in the event of a stock shortage, an obvious pricing error or a prior dispute with the customer.',
         ]},
         { heading: '5. Payment', body: [
-          'Payment is made online by bank card via our secure payment provider SumUp. Your card details are processed directly by the provider and are never stored by SoYou Cosmetics.',
+          'Payment is made online by bank card via our secure payment provider SumUp. Your card details are processed directly by the provider and are never stored by So You Cosmetics.',
           'The order is processed after payment confirmation.',
         ]},
         { heading: '6. Delivery and in-store pickup', body: [
-          'We deliver within Switzerland. Delivery is free on orders over CHF 100.-. Orders are generally shipped within 2 to 4 business days, excluding public holidays and vacation periods.',
-          'Free in-store pickup is available at 3 ave. Pictet-De-Rochemont, 1207 Geneva, during opening hours. Delivery times are given as a guide and any delay shall not give rise to cancellation or compensation.',
+          'We deliver within Switzerland. Delivery is free on orders over CHF 150.-. Orders are generally shipped within 2 to 4 business days, excluding public holidays and vacation periods.',
+          'Free in-store pickup is available at 3 av. Pictet-De-Rochemont, 1207 Geneva, during opening hours. Delivery times are given as a guide and any delay shall not give rise to cancellation or compensation.',
         ]},
         { heading: '7. Returns and exchanges', body: [
           'In accordance with Swiss law, distance purchases do not benefit from a legal right of withdrawal. As a commercial gesture, an unopened product in perfect condition may be returned within 14 days of receipt, subject to our prior agreement; return costs are borne by the customer.',
           'For hygiene reasons, cosmetics that have been unsealed, opened or used cannot be taken back or exchanged.',
         ]},
         { heading: '8. Warranty and complaints', body: [
-          'Products are warranted against defects in accordance with articles 197 et seq. of the Swiss Code of Obligations. Any defect or delivery error must be reported to us without delay at contact@soyou.ch, with photographs if possible.',
+          'Products are warranted against defects in accordance with articles 197 et seq. of the Swiss Code of Obligations. Any defect or delivery error must be reported to us without delay at contact@soyoucosmetics.com, with photographs if possible.',
         ]},
         { heading: '9. Workshops', body: [
-          'Workshops are offered by reservation, generally on Saturdays or exceptionally on Sundays. The price and duration are specified at the time of booking.',
-          'Any cancellation by the customer must be communicated at least 48 hours in advance; otherwise, the workshop may be charged. If SoYou Cosmetics cancels, a new date will be offered or the amount refunded.',
+          'Workshops are offered by reservation, usually on Wednesdays and Saturdays, with limited availability on Sundays and Mondays. The price and duration are specified at the time of booking.',
+          'Any cancellation by the customer must be communicated at least 48 hours in advance; otherwise, the workshop may be charged. If So You Cosmetics cancels, a new date will be offered or the amount refunded.',
         ]},
         { heading: '10. Liability', body: [
-          'As our products are natural and artisanal, it is the customer\'s responsibility to check the compatibility of the ingredients with their skin. SoYou Cosmetics cannot be held liable for a reaction linked to an allergy or improper use. Within the limits permitted by law, our liability is limited to the amount of the relevant order.',
+          'As our products are natural and artisanal, it is the customer\'s responsibility to check the compatibility of the ingredients with their skin. So You Cosmetics cannot be held liable for a reaction linked to an allergy or improper use. Within the limits permitted by law, our liability is limited to the amount of the relevant order.',
         ]},
         { heading: '11. Data protection', body: [
           'The processing of your personal data is described in our Privacy Policy, which forms an integral part of these terms.',
@@ -669,11 +675,11 @@ const translations = {
     privacy: {
       title: 'Privacy Policy',
       lastUpdated: 'May 2026',
-      intro: 'SoYou Cosmetics attaches great importance to protecting your privacy. This policy explains which personal data we collect, for what purpose and how it is protected, in accordance with the Swiss Federal Act on Data Protection (nFADP).',
+      intro: 'So You Cosmetics attaches great importance to protecting your privacy. This policy explains which personal data we collect, for what purpose and how it is protected, in accordance with the Swiss Federal Act on Data Protection (nFADP).',
       sections: [
         { heading: '1. Data controller', body: [
-          'Boutique Soap Opera by SoYou Cosmetics, 3 ave. Pictet-De-Rochemont, 1207 Geneva, Switzerland.',
-          'For any question about your data: contact@soyou.ch — 022 556 69 92.',
+          'Boutique Soap Opera by So You Cosmetics, 3 av. Pictet-De-Rochemont, 1207 Geneva, Switzerland.',
+          'For any question about your data: contact@soyoucosmetics.com — 022 556 69 92.',
         ]},
         { heading: '2. Data we collect', body: [
           'We only collect the data necessary for our services:',
@@ -719,11 +725,11 @@ const translations = {
           'We implement appropriate technical and organisational measures (secure HTTPS connection, restricted access to data) to protect your information against any unauthorised access, loss or use.',
         ]},
         { heading: '10. Your rights', body: [
-          'In accordance with the nFADP, you have the right to access, rectify, erase and object to your personal data. You can exercise these rights at any time by writing to contact@soyou.ch.',
+          'In accordance with the nFADP, you have the right to access, rectify, erase and object to your personal data. You can exercise these rights at any time by writing to contact@soyoucosmetics.com.',
           'You also have the right to contact the Federal Data Protection and Information Commissioner (FDPIC).',
         ]},
         { heading: '11. Newsletter', body: [
-          'Each newsletter contains an unsubscribe link. You can also request removal at any time by email at contact@soyou.ch.',
+          'Each newsletter contains an unsubscribe link. You can also request removal at any time by email at contact@soyoucosmetics.com.',
         ]},
         { heading: '12. Changes', body: [
           'This policy may be updated. The applicable version is the one published on this page.',
@@ -736,7 +742,7 @@ const translations = {
     nav: {
       home: 'Startseite',
       shop: 'Shop',
-      about: 'Über Uns',
+      about: 'Unsere Geschichte',
       workshops: 'Workshops',
       contact: 'Kontakt',
       search: 'Suchen',
@@ -753,14 +759,15 @@ const translations = {
       subtitle: 'Handgemachte Seifen, Baderituale, Körperpflege und botanisches Wohlbefinden, gefertigt mit Schweizer Reinheit.',
       cta1: 'Die Kollektion entdecken',
       cta2: 'Unsere Workshops',
+      marieClaire: 'Marie-Claire-Artikel',
       scroll: 'Scrollen',
     },
     brandEssence: {
       marquee: 'SCHWEIZER REINHEIT & HANDWERKSKUNST • KEINE KOMPROMISSE BEI DER QUALITÄT • 100% NATÜRLICHE KOSMETIK • ',
     },
     signature: {
-      title: 'Signature Kollektion',
-      subtitle: 'Unsere edelsten botanischen Rezepturen, kuratiert für Ihr tägliches Ritual.',
+      title: 'Unsere Favoriten',
+      subtitle: '',
       add: 'Hinzufügen',
     },
     handmade: {
@@ -805,6 +812,7 @@ const translations = {
       loadMore: 'Mehr anzeigen',
       cosmeticsFallback: 'Kosmetik',
       outOfStock: 'Ausverkauft',
+      badges: { 'coming-soon': 'Demnächst', 'best-seller': 'Bestseller' },
     },
     categories: {
       All: 'Alle',
@@ -822,15 +830,16 @@ const translations = {
       'Soin des cheveux': 'Haarpflege',
     },
     footer: {
-      tagline: 'Natürliche, handwerkliche Kosmetik, handgemacht in Genf. Mit Schweizer Reinheit formuliert für Ihr tägliches Wohlfühlritual.',
+      tagline: 'Natürliche Kosmetik Swiss Made',
       explore: 'Entdecken',
-      links: { products: 'Produkte', workshops: 'Workshops', about: 'Über uns', contact: 'Kontakt' },
+      address: '3 av. Pictet-De-Rochemont, 1207 Genf',
+      links: { home: 'So You', products: 'Shop', about: 'Unsere Geschichte', workshops: 'Workshops', contact: 'Kontakt' },
       newsletter: 'Newsletter',
       newsletterText: 'Treten Sie unserer Community bei für botanische Wellness-Tipps und exklusive Angebote.',
       emailPlaceholder: 'Ihre E-Mail-Adresse',
       subscribe: 'Abonnieren',
       subscribed: '✓ Abonniert',
-      rights: (year) => `© ${year} So You Cosmetics. Handgemacht in Genf.`,
+      rights: (year) => `© ${year} So You Cosmetics Genf. Alle Rechte vorbehalten.`,
       terms: 'AGB',
       privacy: 'Datenschutz',
     },
@@ -863,14 +872,14 @@ const translations = {
       shopFallback: 'Shop',
       addToCart: 'In den Warenkorb',
       shippingTitle: 'Lieferung Schweiz',
-      shippingText: 'Kostenlose Lieferung ab CHF 100.- Einkauf. Versand innerhalb von 2 bis 4 Werktagen.',
+      shippingText: 'Kostenlose Lieferung ab CHF 150.- Einkauf. Versand innerhalb von 2 bis 4 Werktagen.',
       defaultDesc: 'Ein handwerkliches So You Produkt, mit Liebe in Genf handgemacht.',
       youMayAlsoLike: 'Das könnte Ihnen auch gefallen',
     },
     category: { home: 'Startseite' },
     search: { home: 'Startseite', label: 'Suche:' },
     legal: {
-      brand: 'SoYou Cosmetics',
+      brand: 'So You Cosmetics',
       lastUpdatedLabel: 'Letzte Aktualisierung:',
       contactQuestionPrefix: 'Bei Fragen kontaktieren Sie uns unter ',
       contactQuestionSuffix: '.',
@@ -919,9 +928,9 @@ const translations = {
       detailsSubtitle: 'Ein besonderer Moment des Kreierens, nur für Sie.',
       details: [
         { label: 'Format', value: 'One-to-one oder maximal 2 Personen' },
-        { label: 'Preise', value: 'CHF 150 — CHF 450 pro Person' },
-        { label: 'Dauer', value: '2 bis 6 Stunden je nach Workshop' },
-        { label: 'Tage', value: 'Samstags oder ausnahmsweise sonntags' },
+        { label: 'Preise', value: 'CHF 95 — CHF 450 pro Person je nach Workshop' },
+        { label: 'Dauer', value: '1 bis 6 Stunden je nach Workshop' },
+        { label: 'Tage', value: 'Mittwoch, Samstag, Sonntag und Montag' },
       ],
       ctaTitle: 'Buchen Sie Ihren Workshop',
       ctaText: 'Kontaktieren Sie uns für weitere Informationen und buchen Sie Ihren kreativen Moment.',
@@ -974,12 +983,12 @@ const translations = {
     terms: {
       title: 'Allgemeine Geschäftsbedingungen',
       lastUpdated: 'Mai 2026',
-      intro: 'Diese Allgemeinen Geschäftsbedingungen (AGB) regeln den Verkauf der von SoYou Cosmetics angebotenen Produkte und Leistungen (Workshops), online auf soyoucosmetics.com und in der Boutique in Genf. Jede Bestellung bedeutet die vollständige Annahme dieser AGB.',
+      intro: 'Diese Allgemeinen Geschäftsbedingungen (AGB) regeln den Verkauf der von So You Cosmetics angebotenen Produkte und Leistungen (Workshops), online auf soyoucosmetics.com und in der Boutique in Genf. Jede Bestellung bedeutet die vollständige Annahme dieser AGB.',
       sections: [
         { heading: '1. Identität des Verkäufers', body: [
-          'Boutique Soap Opera by SoYou Cosmetics',
-          '3 ave. Pictet-De-Rochemont, 1207 Genf, Schweiz',
-          'Telefon: 022 556 69 92 — E-Mail: contact@soyou.ch',
+          'Boutique Soap Opera by So You Cosmetics',
+          '3 av. Pictet-De-Rochemont, 1207 Genf, Schweiz',
+          'Telefon: 022 556 69 92 — E-Mail: contact@soyoucosmetics.com',
           'Natürliche Kosmetik, handgemacht in Genf.',
         ]},
         { heading: '2. Produkte', body: [
@@ -992,29 +1001,29 @@ const translations = {
         ]},
         { heading: '4. Bestellungen', body: [
           'Die Bestellung wird nach Bestätigung des Warenkorbs und der Zahlung gültig. Eine Zusammenfassung wird Ihnen per E-Mail zugesandt.',
-          'SoYou Cosmetics behält sich das Recht vor, jede Bestellung bei Lieferengpässen, offensichtlichen Preisfehlern oder einem früheren Streit mit der Kundschaft abzulehnen oder zu stornieren.',
+          'So You Cosmetics behält sich das Recht vor, jede Bestellung bei Lieferengpässen, offensichtlichen Preisfehlern oder einem früheren Streit mit der Kundschaft abzulehnen oder zu stornieren.',
         ]},
         { heading: '5. Zahlung', body: [
-          'Die Zahlung erfolgt online per Bankkarte über unseren sicheren Zahlungsdienstleister SumUp. Ihre Kartendaten werden direkt vom Dienstleister verarbeitet und niemals von SoYou Cosmetics gespeichert.',
+          'Die Zahlung erfolgt online per Bankkarte über unseren sicheren Zahlungsdienstleister SumUp. Ihre Kartendaten werden direkt vom Dienstleister verarbeitet und niemals von So You Cosmetics gespeichert.',
           'Die Bestellung wird nach Bestätigung der Zahlung bearbeitet.',
         ]},
         { heading: '6. Lieferung und Abholung im Geschäft', body: [
-          'Wir liefern in die Schweiz. Die Lieferung ist ab CHF 100.- Einkauf kostenlos. Bestellungen werden in der Regel innerhalb von 2 bis 4 Werktagen versandt, ausgenommen Feiertage und Ferienzeiten.',
-          'Die kostenlose Abholung im Geschäft ist an der 3 ave. Pictet-De-Rochemont, 1207 Genf, zu den Öffnungszeiten möglich. Lieferfristen dienen nur als Richtwert; eine allfällige Verzögerung berechtigt nicht zu Stornierung oder Entschädigung.',
+          'Wir liefern in die Schweiz. Die Lieferung ist ab CHF 150.- Einkauf kostenlos. Bestellungen werden in der Regel innerhalb von 2 bis 4 Werktagen versandt, ausgenommen Feiertage und Ferienzeiten.',
+          'Die kostenlose Abholung im Geschäft ist an der 3 av. Pictet-De-Rochemont, 1207 Genf, zu den Öffnungszeiten möglich. Lieferfristen dienen nur als Richtwert; eine allfällige Verzögerung berechtigt nicht zu Stornierung oder Entschädigung.',
         ]},
         { heading: '7. Rückgabe und Umtausch', body: [
           'Gemäss Schweizer Recht besteht bei Fernkäufen kein gesetzliches Widerrufsrecht. Als Kulanz kann ein ungeöffnetes Produkt in einwandfreiem Zustand innerhalb von 14 Tagen nach Erhalt nach vorheriger Vereinbarung zurückgegeben werden; die Rücksendekosten trägt die Kundschaft.',
           'Aus Hygienegründen können entsiegelte, geöffnete oder benutzte Kosmetikprodukte weder zurückgenommen noch umgetauscht werden.',
         ]},
         { heading: '8. Gewährleistung und Reklamationen', body: [
-          'Die Produkte werden gemäss Art. 197 ff. des Schweizerischen Obligationenrechts gegen Mängel gewährleistet. Jeder Mangel oder Lieferfehler ist uns unverzüglich unter contact@soyou.ch zu melden, wenn möglich mit Fotos.',
+          'Die Produkte werden gemäss Art. 197 ff. des Schweizerischen Obligationenrechts gegen Mängel gewährleistet. Jeder Mangel oder Lieferfehler ist uns unverzüglich unter contact@soyoucosmetics.com zu melden, wenn möglich mit Fotos.',
         ]},
         { heading: '9. Workshops', body: [
-          'Workshops werden auf Reservierung angeboten, in der Regel samstags oder ausnahmsweise sonntags. Preis und Dauer werden bei der Buchung angegeben.',
-          'Jede Stornierung durch die Kundschaft muss mindestens 48 Stunden im Voraus mitgeteilt werden; andernfalls kann der Workshop in Rechnung gestellt werden. Bei einer Stornierung durch SoYou Cosmetics wird ein neuer Termin angeboten oder der Betrag zurückerstattet.',
+          'Workshops werden auf Reservierung angeboten, in der Regel mittwochs und samstags, mit einigen Terminen sonntags und montags. Preis und Dauer werden bei der Buchung angegeben.',
+          'Jede Stornierung durch die Kundschaft muss mindestens 48 Stunden im Voraus mitgeteilt werden; andernfalls kann der Workshop in Rechnung gestellt werden. Bei einer Stornierung durch So You Cosmetics wird ein neuer Termin angeboten oder der Betrag zurückerstattet.',
         ]},
         { heading: '10. Haftung', body: [
-          'Da unsere Produkte natürlich und handwerklich sind, liegt es in der Verantwortung der Kundschaft, die Verträglichkeit der Inhaltsstoffe mit ihrer Haut zu prüfen. SoYou Cosmetics haftet nicht für Reaktionen im Zusammenhang mit einer Allergie oder unsachgemässer Anwendung. Im gesetzlich zulässigen Rahmen ist unsere Haftung auf den Betrag der betreffenden Bestellung beschränkt.',
+          'Da unsere Produkte natürlich und handwerklich sind, liegt es in der Verantwortung der Kundschaft, die Verträglichkeit der Inhaltsstoffe mit ihrer Haut zu prüfen. So You Cosmetics haftet nicht für Reaktionen im Zusammenhang mit einer Allergie oder unsachgemässer Anwendung. Im gesetzlich zulässigen Rahmen ist unsere Haftung auf den Betrag der betreffenden Bestellung beschränkt.',
         ]},
         { heading: '11. Datenschutz', body: [
           'Die Verarbeitung Ihrer personenbezogenen Daten ist in unserer Datenschutzerklärung beschrieben, die fester Bestandteil dieser AGB ist.',
@@ -1027,11 +1036,11 @@ const translations = {
     privacy: {
       title: 'Datenschutzerklärung',
       lastUpdated: 'Mai 2026',
-      intro: 'SoYou Cosmetics legt grossen Wert auf den Schutz Ihrer Privatsphäre. Diese Erklärung erläutert, welche personenbezogenen Daten wir erheben, zu welchem Zweck und wie sie geschützt werden, gemäss dem Schweizer Bundesgesetz über den Datenschutz (revDSG).',
+      intro: 'So You Cosmetics legt grossen Wert auf den Schutz Ihrer Privatsphäre. Diese Erklärung erläutert, welche personenbezogenen Daten wir erheben, zu welchem Zweck und wie sie geschützt werden, gemäss dem Schweizer Bundesgesetz über den Datenschutz (revDSG).',
       sections: [
         { heading: '1. Verantwortlicher', body: [
-          'Boutique Soap Opera by SoYou Cosmetics, 3 ave. Pictet-De-Rochemont, 1207 Genf, Schweiz.',
-          'Bei Fragen zu Ihren Daten: contact@soyou.ch — 022 556 69 92.',
+          'Boutique Soap Opera by So You Cosmetics, 3 av. Pictet-De-Rochemont, 1207 Genf, Schweiz.',
+          'Bei Fragen zu Ihren Daten: contact@soyoucosmetics.com — 022 556 69 92.',
         ]},
         { heading: '2. Daten, die wir erheben', body: [
           'Wir erheben nur die für unsere Dienstleistungen notwendigen Daten:',
@@ -1077,11 +1086,11 @@ const translations = {
           'Wir setzen angemessene technische und organisatorische Massnahmen ein (sichere HTTPS-Verbindung, eingeschränkter Datenzugriff), um Ihre Informationen vor unbefugtem Zugriff, Verlust oder Nutzung zu schützen.',
         ]},
         { heading: '10. Ihre Rechte', body: [
-          'Gemäss revDSG haben Sie das Recht auf Auskunft, Berichtigung, Löschung und Widerspruch bezüglich Ihrer personenbezogenen Daten. Sie können diese Rechte jederzeit per E-Mail an contact@soyou.ch ausüben.',
+          'Gemäss revDSG haben Sie das Recht auf Auskunft, Berichtigung, Löschung und Widerspruch bezüglich Ihrer personenbezogenen Daten. Sie können diese Rechte jederzeit per E-Mail an contact@soyoucosmetics.com ausüben.',
           'Sie haben zudem das Recht, sich an den Eidgenössischen Datenschutz- und Öffentlichkeitsbeauftragten (EDÖB) zu wenden.',
         ]},
         { heading: '11. Newsletter', body: [
-          'Jeder Newsletter enthält einen Abmeldelink. Sie können Ihre Löschung auch jederzeit per E-Mail an contact@soyou.ch verlangen.',
+          'Jeder Newsletter enthält einen Abmeldelink. Sie können Ihre Löschung auch jederzeit per E-Mail an contact@soyoucosmetics.com verlangen.',
         ]},
         { heading: '12. Änderungen', body: [
           'Diese Erklärung kann aktualisiert werden. Massgebend ist die auf dieser Seite veröffentlichte Version.',

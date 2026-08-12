@@ -18,10 +18,10 @@ const AboutPage = () => {
           <img 
             src="/artisanal_soap_crafting.png" 
             alt="Artisanal Soap Crafting Studio" 
-            className="w-full h-full object-cover opacity-60 mix-blend-overlay scale-110 animate-[float_20s_ease-in-out_infinite]"
+            className="w-full h-full object-cover opacity-75 brightness-125 contrast-95 mix-blend-overlay scale-110 animate-[float_20s_ease-in-out_infinite]"
           />
           {/* Top gradient for Navbar visibility, bottom gradient for transition */}
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-stone/80 via-transparent to-slate-stone/60"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-stone/60 via-transparent to-slate-stone/45"></div>
         </div>
         <div className="relative z-10 container mx-auto px-6 text-center reveal mt-20">
           <p className="text-white/80 uppercase tracking-[0.5em] text-[10px] md:text-xs mb-8 font-sans font-bold">{t('about.eyebrow')}</p>
@@ -73,9 +73,9 @@ const AboutPage = () => {
           <img 
             src="/premium_product_stone.png" 
             alt="Premium So You Product" 
-            className="w-full h-full object-cover opacity-50 mix-blend-overlay fixed-background scale-110"
+            className="w-full h-full object-cover opacity-70 brightness-125 contrast-95 mix-blend-overlay fixed-background scale-110"
           />
-          <div className="absolute inset-0 bg-slate-stone/40"></div>
+          <div className="absolute inset-0 bg-slate-stone/25"></div>
         </div>
         <div className="relative z-10 container mx-auto px-4 sm:px-6 md:px-12 max-w-5xl text-center reveal">
           <div className="bg-white/5 backdrop-blur-xl p-5 sm:p-12 md:p-20 rounded-[20px] sm:rounded-[30px] md:rounded-[40px] border border-white/20 shadow-2xl overflow-hidden relative group">

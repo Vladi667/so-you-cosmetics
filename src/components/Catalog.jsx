@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import SectionHeader from './SectionHeader';
 import { getProducts } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
+import ProductBadge from './ProductBadge';
 
 const placeholders = [
   'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=600&q=80',
@@ -180,9 +181,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                   />
                   {product.ribbon && (
                     <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10">
-                      <span className="inline-block bg-white/90 backdrop-blur-sm text-slate-stone text-[9px] sm:text-xs tracking-widest uppercase px-2 py-1 sm:px-3 sm:py-1.5 rounded-full shadow-sm">
-                        {product.ribbon}
-                      </span>
+                      <ProductBadge ribbon={product.ribbon} />
                     </div>
                   )}
                   {product.inStock === false && (

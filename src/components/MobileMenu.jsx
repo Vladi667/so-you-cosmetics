@@ -242,7 +242,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
               {t('nav.handmadeInGeneva')}
             </p>
             <p className="text-white/20 font-sans text-xs tracking-wider mt-2">
-              3 ave. Pictet-De-Rochemont, 1207 Genève
+              {t('footer.address')}
             </p>
           </div>
         </div>

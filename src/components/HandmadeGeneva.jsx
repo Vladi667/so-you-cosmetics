@@ -23,7 +23,7 @@ const HandmadeGeneva = () => {
       <div className="relative h-[50vh] md:h-[70vh] overflow-hidden">
         <AutoPlayVideo
           src="/Water_rippling_over_river_stones_202605070445.mp4"
-          className="absolute inset-0 w-full h-full object-cover sepia-[.03]"
+          className="absolute inset-0 w-full h-full object-cover sepia-[.03] brightness-115 saturate-90 contrast-95"
         />
 
         {/* Same filter stack as hero — exact match */}

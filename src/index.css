@@ -1,5 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Outfit:wght@200;300;400;500&display=swap');
 @import "tailwindcss";
+/* Product descriptions are authored in the admin and rendered with `prose`.
+   Without this plugin those classes do nothing, so headings and bold text in a
+   description rendered exactly like body copy. */
+@plugin "@tailwindcss/typography";
 
 @theme {
   --color-ivory: #FAF9F6;

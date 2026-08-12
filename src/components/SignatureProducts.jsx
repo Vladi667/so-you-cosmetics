@@ -15,8 +15,28 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
     return () => { active = false; };
   }, []);
 
-  // Best sellers with best photos — hand-picked
-  const bestNames = [
+  // The client chooses what appears here from the admin: adding the category
+  // "Coup de coeur" to a product puts it in this section, and the order of the
+  // list follows the order of the products. The hard-coded names below are only
+  // a fallback for when nothing has been tagged yet, so the home page is never
+  // empty.
+  // Ignore case, accents, the œ ligature and the singular/plural, so
+  // "Coup de cœur", "Coups de coeur" and "COUP DE CŒUR" all match. NFD does
+  // not decompose œ, hence the explicit replacement.
+  const normalise = (v) => (v || '')
+    .trim()
+    .toLowerCase()
+    .replace(/œ/g, 'oe')
+    .replace(/æ/g, 'ae')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+
+  const FEATURED_TAGS = ['coup de coeur', 'coups de coeur'];
+  const tagged = productsList.filter(p =>
+    (p.collections || []).some(c => FEATURED_TAGS.includes(normalise(c)))
+  );
+
+  const fallbackNames = [
     'Stick lèvres naturel - cacao, coco, amande douce et cranberry',
     'Stick lèvres naturel - cacao bio, coco bio, amande douce bio sans parfum',
     'Soin des lèvres bonne mine - karité, coco et jojoba',
@@ -27,9 +47,9 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
     'Savon olive, coco, ricin, palme RSPO - Senteur Lolipop - Edition Limitée',
     'Savon olive, coco, ricin, palme RSPO - Senteur Légère Fraise',
   ];
-  const products = bestNames
-    .map(name => productsList.find(p => p.name === name))
-    .filter(Boolean);
+  const products = tagged.length > 0
+    ? tagged
+    : fallbackNames.map(name => productsList.find(p => p.name === name)).filter(Boolean);
   // Duplicate for infinite scroll
   const duplicatedProducts = [...products, ...products, ...products];
 

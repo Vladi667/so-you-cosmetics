@@ -2,6 +2,11 @@ import React from 'react';
 import AutoPlayVideo from './AutoPlayVideo';
 import { useLanguage } from '../i18n/LanguageContext';
 
+// The client asked for a button linking to her Marie Claire article but has not
+// sent the URL yet. Fill this in and the button appears; left empty it stays
+// hidden, so nothing broken ships in the meantime.
+const MARIE_CLAIRE_URL = '';
+
 const Hero = () => {
   const { t } = useLanguage();
   return (
@@ -34,6 +39,16 @@ const Hero = () => {
           <a href="#workshops" className="px-6 sm:px-8 py-3 sm:py-4 border border-white/50 text-white font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-white/10 hover:border-white transition-all duration-500 backdrop-blur-sm rounded-full text-center">
             {t('hero.cta2')}
           </a>
+          {MARIE_CLAIRE_URL && (
+            <a
+              href={MARIE_CLAIRE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 sm:px-8 py-3 sm:py-4 border border-white/50 text-white font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-white/10 hover:border-white transition-all duration-500 backdrop-blur-sm rounded-full text-center"
+            >
+              {t('hero.marieClaire')}
+            </a>
+          )}
         </div>
       </div>
 

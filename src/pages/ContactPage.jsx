@@ -57,11 +57,11 @@ const ContactPage = () => {
           <img
             src="/boutique_exterior.png"
             alt="Boutique Soap Opera"
-            className="w-full h-full object-cover opacity-50 mix-blend-overlay scale-105"
+            className="w-full h-full object-cover opacity-70 brightness-125 contrast-95 mix-blend-overlay scale-105"
           />
-          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.45) 100%)' }}></div>
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.3) 100%)' }}></div>
           <div className="absolute inset-0 bg-amber-900/[0.04]"></div>
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-stone/70 via-transparent to-slate-stone/60"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-stone/55 via-transparent to-slate-stone/45"></div>
         </div>
         <div className="relative z-10 container mx-auto px-6 text-center reveal mt-20">
           <p className="text-white/80 uppercase tracking-[0.5em] text-[10px] md:text-xs mb-8 font-sans font-bold">{t('contact.eyebrow')}</p>
@@ -96,7 +96,7 @@ const ContactPage = () => {
                   </div>
                   <div>
                     <h3 className="font-sans tracking-[0.1em] sm:tracking-[0.2em] text-[9px] sm:text-xs font-bold text-slate-stone mb-1 sm:mb-2 uppercase">{t('contact.addressLabel')}</h3>
-                    <p className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80">3 ave. Pictet-De-Rochemont</p>
+                    <p className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80">3 av. Pictet-De-Rochemont</p>
                     <p className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80">1207 Genève</p>
                   </div>
                 </div>
@@ -119,7 +119,7 @@ const ContactPage = () => {
                   </div>
                   <div>
                     <h3 className="font-sans tracking-[0.1em] sm:tracking-[0.2em] text-[9px] sm:text-xs font-bold text-slate-stone mb-1 sm:mb-2 uppercase">{t('contact.emailLabel')}</h3>
-                    <a href="mailto:contact@soyou.ch" className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80 hover:text-slate-stone transition-colors duration-300">contact@soyou.ch</a>
+                    <a href="mailto:contact@soyoucosmetics.com" className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80 hover:text-slate-stone transition-colors duration-300">contact@soyoucosmetics.com</a>
                   </div>
                 </div>
               </div>

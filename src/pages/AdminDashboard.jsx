@@ -13,6 +13,9 @@ const AdminDashboard = ({ onLogout }) => {
   const [productsPage, setProductsPage] = useState(1);
   const [imageUploading, setImageUploading] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState('');
+  // true when the badge is free text rather than one of the two presets
+  const [customBadge, setCustomBadge] = useState(false);
+  const [workshopImageUploading, setWorkshopImageUploading] = useState(false);
   const PRODUCTS_PER_PAGE = 25;
   const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true };
   const [loading, setLoading] = useState(false);
@@ -103,6 +106,39 @@ const AdminDashboard = ({ onLogout }) => {
       alert(err.message);
     } finally {
       setImageUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  // Workshops reuse the product image endpoint — it is admin-authed and not
+  // product-specific, so no server change was needed to accept these uploads.
+  const handleWorkshopImageUpload = async (e) => {
+    const file = (e.target.files || [])[0];
+    if (!file) return;
+    setWorkshopImageUploading(true);
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const resp = await fetch('/api/admin/products/upload-image', {
+        method: 'POST',
+        headers: fetchHeaders,
+        body: JSON.stringify({ filename: file.name, data: dataUrl })
+      });
+      if (resp.status === 401) { onLogout(); throw new Error('Session expirée'); }
+      if (!resp.ok) {
+        const j = await resp.json().catch(() => ({}));
+        throw new Error(j.error || 'Échec du téléversement');
+      }
+      const j = await resp.json();
+      setWorkshopForm(f => ({ ...f, image_url: j.url }));
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setWorkshopImageUploading(false);
       e.target.value = '';
     }
   };
@@ -603,7 +639,7 @@ const AdminDashboard = ({ onLogout }) => {
                         </td>
                         <td className="p-6 text-center">
                           <button 
-                            onClick={() => setEmailModal({ isOpen: true, to: booking.customer_email, subject: `Votre réservation d'atelier - SoYou Cosmetics`, message: `Bonjour ${booking.customer_name},\n\nConcerne votre réservation d'atelier : ${booking.slot_date}.\n\n` })}
+                            onClick={() => setEmailModal({ isOpen: true, to: booking.customer_email, subject: `Votre réservation d'atelier - So You Cosmetics`, message: `Bonjour ${booking.customer_name},\n\nConcerne votre réservation d'atelier : ${booking.slot_date}.\n\n` })}
                             className="w-8 h-8 rounded-lg bg-mist-white hover:bg-slate-stone hover:text-white transition-all flex items-center justify-center mx-auto"
                           >
                             ✉️
@@ -656,7 +692,7 @@ const AdminDashboard = ({ onLogout }) => {
                         <td className="p-6 text-right font-medium text-slate-stone">CHF {client.total_spent.toFixed(2)}</td>
                         <td className="p-6 text-center">
                           <button 
-                            onClick={() => setEmailModal({ isOpen: true, to: client.email, subject: 'SoYou Cosmetics - Message client', message: `Bonjour ${client.name || ''},\n\n` })}
+                            onClick={() => setEmailModal({ isOpen: true, to: client.email, subject: 'So You Cosmetics - Message client', message: `Bonjour ${client.name || ''},\n\n` })}
                             className="px-3 py-1.5 bg-mist-white hover:bg-slate-stone hover:text-white rounded-lg text-xs tracking-wider uppercase transition-all"
                           >
                             ✉️ Écrire
@@ -685,7 +721,7 @@ const AdminDashboard = ({ onLogout }) => {
                 const payload = {
                   name: productForm.name,
                   price: productForm.price,
-                  ribbon: productForm.ribbon,
+                  ribbon: (productForm.ribbon || '').trim(),
                   description: productForm.description,
                   collections: productForm.collectionsText,
                   images: productForm.images,
@@ -703,14 +739,51 @@ const AdminDashboard = ({ onLogout }) => {
                   })
                   .then(() => {
                     setProductForm(emptyProductForm);
+                    setCustomBadge(false);
                     loadData();
                   })
                   .catch(err => alert(err.message));
               }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="text" required placeholder="Nom du produit" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="px-4 py-2 border rounded" />
                 <input type="number" step="0.01" min="0" required placeholder="Prix (CHF)" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="px-4 py-2 border rounded" />
-                <input type="text" placeholder="Badge / Ruban (ex: Hydrolat) — optionnel" value={productForm.ribbon} onChange={e => setProductForm({...productForm, ribbon: e.target.value})} className="px-4 py-2 border rounded" />
-                <input type="text" placeholder="Catégories (séparées par des virgules)" value={productForm.collectionsText} onChange={e => setProductForm({...productForm, collectionsText: e.target.value})} className="px-4 py-2 border rounded" />
+                <div>
+                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Badge sur l'image</label>
+                  <select
+                    value={customBadge ? '__custom__' : productForm.ribbon}
+                    onChange={e => {
+                      const v = e.target.value;
+                      if (v === '__custom__') {
+                        setCustomBadge(true);
+                        setProductForm({ ...productForm, ribbon: '' });
+                      } else {
+                        setCustomBadge(false);
+                        setProductForm({ ...productForm, ribbon: v });
+                      }
+                    }}
+                    className="px-4 py-2 border rounded w-full"
+                  >
+                    <option value="">Aucun badge</option>
+                    <option value="coming-soon">Coming Soon / Bientôt disponible</option>
+                    <option value="best-seller">Best Seller / Meilleure vente</option>
+                    <option value="__custom__">Texte personnalisé…</option>
+                  </select>
+                  {customBadge && (
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="ex : Hydrolat"
+                      value={productForm.ribbon}
+                      onChange={e => setProductForm({ ...productForm, ribbon: e.target.value })}
+                      className="px-4 py-2 border rounded w-full mt-2"
+                    />
+                  )}
+                  <p className="text-xs text-stone-gray mt-1">« Épuisé » s'affiche automatiquement via la case ci-dessous.</p>
+                </div>
+                <div>
+                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Catégories</label>
+                  <input type="text" placeholder="Séparées par des virgules" value={productForm.collectionsText} onChange={e => setProductForm({...productForm, collectionsText: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                  <p className="text-xs text-stone-gray mt-1">Ajoutez <strong>Coup de cœur</strong> pour afficher le produit dans la section « Nos coups de cœur » de la page d'accueil.</p>
+                </div>
                 <div className="md:col-span-2">
                   <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Images</label>
                   <div className="flex items-center gap-3 mb-2">
@@ -796,7 +869,7 @@ const AdminDashboard = ({ onLogout }) => {
                 </div>
                 <div className="md:col-span-2 flex gap-4">
                   <button type="submit" className="px-6 py-2 bg-slate-stone text-white rounded">{productForm.id ? 'Enregistrer les modifications' : 'Ajouter le produit'}</button>
-                  {productForm.id && <button type="button" onClick={() => setProductForm(emptyProductForm)} className="px-6 py-2 bg-gray-200 rounded">Annuler</button>}
+                  {productForm.id && <button type="button" onClick={() => { setProductForm(emptyProductForm); setCustomBadge(false); }} className="px-6 py-2 bg-gray-200 rounded">Annuler</button>}
                 </div>
               </form>
             </div>
@@ -813,6 +886,7 @@ const AdminDashboard = ({ onLogout }) => {
                     <th className="p-4">Produit</th>
                     <th className="p-4">Catégories</th>
                     <th className="p-4">Prix</th>
+                    <th className="p-4">Stock</th>
                     <th className="p-4">Actions</th>
                   </tr>
                 </thead>
@@ -834,9 +908,41 @@ const AdminDashboard = ({ onLogout }) => {
                       </td>
                       <td className="p-4 text-sm text-stone-gray">{(p.collections || []).join(', ')}</td>
                       <td className="p-4 whitespace-nowrap">CHF {p.price}</td>
+                      <td className="p-4 whitespace-nowrap">
+                        {p.stock == null ? (
+                          <span className="text-stone-gray/50">—</span>
+                        ) : (
+                          <span className={
+                            p.stock === 0 ? 'text-red-700 font-semibold'
+                              : p.stock <= 3 ? 'text-amber-700 font-medium'
+                              : 'text-slate-stone'
+                          }>
+                            {p.stock}
+                          </span>
+                        )}
+                      </td>
                       <td className="p-4">
                         <div className="flex gap-3">
                           <button onClick={() => {
+                            // Duplicate: same content, no id -> the form saves it
+                            // as a new product. Name is suffixed so the two are
+                            // distinguishable in the list.
+                            setCustomBadge(!!p.ribbon && !['coming-soon', 'best-seller'].includes(p.ribbon));
+                            setProductForm({
+                              id: null,
+                              name: `${p.name} (copie)`,
+                              price: p.price ?? '',
+                              ribbon: p.ribbon || '',
+                              collectionsText: (p.collections || []).join(', '),
+                              images: Array.isArray(p.images) ? [...p.images] : [],
+                              description: p.description || '',
+                              stock: p.stock == null ? '' : String(p.stock),
+                              inStock: p.inStock !== false
+                            });
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }} className="text-slate-stone underline">Dupliquer</button>
+                          <button onClick={() => {
+                            setCustomBadge(!!p.ribbon && !['coming-soon', 'best-seller'].includes(p.ribbon));
                             setProductForm({
                               id: p.id,
                               name: p.name || '',
@@ -919,7 +1025,16 @@ const AdminDashboard = ({ onLogout }) => {
                 <input type="text" required placeholder="Titre" value={workshopForm.title} onChange={e => setWorkshopForm({...workshopForm, title: e.target.value})} className="px-4 py-2 border rounded" />
                 <input type="text" required placeholder="Prix" value={workshopForm.price} onChange={e => setWorkshopForm({...workshopForm, price: e.target.value})} className="px-4 py-2 border rounded" />
                 <input type="text" placeholder="Durée (ex: 2 heures)" value={workshopForm.duration} onChange={e => setWorkshopForm({...workshopForm, duration: e.target.value})} className="px-4 py-2 border rounded" />
-                <input type="text" placeholder="URL Image (ex: /workshop.png)" value={workshopForm.image_url} onChange={e => setWorkshopForm({...workshopForm, image_url: e.target.value})} className="px-4 py-2 border rounded" />
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <label className={`inline-flex items-center gap-2 px-4 py-2 rounded cursor-pointer text-sm font-medium ${workshopImageUploading ? 'bg-gray-200 text-stone-gray cursor-wait' : 'bg-slate-stone text-white hover:opacity-90'}`}>
+                      {workshopImageUploading ? 'Téléversement…' : '📤 Téléverser une image'}
+                      <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={workshopImageUploading} onChange={handleWorkshopImageUpload} className="hidden" />
+                    </label>
+                    {workshopForm.image_url && <img src={workshopForm.image_url} alt="" className="w-12 h-12 object-cover rounded border" />}
+                  </div>
+                  <input type="text" placeholder="…ou URL d'image (ex: /workshop.png)" value={workshopForm.image_url} onChange={e => setWorkshopForm({...workshopForm, image_url: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                </div>
                 <textarea required placeholder="Description" value={workshopForm.description} onChange={e => setWorkshopForm({...workshopForm, description: e.target.value})} className="px-4 py-2 border rounded md:col-span-2"></textarea>
                 <div className="md:col-span-2 flex gap-4">
                   <button type="submit" className="px-6 py-2 bg-slate-stone text-white rounded">Enregistrer</button>
@@ -1237,7 +1352,7 @@ const AdminDashboard = ({ onLogout }) => {
                     setEmailModal({ 
                       isOpen: true, 
                       to: selectedOrder.customer_email, 
-                      subject: `Votre commande ${selectedOrder.id} - SoYou Cosmetics`, 
+                      subject: `Votre commande ${selectedOrder.id} - So You Cosmetics`, 
                       message: `Bonjour ${selectedOrder.customer_name},\n\nConcernant votre commande ${selectedOrder.id}.\n\n` 
                     });
                     setSelectedOrder(null); // Close order detail modal

@@ -50,7 +50,7 @@ const AdminLogin = ({ onLoginSuccess }) => {
             </svg>
           </div>
           <h1 className="font-serif text-3xl text-slate-stone mb-2">Espace Admin</h1>
-          <p className="font-sans text-xs tracking-widest uppercase text-stone-gray/60">SoYou Cosmetics Geneva</p>
+          <p className="font-sans text-xs tracking-widest uppercase text-stone-gray/60">So You Cosmetics Geneva</p>
         </div>
 
         {error && (
