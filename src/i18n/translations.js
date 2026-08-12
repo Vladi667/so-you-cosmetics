@@ -382,7 +382,7 @@ const translations = {
       home: 'Home',
       shop: 'Shop',
       about: 'Our Story',
-      workshops: 'Workshops',
+      workshops: 'Atelier',
       contact: 'Contact',
       search: 'Search',
       searchPlaceholder: 'Search...',
