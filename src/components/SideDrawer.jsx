@@ -115,7 +115,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
           </h2>
           <button 
             onClick={onClose} 
-            className="w-10 h-10 rounded-full bg-mist-white flex items-center justify-center hover:bg-slate-stone hover:text-white transition-all duration-300"
+            className="w-10 h-10 rounded-full bg-mist-white flex items-center justify-center hover:bg-slate-stone hover:text-white transition-all duration-300 active:scale-[0.97]"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6 18L18 6M6 6l12 12" />
@@ -139,7 +139,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
               </p>
               <button
                 onClick={onClose}
-                className="mt-8 px-8 py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-slate-stone/90 transition-all duration-300"
+                className="mt-8 px-8 py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-slate-stone/90 transition-all duration-300 active:scale-[0.97]"
               >
                 {t('drawer.close')}
               </button>
@@ -205,7 +205,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
                 <button 
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-4 bg-slate-stone text-white font-sans uppercase tracking-[0.3em] text-xs rounded-full hover:bg-slate-stone/90 transition-all duration-300 shadow-lg"
+                  className="w-full py-4 bg-slate-stone text-white font-sans uppercase tracking-[0.3em] text-xs rounded-full hover:bg-slate-stone/90 transition-all duration-300 shadow-lg active:scale-[0.97]"
                 >
                   {isSubmitting ? t('drawer.processing') : t('drawer.validateOrder')}
                 </button>
@@ -242,7 +242,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
               {items.map((item, index) => (
                 <div 
                   key={`${item.id || index}-${index}`} 
-                  className="flex gap-4 sm:gap-5 group bg-mist-white/50 rounded-2xl p-3 sm:p-4 hover:bg-mist-white transition-colors duration-300"
+                  className="flex gap-4 sm:gap-5 group bg-mist-white/50 rounded-2xl p-3 sm:p-4 hover:bg-mist-white transition-colors duration-200"
                 >
                   {getImageUrl(item) && (
                     <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-mist-white">

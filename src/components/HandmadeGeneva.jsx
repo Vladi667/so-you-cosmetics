@@ -34,7 +34,7 @@ const HandmadeGeneva = () => {
         {/* Title */}
         <div className="relative z-20 flex flex-col items-center justify-center h-full text-center px-6 reveal">
           <p className="font-sans text-[10px] tracking-[0.5em] uppercase text-white/50 mb-6 font-bold" style={{ textShadow: '0 1px 12px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.2)' }}>{t('handmade.eyebrow')}</p>
-          <h2 className="font-serif text-4xl md:text-8xl text-white leading-tight" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
+          <h2 className="leading-[1.1] font-serif text-4xl md:text-8xl text-white" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
             {t('handmade.titleLine1')}<br/>
             <span className="italic font-light opacity-80">{t('handmade.titleLine2')}</span>
           </h2>
@@ -51,7 +51,7 @@ const HandmadeGeneva = () => {
                 className="group bg-white rounded-[24px] md:rounded-[30px] p-6 md:p-10 shadow-[0_20px_60px_rgb(0,0,0,0.1)] hover:shadow-[0_30px_80px_rgb(0,0,0,0.15)] hover:-translate-y-3 transition-all duration-700 reveal border border-slate-stone/5 text-center"
                 style={{ transitionDelay: `${index * 100}ms` }}
               >
-                <div className="w-14 h-14 md:w-16 md:h-16 bg-mist-white rounded-2xl flex items-center justify-center mx-auto mb-4 md:mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                <div className="w-14 h-14 md:w-16 md:h-16 bg-mist-white rounded-2xl flex items-center justify-center mx-auto mb-4 md:mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-250">
                   {pillar.icon}
                 </div>
                 <h3 className="font-serif text-xl md:text-2xl text-slate-stone mb-3 md:mb-4">

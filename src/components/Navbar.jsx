@@ -95,7 +95,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
                 readable on any background — the client reported it as
                 "quasi illisible". */}
             <Logo
-              className={`h-5 sm:h-8 w-auto transition-colors duration-500 ${
+              className={`h-5 sm:h-8 w-auto transition-colors duration-200 ${
                 scrolled || !isContentPage
                   ? 'text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]'
                   : 'text-slate-stone'
@@ -179,7 +179,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
                     setSearchOpen(true);
                   }
                 }}
-                className={`relative transition-colors duration-500 p-1.5 sm:p-2 ${getTextColor()}`}
+                className={`relative transition-colors duration-200 p-1.5 sm:p-2 ${getTextColor()}`}
                 aria-label={t('nav.search')}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -188,7 +188,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
               </button>
             </form>
 
-            <button id="fav-icon" onClick={onFavClick} className={`relative transition-colors duration-500 p-1.5 sm:p-2 ${getTextColor()}`}>
+            <button id="fav-icon" onClick={onFavClick} className={`relative transition-colors duration-200 p-1.5 sm:p-2 ${getTextColor()}`}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
@@ -199,7 +199,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
               )}
             </button>
             
-            <button id="cart-icon" onClick={onCartClick} className={`relative transition-colors duration-500 p-1.5 sm:p-2 ${getTextColor()}`}>
+            <button id="cart-icon" onClick={onCartClick} className={`relative transition-colors duration-200 p-1.5 sm:p-2 ${getTextColor()}`}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
@@ -213,7 +213,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
             {/* Hamburger — visible below lg */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className={`lg:hidden relative transition-colors duration-500 p-1.5 sm:p-2 ${getTextColor()}`}
+              className={`lg:hidden relative transition-colors duration-200 p-1.5 sm:p-2 ${getTextColor()}`}
               aria-label={t('nav.openMenu')}
             >
               <div className="flex flex-col items-end space-y-1.5">

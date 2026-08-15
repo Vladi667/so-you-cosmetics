@@ -22,7 +22,7 @@ const Workshops = () => {
       {/* Content */}
       <div className="relative z-20 container mx-auto px-6 text-center">
         <p className="font-sans text-[10px] tracking-[0.5em] uppercase text-white/60 mb-6 md:mb-8 font-bold">{t('workshopsSection.eyebrow')}</p>
-        <h2 className="font-serif text-4xl md:text-7xl text-white mb-6 md:mb-8 tracking-wide" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
+        <h2 className="leading-[1.1] font-serif text-4xl md:text-7xl text-white mb-6 md:mb-8" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
           {t('workshopsSection.title')}
         </h2>
 
@@ -31,10 +31,10 @@ const Workshops = () => {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 justify-center">
-          <Link to="/workshops" className="inline-block px-10 py-4 bg-white text-slate-stone font-sans uppercase tracking-[0.3em] text-xs hover:bg-slate-stone hover:text-white transition-all duration-500 rounded-full shadow-xl hover:scale-105 active:scale-95 transform-gpu text-center">
+          <Link to="/workshops" className="inline-block px-10 py-4 bg-white text-slate-stone font-sans uppercase tracking-[0.3em] text-xs hover:bg-slate-stone hover:text-white transition-all duration-250 rounded-full shadow-xl hover:scale-105 active:scale-95 transform-gpu text-center">
             {t('workshopsSection.cta1')}
           </Link>
-          <Link to="/contact" className="inline-block px-10 py-4 border border-white/40 text-white font-sans uppercase tracking-[0.3em] text-xs hover:bg-white/10 hover:border-white transition-all duration-500 rounded-full backdrop-blur-sm active:scale-95 transform-gpu text-center">
+          <Link to="/contact" className="inline-block px-10 py-4 border border-white/40 text-white font-sans uppercase tracking-[0.3em] text-xs hover:bg-white/10 hover:border-white transition-all duration-250 rounded-full backdrop-blur-sm active:scale-95 transform-gpu text-center">
             {t('workshopsSection.cta2')}
           </Link>
         </div>

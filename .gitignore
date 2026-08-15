@@ -31,3 +31,6 @@ server/data/
 *.sw?
 
 .vercel
+
+# Documents client (devis, factures) — jamais dans le depot
+*.pdf

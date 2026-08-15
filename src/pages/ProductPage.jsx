@@ -146,7 +146,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                     </Link>
                   ))}
                 </div>
-                <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-slate-stone leading-tight mb-4 md:mb-6">
+                <h1 className="leading-[1.06] font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-slate-stone mb-4 md:mb-6">
                   {product.name}
                 </h1>
                 <div className="flex items-center gap-3 flex-wrap">
@@ -198,7 +198,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 <button
                   onClick={handleAddToCart}
                   disabled={product.inStock === false}
-                  className={`flex-grow rounded-full py-4 px-8 font-sans text-xs tracking-widest uppercase transition-all duration-500 shadow-xl ${
+                  className={`flex-grow rounded-full py-4 px-8 font-sans text-xs tracking-widest uppercase transition-all duration-250 shadow-xl ${
                     product.inStock === false
                       ? 'bg-stone-gray/40 text-white cursor-not-allowed'
                       : 'bg-slate-stone text-white hover:bg-stone-gray hover:shadow-2xl hover:-translate-y-1'
@@ -238,7 +238,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 const img = p.images.length > 0 ? p.images[0] : placeholders[p.name.length % placeholders.length];
                 const isFav = favorites.some(fav => fav.id === p.id);
                 return (
-                  <div key={p.id} className="group relative flex flex-col bg-white rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500">
+                  <div key={p.id} className="group relative flex flex-col bg-white rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-250">
                     <Link to={`/product/${p.id}`} className="aspect-[4/5] w-full overflow-hidden bg-slate-100 relative block">
                       <img src={img} alt={p.name} className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-in-out" />
                       {p.ribbon && (

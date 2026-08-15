@@ -77,10 +77,10 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                     src={product.images[0]}
                     alt={product.name}
                     loading="lazy"
-                    className="w-full h-full object-cover object-center absolute inset-0 transition-transform duration-1000 group-hover/card:scale-105"
+                    className="w-full h-full object-cover object-center absolute inset-0 transition-transform duration-700 group-hover/card:scale-105"
                   />
                 ) : (
-                  <div className="absolute inset-0 bg-alpine-silver flex items-center justify-center p-8 transition-transform duration-1000 group-hover/card:scale-105">
+                  <div className="absolute inset-0 bg-alpine-silver flex items-center justify-center p-8 transition-transform duration-700 group-hover/card:scale-105">
                     <div className="w-32 h-48 bg-gradient-to-tr from-white to-mist-blue/20 rounded-lg shadow-inner flex items-center justify-center opacity-80 border border-white/50">
                        <span className="font-serif text-slate-stone/40 text-4xl tracking-widest">SY</span>
                     </div>
@@ -91,7 +91,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                 <Link to={`/product/${product.id}`} className="absolute inset-0 z-0 bg-gradient-to-t from-slate-stone/40 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-700"></Link>
                 
                 {/* Explore button that appears on hover */}
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 md:translate-y-10 md:opacity-0 md:group-hover/card:translate-y-0 md:group-hover/card:opacity-100 translate-y-0 opacity-100 transition-all duration-500 ease-out flex space-x-3 z-10">
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 md:translate-y-10 md:opacity-0 md:group-hover/card:translate-y-0 md:group-hover/card:opacity-100 translate-y-0 opacity-100 transition-all duration-250 ease-out flex space-x-3 z-10">
                   <button 
                     onClick={() => addToCart(product)}
                     className="px-6 py-2 bg-white/90 backdrop-blur-sm text-slate-stone text-xs uppercase tracking-widest rounded-full font-medium hover:bg-slate-stone hover:text-white transition-colors"

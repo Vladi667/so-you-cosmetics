@@ -25,7 +25,7 @@ const AboutPage = () => {
         </div>
         <div className="relative z-10 container mx-auto px-6 text-center reveal mt-20">
           <p className="text-white/80 uppercase tracking-[0.5em] text-[10px] md:text-xs mb-8 font-sans font-bold">{t('about.eyebrow')}</p>
-          <h1 className="font-serif text-4xl sm:text-6xl md:text-8xl text-white leading-tight max-w-6xl mx-auto drop-shadow-2xl">
+          <h1 className="leading-[1.06] font-serif text-4xl sm:text-6xl md:text-8xl text-white max-w-6xl mx-auto drop-shadow-2xl">
             {t('about.title')}
           </h1>
           <p className="text-white/90 font-serif italic text-lg sm:text-2xl md:text-3xl mt-8 max-w-3xl mx-auto drop-shadow-lg opacity-80">
@@ -39,7 +39,7 @@ const AboutPage = () => {
         <div className="container mx-auto px-6 md:px-12 max-w-7xl">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12 md:gap-24 items-center">
             <div className="reveal">
-              <h2 className="font-serif text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-slate-stone mb-4 sm:mb-8 md:mb-12 leading-tight">{t('about.s2TitleLine1')}<br/><span className="italic text-slate-stone/40">{t('about.s2TitleLine2')}</span></h2>
+              <h2 className="leading-[1.1] font-serif text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-slate-stone mb-4 sm:mb-8 md:mb-12">{t('about.s2TitleLine1')}<br/><span className="italic text-slate-stone/40">{t('about.s2TitleLine2')}</span></h2>
               <div className="space-y-3 sm:space-y-6 md:space-y-8 font-sans text-stone-gray font-light leading-relaxed text-sm md:text-lg lg:text-xl text-left sm:text-justify">
                 <p className="first-letter:text-3xl sm:first-letter:text-5xl md:first-letter:text-7xl first-letter:font-serif first-letter:text-slate-stone first-letter:mr-2 sm:first-letter:mr-3 first-letter:float-left first-letter:leading-none">
                   {t('about.s2p1')}
@@ -59,7 +59,7 @@ const AboutPage = () => {
                 <img 
                   src="/botanical_flatlay.png" 
                   alt="Natural Botanical Ingredients" 
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-1000"
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
                 />
               </div>
             </div>
@@ -83,7 +83,7 @@ const AboutPage = () => {
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
             <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
             
-            <h2 className="font-serif text-2xl sm:text-5xl md:text-7xl text-white mb-6 sm:mb-12 drop-shadow-lg">{t('about.tpTitle')}</h2>
+            <h2 className="leading-[1.1] font-serif text-2xl sm:text-5xl md:text-7xl text-white mb-6 sm:mb-12 drop-shadow-lg">{t('about.tpTitle')}</h2>
             <div className="space-y-4 sm:space-y-8 md:space-y-10 font-sans text-white/90 font-light leading-relaxed text-xs sm:text-lg md:text-xl lg:text-2xl">
               <p className="reveal">
                 {t('about.tpp1')}
@@ -106,7 +106,7 @@ const AboutPage = () => {
         
         <div className="container mx-auto px-6 md:px-12 relative z-10">
           <div className="text-center max-w-4xl mx-auto mb-12 sm:mb-20 md:mb-32 reveal">
-            <h2 className="font-serif text-3xl sm:text-5xl md:text-7xl text-slate-stone mb-4 sm:mb-10">{t('about.valuesTitle')}</h2>
+            <h2 className="leading-[1.1] font-serif text-3xl sm:text-5xl md:text-7xl text-slate-stone mb-4 sm:mb-10">{t('about.valuesTitle')}</h2>
             <p className="font-sans font-light text-stone-gray text-sm sm:text-xl md:text-2xl max-w-3xl mx-auto leading-relaxed">
               {t('about.valuesIntro')}
             </p>
@@ -119,12 +119,12 @@ const AboutPage = () => {
                 className="group relative bg-white rounded-[16px] sm:rounded-[30px] md:rounded-[40px] p-3 sm:p-8 md:p-12 shadow-[0_15px_50px_rgb(0,0,0,0.05)] hover:shadow-[0_30px_70px_rgb(0,0,0,0.1)] transform hover:-translate-y-4 transition-all duration-700 reveal overflow-hidden border border-slate-stone/5"
                 style={{ transitionDelay: `${index * 100}ms` }}
               >
-                <div className="absolute -right-2 -bottom-4 sm:-right-4 sm:-bottom-8 md:-right-6 md:-bottom-10 text-[4.5rem] sm:text-[8rem] md:text-[12rem] font-serif text-slate-stone/[0.04] group-hover:text-slate-stone/[0.08] group-hover:scale-125 transition-all duration-1000 pointer-events-none italic">
+                <div className="absolute -right-2 -bottom-4 sm:-right-4 sm:-bottom-8 md:-right-6 md:-bottom-10 text-[4.5rem] sm:text-[8rem] md:text-[12rem] font-serif text-slate-stone/[0.04] group-hover:text-slate-stone/[0.08] group-hover:scale-125 transition-all duration-700 pointer-events-none italic">
                   {index + 1}
                 </div>
                 
                 <div className="relative z-10">
-                  <div className="w-8 h-8 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-mist-white rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center mb-3 sm:mb-6 md:mb-10 group-hover:bg-slate-stone group-hover:text-white transition-all duration-500 transform group-hover:rotate-12">
+                  <div className="w-8 h-8 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-mist-white rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center mb-3 sm:mb-6 md:mb-10 group-hover:bg-slate-stone group-hover:text-white transition-all duration-250 transform group-hover:rotate-12">
                     <span className="font-serif text-xs sm:text-lg md:text-2xl font-bold">0{index + 1}</span>
                   </div>
                   <h3 className="font-sans tracking-[0.1em] sm:tracking-[0.2em] uppercase text-[9px] sm:text-xs md:text-sm mb-2 sm:mb-4 md:mb-6 font-bold text-slate-stone">
@@ -143,7 +143,7 @@ const AboutPage = () => {
       {/* Promise / Footer */}
       <section className="py-16 sm:py-32 bg-white text-center border-t border-mist-white">
         <div className="container mx-auto px-6 md:px-12 max-w-4xl reveal">
-          <h2 className="font-serif text-2xl sm:text-4xl text-slate-stone mb-6 sm:mb-10">{t('about.promiseTitle')}</h2>
+          <h2 className="leading-[1.1] font-serif text-2xl sm:text-4xl text-slate-stone mb-6 sm:mb-10">{t('about.promiseTitle')}</h2>
           <p className="font-sans text-stone-gray font-light leading-relaxed text-sm sm:text-xl mb-8 sm:mb-16">
             {t('about.promiseText')}
           </p>

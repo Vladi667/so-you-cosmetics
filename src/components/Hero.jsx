@@ -24,7 +24,7 @@ const Hero = () => {
       <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/40 via-transparent to-transparent"></div>
       
       <div className="relative z-20 text-center px-4 max-w-4xl mx-auto flex flex-col items-center mt-16 sm:mt-20">
-        <h1 className="font-serif text-3xl sm:text-5xl md:text-7xl text-ivory mb-4 sm:mb-6 leading-tight opacity-0 animate-[fadeIn_1.5s_ease-out_forwards]" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
+        <h1 className="leading-[1.06] font-serif text-3xl sm:text-5xl md:text-7xl text-ivory mb-4 sm:mb-6 opacity-0 animate-[fadeIn_1.5s_ease-out_forwards]" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
           {t('hero.titleLine1')}<br/>{t('hero.titleLine2')}
         </h1>
 
@@ -33,10 +33,10 @@ const Hero = () => {
         </p>
         
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 opacity-0 animate-[fadeInUp_2s_ease-out_1s_forwards] w-full sm:w-auto px-4 sm:px-0">
-          <a href="#products" className="px-6 sm:px-8 py-3 sm:py-4 bg-white text-slate-stone font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-slate-stone hover:text-white transition-all duration-500 shadow-lg rounded-full text-center">
+          <a href="#products" className="px-6 sm:px-8 py-3 sm:py-4 bg-white text-slate-stone font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-slate-stone hover:text-white transition-all duration-250 shadow-lg rounded-full text-center active:scale-[0.97]">
             {t('hero.cta1')}
           </a>
-          <a href="#workshops" className="px-6 sm:px-8 py-3 sm:py-4 border border-white/50 text-white font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-white/10 hover:border-white transition-all duration-500 backdrop-blur-sm rounded-full text-center">
+          <a href="#workshops" className="px-6 sm:px-8 py-3 sm:py-4 border border-white/50 text-white font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-white/10 hover:border-white transition-all duration-250 backdrop-blur-sm rounded-full text-center active:scale-[0.97]">
             {t('hero.cta2')}
           </a>
           {MARIE_CLAIRE_URL && (
@@ -44,7 +44,7 @@ const Hero = () => {
               href={MARIE_CLAIRE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-6 sm:px-8 py-3 sm:py-4 border border-white/50 text-white font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-white/10 hover:border-white transition-all duration-500 backdrop-blur-sm rounded-full text-center"
+              className="px-6 sm:px-8 py-3 sm:py-4 border border-white/50 text-white font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-white/10 hover:border-white transition-all duration-250 backdrop-blur-sm rounded-full text-center active:scale-[0.97]"
             >
               {t('hero.marieClaire')}
             </a>

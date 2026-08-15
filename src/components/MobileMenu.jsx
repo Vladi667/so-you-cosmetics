@@ -74,7 +74,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
             <Logo className="h-5 w-auto text-white" />
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300"
+              className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300 active:scale-[0.97]"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6 18L18 6M6 6l12 12" />
@@ -106,7 +106,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
             <ul className="space-y-1">
               {/* Home */}
               <li
-                className={`transform transition-all duration-500 ${
+                className={`transform transition-all duration-250 ${
                   isOpen ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
                 }`}
                 style={{ transitionDelay: isOpen ? '100ms' : '0ms' }}
@@ -125,7 +125,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
 
               {/* Shop (expandable) */}
               <li
-                className={`transform transition-all duration-500 ${
+                className={`transform transition-all duration-250 ${
                   isOpen ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
                 }`}
                 style={{ transitionDelay: isOpen ? '150ms' : '0ms' }}
@@ -151,7 +151,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
 
                 {/* Category Grid */}
                 <div
-                  className={`overflow-hidden transition-all duration-500 ease-out ${
+                  className={`overflow-hidden transition-all duration-250 ease-out ${
                     shopExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
                   }`}
                 >
@@ -176,7 +176,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
 
               {/* About Us */}
               <li
-                className={`transform transition-all duration-500 ${
+                className={`transform transition-all duration-250 ${
                   isOpen ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
                 }`}
                 style={{ transitionDelay: isOpen ? '200ms' : '0ms' }}
@@ -195,7 +195,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
 
               {/* Workshops */}
               <li
-                className={`transform transition-all duration-500 ${
+                className={`transform transition-all duration-250 ${
                   isOpen ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
                 }`}
                 style={{ transitionDelay: isOpen ? '250ms' : '0ms' }}
@@ -214,7 +214,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
 
               {/* Contact */}
               <li
-                className={`transform transition-all duration-500 ${
+                className={`transform transition-all duration-250 ${
                   isOpen ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
                 }`}
                 style={{ transitionDelay: isOpen ? '300ms' : '0ms' }}

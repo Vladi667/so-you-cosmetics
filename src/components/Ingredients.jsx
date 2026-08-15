@@ -17,7 +17,7 @@ const Ingredients = () => {
         {/* Header */}
         <div className="max-w-3xl mx-auto text-center mb-24 reveal">
           <p className="font-sans text-[10px] tracking-[0.5em] uppercase text-stone-gray/40 mb-6 font-bold">{t('ingredients.eyebrow')}</p>
-          <h2 className="font-serif text-4xl md:text-7xl text-slate-stone mb-8 md:mb-10 leading-tight">
+          <h2 className="leading-[1.1] font-serif text-4xl md:text-7xl text-slate-stone mb-8 md:mb-10">
             {t('ingredients.titleLine1')}<br/><span className="italic text-slate-stone/40 font-light">{t('ingredients.titleLine2')}</span>
           </h2>
           <p className="font-sans font-light text-stone-gray text-lg md:text-xl leading-relaxed">
@@ -33,7 +33,7 @@ const Ingredients = () => {
               className="group flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-6 bg-white rounded-[20px] sm:rounded-[30px] p-4 sm:p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgb(0,0,0,0.1)] hover:-translate-y-2 transition-all duration-700 reveal border border-slate-stone/5"
               style={{ transitionDelay: `${index * 100}ms` }}
             >
-              <div className="w-10 h-10 sm:w-14 sm:h-14 bg-mist-white rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0 text-lg sm:text-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+              <div className="w-10 h-10 sm:w-14 sm:h-14 bg-mist-white rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0 text-lg sm:text-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-250">
                 {item.icon}
               </div>
               <div>
