@@ -39,10 +39,10 @@ const AdminLogin = ({ onLoginSuccess }) => {
   return (
     <div className="min-h-screen bg-mist-white flex items-center justify-center px-6 py-12 relative overflow-hidden">
       {/* Subtle background blurs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-slate-200/40 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-limestone/40 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-amber-900/[0.02] rounded-full blur-3xl pointer-events-none"></div>
 
-      <div className="relative z-10 w-full max-w-md bg-white rounded-3xl p-8 sm:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.05)] border border-slate-stone/5">
+      <div className="relative z-10 w-full max-w-md bg-ivory rounded-3xl p-8 sm:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.05)] border border-slate-stone/5">
         <div className="text-center mb-8">
           <div className="inline-flex w-16 h-16 bg-mist-white rounded-2xl items-center justify-center mb-4 text-slate-stone">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
