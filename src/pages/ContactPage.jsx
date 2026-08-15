@@ -75,7 +75,7 @@ const ContactPage = () => {
       </section>
 
       {/* Boutique Info + Schedule */}
-      <section className="py-16 sm:py-32 bg-white">
+      <section className="py-16 sm:py-32 bg-ivory">
         <div className="container mx-auto px-6 md:px-12 max-w-7xl">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12 md:gap-20">
 
@@ -170,7 +170,7 @@ const ContactPage = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="reveal bg-white rounded-[16px] sm:rounded-[30px] md:rounded-[40px] p-5 sm:p-10 md:p-16 shadow-[0_15px_50px_rgb(0,0,0,0.05)] border border-slate-stone/5">
+          <form onSubmit={handleSubmit} className="reveal bg-ivory rounded-[16px] sm:rounded-[30px] md:rounded-[40px] p-5 sm:p-10 md:p-16 shadow-[0_15px_50px_rgb(0,0,0,0.05)] border border-slate-stone/5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 mb-4 sm:mb-8">
               <div>
                 <label className="block font-sans text-[10px] sm:text-xs tracking-[0.2em] uppercase font-bold text-slate-stone mb-1.5 sm:mb-3">{t('contact.nameLabel')}</label>

@@ -102,7 +102,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
             {/* Left: Image Gallery */}
             <div className="w-full lg:w-1/2">
               <div className="lg:sticky lg:top-32">
-                <div className="aspect-[4/5] w-full rounded-3xl overflow-hidden bg-white shadow-sm mb-6 relative group">
+                <div className="aspect-[4/5] w-full rounded-3xl overflow-hidden bg-ivory shadow-sm mb-6 relative group">
                   {product.ribbon && (
                     <div className="absolute top-6 left-6 z-10">
                       <ProductBadge ribbon={product.ribbon} size="lg" />
@@ -140,7 +140,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                     <Link
                       key={idx}
                       to={`/category/${cat}`}
-                      className="text-[10px] tracking-widest uppercase text-stone-gray hover:text-slate-stone transition-colors bg-white px-3 py-1 rounded-full border border-slate-stone/10"
+                      className="text-[10px] tracking-widest uppercase text-stone-gray hover:text-slate-stone transition-colors bg-ivory px-3 py-1 rounded-full border border-slate-stone/10"
                     >
                       {tCategory(cat)}
                     </Link>
@@ -179,7 +179,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
 
               {/* Add to Cart Actions */}
               <div className="flex flex-col sm:flex-row gap-4 mt-12">
-                <div className="flex items-center justify-between border border-slate-stone/20 rounded-full px-6 py-4 sm:w-1/3 bg-white">
+                <div className="flex items-center justify-between border border-slate-stone/20 rounded-full px-6 py-4 sm:w-1/3 bg-ivory">
                   <button 
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     className="text-stone-gray hover:text-slate-stone transition-colors"
@@ -209,7 +209,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 
                 <button 
                   onClick={() => toggleFavorite(product)}
-                  className={`w-14 h-14 flex items-center justify-center rounded-full border transition-all duration-300 flex-shrink-0 ${isFavorite ? 'border-red-400 bg-red-50 text-red-500' : 'border-slate-stone/20 bg-white text-stone-gray hover:border-slate-stone'}`}
+                  className={`w-14 h-14 flex items-center justify-center rounded-full border transition-all duration-300 flex-shrink-0 ${isFavorite ? 'border-red-400 bg-red-50 text-red-500' : 'border-slate-stone/20 bg-ivory text-stone-gray hover:border-slate-stone'}`}
                 >
                   <svg className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -218,7 +218,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
               </div>
               
               {/* Shipping info */}
-              <div className="mt-10 p-6 bg-white rounded-2xl border border-slate-stone/5 flex items-start gap-4">
+              <div className="mt-10 p-6 bg-ivory rounded-2xl border border-slate-stone/5 flex items-start gap-4">
                 <span className="text-2xl">📦</span>
                 <div>
                   <h4 className="font-sans text-xs tracking-widest uppercase text-slate-stone font-bold mb-2">{t('product.shippingTitle')}</h4>
@@ -238,8 +238,8 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 const img = p.images.length > 0 ? p.images[0] : placeholders[p.name.length % placeholders.length];
                 const isFav = favorites.some(fav => fav.id === p.id);
                 return (
-                  <div key={p.id} className="group relative flex flex-col bg-white rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-250">
-                    <Link to={`/product/${p.id}`} className="aspect-[4/5] w-full overflow-hidden bg-slate-100 relative block">
+                  <div key={p.id} className="group relative flex flex-col bg-ivory rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-250">
+                    <Link to={`/product/${p.id}`} className="aspect-[4/5] w-full overflow-hidden bg-lake-mist relative block">
                       <img src={img} alt={p.name} className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-in-out" />
                       {p.ribbon && (
                         <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10">

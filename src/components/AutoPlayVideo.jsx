@@ -95,7 +95,7 @@ const AutoPlayVideo = ({ src, className = '', poster = '' }) => {
   };
 
   return (
-    <div className="absolute inset-0 bg-slate-900/10">
+    <div className="absolute inset-0 bg-slate-stone/10">
       <video
         ref={videoRef}
         autoPlay

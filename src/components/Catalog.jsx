@@ -172,10 +172,10 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
             return (
               <div 
                 key={product.id} 
-                className="group relative flex flex-col bg-white rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-250 reveal"
+                className="group relative flex flex-col bg-ivory rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-250 reveal"
                 style={{ transitionDelay: `${(index % 12) * 100}ms` }}
               >
-                <div className="aspect-[4/5] w-full overflow-hidden bg-slate-100 relative">
+                <div className="aspect-[4/5] w-full overflow-hidden bg-lake-mist relative">
                   <img
                     src={product.images.length > 0 ? product.images[0] : placeholderImg}
                     alt={product.name}
@@ -196,7 +196,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                   )}
                   {/* Hover Overlay — on mobile the card image is directly tappable */}
                   <Link to={`/product/${product.id}`} className="absolute inset-0 bg-slate-stone/10 opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center md:backdrop-blur-[2px]">
-                    <span className="transform translate-y-4 md:group-hover:translate-y-0 opacity-0 md:group-hover:opacity-100 transition-all duration-250 bg-white text-slate-stone px-8 py-3 rounded-full font-medium tracking-wide shadow-lg hover:bg-slate-stone hover:text-white hidden md:inline">
+                    <span className="transform translate-y-4 md:group-hover:translate-y-0 opacity-0 md:group-hover:opacity-100 transition-all duration-250 bg-ivory text-slate-stone px-8 py-3 rounded-full font-medium tracking-wide shadow-lg hover:bg-slate-stone hover:text-white hidden md:inline">
                       {t('catalog.viewDetails')}
                     </span>
                   </Link>

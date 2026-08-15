@@ -106,7 +106,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
       ></div>
 
       {/* Drawer */}
-      <div className={`fixed top-0 right-0 z-[70] h-full w-full max-w-md bg-white shadow-2xl transform transition-transform duration-500 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed top-0 right-0 z-[70] h-full w-full max-w-md bg-ivory shadow-2xl transform transition-transform duration-500 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-stone/10">
@@ -273,7 +273,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
 
         {/* Footer */}
         {type === 'cart' && items.length > 0 && !isCheckoutMode && !checkoutSuccess && (
-          <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-8 py-4 sm:py-6 border-t border-slate-stone/10 bg-white">
+          <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-8 py-4 sm:py-6 border-t border-slate-stone/10 bg-ivory">
             <div className="flex justify-between items-center mb-6">
               <span className="font-sans text-sm text-stone-gray">{t('drawer.estimatedTotal')}</span>
               <span className="font-serif text-2xl text-slate-stone">

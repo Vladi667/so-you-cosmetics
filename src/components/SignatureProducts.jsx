@@ -70,7 +70,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
               key={index} 
               className="w-[220px] sm:w-[280px] md:w-[350px] mx-4 shrink-0 cursor-pointer"
             >
-              <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-white mb-6 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-700 group/card">
+              <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-ivory mb-6 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-700 group/card">
                 {/* Product Image */}
                 {product.images && product.images.length > 0 ? (
                   <img

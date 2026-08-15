@@ -6,14 +6,36 @@
 @plugin "@tailwindcss/typography";
 
 @theme {
-  --color-ivory: #FAF9F6;
-  --color-mist-white: #F5F7FA;
-  --color-mist-blue: #A5B4C2;
-  --color-stone-gray: #596068;
-  --color-slate-stone: #2A3439;
-  --color-alpine-silver: #D9E0E3;
-  --color-lake-mist: #E2E8F0;
-  --color-sage: #9DC183;
+  /* Palette — pierre ivoire chaude, travertin, calcaire, plâtre, lin naturel.
+     Les tons précédents venaient d'un imaginaire lacustre et alpin (mist, lake,
+     slate, alpine) : bleutés et froids. La cliente demande l'inverse — de la
+     chaleur minérale, sans blanc cru ni gris.
+
+     Les noms de jetons sont conservés pour ne pas réécrire des centaines de
+     classes ; seules les valeurs changent. Des alias correctement nommés sont
+     ajoutés plus bas pour le code à venir.
+
+     Contrastes vérifiés (AA, seuil 4,5) : texte 5,49 · titres 11,25 ·
+     texte sur carte 5,87 · blanc sur pied de page 12,44. */
+  --color-ivory: #FDFBF7;          /* céramique — cartes, texte sur fond sombre */
+  --color-mist-white: #F7F3EC;     /* plâtre — fond de page */
+  --color-mist-blue: #B9A891;      /* travertin — accent sourd */
+  --color-stone-gray: #6A6157;     /* taupe chaud — texte courant */
+  --color-slate-stone: #3A332B;    /* brun charbon — titres, pied de page */
+  --color-alpine-silver: #DED3C4;  /* calcaire — filets, bordures */
+  --color-lake-mist: #EFE8DE;      /* lin — panneaux discrets */
+  --color-sage: #9FAE86;           /* botanique, légèrement réchauffé */
+
+  /* Alias sémantiques : mêmes valeurs, noms justes. Tailwind ne génère que les
+     utilitaires réellement utilisés, donc ceux-ci ne coûtent rien tant qu'ils
+     ne servent pas. */
+  --color-ceramic: #FDFBF7;
+  --color-plaster: #F7F3EC;
+  --color-travertine: #B9A891;
+  --color-taupe: #6A6157;
+  --color-charcoal: #3A332B;
+  --color-limestone: #DED3C4;
+  --color-linen: #EFE8DE;
   
   --font-sans: 'Outfit', sans-serif;
   --font-serif: 'Cormorant Garamond', serif;
@@ -134,7 +156,7 @@
 
 @layer utilities {
   .glass {
-    @apply bg-white/40 backdrop-blur-xl border border-white/30 shadow-[0_8px_32px_0_rgba(42,52,57,0.05)];
+    @apply bg-ivory/50 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_0_rgba(58,51,43,0.06)];
   }
   .glass-dark {
     @apply bg-slate-stone/60 backdrop-blur-xl border border-white/10 shadow-2xl;

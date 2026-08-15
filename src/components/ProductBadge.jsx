@@ -17,7 +17,7 @@ const ProductBadge = ({ ribbon, size = 'md' }) => {
 
   const isPreset = BADGE_PRESETS.includes(ribbon);
   const label = isPreset ? t(`catalog.badges.${ribbon}`) : ribbon;
-  const tone = PRESET_STYLES[ribbon] || 'bg-white/90 text-slate-stone';
+  const tone = PRESET_STYLES[ribbon] || 'bg-ivory/90 text-slate-stone';
   const dims = size === 'lg'
     ? 'text-xs px-4 py-2'
     : 'text-[9px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5';

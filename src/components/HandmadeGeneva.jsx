@@ -48,7 +48,7 @@ const HandmadeGeneva = () => {
             {pillars.map((pillar, index) => (
               <div
                 key={index}
-                className="group bg-white rounded-[24px] md:rounded-[30px] p-6 md:p-10 shadow-[0_20px_60px_rgb(0,0,0,0.1)] hover:shadow-[0_30px_80px_rgb(0,0,0,0.15)] hover:-translate-y-3 transition-all duration-700 reveal border border-slate-stone/5 text-center"
+                className="group bg-ivory rounded-[24px] md:rounded-[30px] p-6 md:p-10 shadow-[0_20px_60px_rgb(0,0,0,0.1)] hover:shadow-[0_30px_80px_rgb(0,0,0,0.15)] hover:-translate-y-3 transition-all duration-700 reveal border border-slate-stone/5 text-center"
                 style={{ transitionDelay: `${index * 100}ms` }}
               >
                 <div className="w-14 h-14 md:w-16 md:h-16 bg-mist-white rounded-2xl flex items-center justify-center mx-auto mb-4 md:mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-250">

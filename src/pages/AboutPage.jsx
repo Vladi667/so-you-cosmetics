@@ -35,7 +35,7 @@ const AboutPage = () => {
       </section>
 
       {/* Origin Story - Split Screen with more impact */}
-      <section className="py-16 md:py-40 bg-white relative">
+      <section className="py-16 md:py-40 bg-ivory relative">
         <div className="container mx-auto px-6 md:px-12 max-w-7xl">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12 md:gap-24 items-center">
             <div className="reveal">
@@ -116,7 +116,7 @@ const AboutPage = () => {
             {values.map((value, index) => (
               <div 
                 key={index} 
-                className="group relative bg-white rounded-[16px] sm:rounded-[30px] md:rounded-[40px] p-3 sm:p-8 md:p-12 shadow-[0_15px_50px_rgb(0,0,0,0.05)] hover:shadow-[0_30px_70px_rgb(0,0,0,0.1)] transform hover:-translate-y-4 transition-all duration-700 reveal overflow-hidden border border-slate-stone/5"
+                className="group relative bg-ivory rounded-[16px] sm:rounded-[30px] md:rounded-[40px] p-3 sm:p-8 md:p-12 shadow-[0_15px_50px_rgb(0,0,0,0.05)] hover:shadow-[0_30px_70px_rgb(0,0,0,0.1)] transform hover:-translate-y-4 transition-all duration-700 reveal overflow-hidden border border-slate-stone/5"
                 style={{ transitionDelay: `${index * 100}ms` }}
               >
                 <div className="absolute -right-2 -bottom-4 sm:-right-4 sm:-bottom-8 md:-right-6 md:-bottom-10 text-[4.5rem] sm:text-[8rem] md:text-[12rem] font-serif text-slate-stone/[0.04] group-hover:text-slate-stone/[0.08] group-hover:scale-125 transition-all duration-700 pointer-events-none italic">
@@ -141,7 +141,7 @@ const AboutPage = () => {
       </section>
 
       {/* Promise / Footer */}
-      <section className="py-16 sm:py-32 bg-white text-center border-t border-mist-white">
+      <section className="py-16 sm:py-32 bg-ivory text-center border-t border-mist-white">
         <div className="container mx-auto px-6 md:px-12 max-w-4xl reveal">
           <h2 className="leading-[1.1] font-serif text-2xl sm:text-4xl text-slate-stone mb-6 sm:mb-10">{t('about.promiseTitle')}</h2>
           <p className="font-sans text-stone-gray font-light leading-relaxed text-sm sm:text-xl mb-8 sm:mb-16">

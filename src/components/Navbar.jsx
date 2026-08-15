@@ -121,7 +121,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
               
               {/* Dropdown Menu */}
               <div className="absolute top-full left-0 mt-0 w-64 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-                <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-slate-stone/10 p-4 flex flex-col space-y-1">
+                <div className="bg-ivory/95 backdrop-blur-md rounded-xl shadow-2xl border border-slate-stone/10 p-4 flex flex-col space-y-1">
                   {['Savons', 'Soins de la peau', 'Bien-être et détente', 'Bébés', 'Accessoires', 'Hommes', 'Shampoings', 'Enfants', 'Soin des lèvres', 'Ambiance', 'Savon Liquide', 'Soin des cheveux'].map((item) => (
                     <button 
                       key={item} 

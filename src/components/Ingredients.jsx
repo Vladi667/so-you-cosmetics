@@ -30,7 +30,7 @@ const Ingredients = () => {
           {commitments.map((item, index) => (
             <div
               key={index}
-              className="group flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-6 bg-white rounded-[20px] sm:rounded-[30px] p-4 sm:p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgb(0,0,0,0.1)] hover:-translate-y-2 transition-all duration-700 reveal border border-slate-stone/5"
+              className="group flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-6 bg-ivory rounded-[20px] sm:rounded-[30px] p-4 sm:p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgb(0,0,0,0.1)] hover:-translate-y-2 transition-all duration-700 reveal border border-slate-stone/5"
               style={{ transitionDelay: `${index * 100}ms` }}
             >
               <div className="w-10 h-10 sm:w-14 sm:h-14 bg-mist-white rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0 text-lg sm:text-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-250">
@@ -50,7 +50,7 @@ const Ingredients = () => {
 
         {/* Le saviez-vous callout */}
         <div className="max-w-3xl mx-auto mt-16 reveal">
-          <div className="bg-white rounded-[30px] p-10 md:p-12 border border-slate-stone/5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center">
+          <div className="bg-ivory rounded-[30px] p-10 md:p-12 border border-slate-stone/5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center">
             <p className="font-sans text-xs tracking-[0.3em] uppercase text-slate-stone/40 font-bold mb-4">{t('ingredients.didYouKnowLabel')}</p>
             <p className="font-serif text-xl md:text-2xl text-slate-stone leading-relaxed italic">
               {t('ingredients.didYouKnowText')}

@@ -6,7 +6,7 @@ const BrandEssence = () => {
   const marqueeText = t('brandEssence.marquee');
 
   return (
-    <section className="bg-white overflow-hidden">
+    <section className="bg-ivory overflow-hidden">
       
       {/* Scrolling Marquee */}
       <div className="py-8 border-y border-slate-stone/5 overflow-hidden bg-mist-white/30">

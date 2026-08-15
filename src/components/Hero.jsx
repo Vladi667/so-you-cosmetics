@@ -33,7 +33,7 @@ const Hero = () => {
         </p>
         
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 opacity-0 animate-[fadeInUp_2s_ease-out_1s_forwards] w-full sm:w-auto px-4 sm:px-0">
-          <a href="#products" className="px-6 sm:px-8 py-3 sm:py-4 bg-white text-slate-stone font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-slate-stone hover:text-white transition-all duration-250 shadow-lg rounded-full text-center active:scale-[0.97]">
+          <a href="#products" className="px-6 sm:px-8 py-3 sm:py-4 bg-ivory text-slate-stone font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-slate-stone hover:text-white transition-all duration-250 shadow-lg rounded-full text-center active:scale-[0.97]">
             {t('hero.cta1')}
           </a>
           <a href="#workshops" className="px-6 sm:px-8 py-3 sm:py-4 border border-white/50 text-white font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-white/10 hover:border-white transition-all duration-250 backdrop-blur-sm rounded-full text-center active:scale-[0.97]">

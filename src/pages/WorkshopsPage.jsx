@@ -80,7 +80,7 @@ const WorkshopsPage = () => {
       </section>
 
       {/* Introduction — The pitch */}
-      <section className="py-12 sm:py-24 md:py-32 bg-white relative">
+      <section className="py-12 sm:py-24 md:py-32 bg-ivory relative">
         <div className="container mx-auto px-6 md:px-12 max-w-5xl">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12 md:gap-20 items-center">
             <div className="reveal">
@@ -117,7 +117,7 @@ const WorkshopsPage = () => {
             <h2 className="leading-[1.1] font-serif text-3xl sm:text-5xl md:text-6xl text-slate-stone mb-12 text-center reveal">{t('workshopsPage.nextWorkshops')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
               {workshops.map((ws, idx) => (
-                <div key={idx} className="bg-white rounded-3xl p-6 sm:p-10 shadow-xl reveal">
+                <div key={idx} className="bg-ivory rounded-3xl p-6 sm:p-10 shadow-xl reveal">
                   <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
                     <img src={ws.image_url || '/workshop_ingredients.png'} alt={ws.title} className="w-32 h-32 object-cover rounded-2xl shadow-md" />
                     <div className="flex-1 text-center sm:text-left">
@@ -153,7 +153,7 @@ const WorkshopsPage = () => {
             {details.map((item, index) => (
               <div
                 key={index}
-                className="group relative bg-white rounded-[16px] sm:rounded-[30px] md:rounded-[40px] p-3 sm:p-8 md:p-12 shadow-[0_15px_50px_rgb(0,0,0,0.05)] hover:shadow-[0_30px_70px_rgb(0,0,0,0.1)] transform hover:-translate-y-4 transition-all duration-700 reveal overflow-hidden border border-slate-stone/5"
+                className="group relative bg-ivory rounded-[16px] sm:rounded-[30px] md:rounded-[40px] p-3 sm:p-8 md:p-12 shadow-[0_15px_50px_rgb(0,0,0,0.05)] hover:shadow-[0_30px_70px_rgb(0,0,0,0.1)] transform hover:-translate-y-4 transition-all duration-700 reveal overflow-hidden border border-slate-stone/5"
                 style={{ transitionDelay: `${index * 100}ms` }}
               >
                 <div className="absolute -right-2 -bottom-4 sm:-right-4 sm:-bottom-8 md:-right-6 md:-bottom-10 text-[4.5rem] sm:text-[8rem] md:text-[12rem] font-serif text-slate-stone/[0.04] group-hover:text-slate-stone/[0.08] group-hover:scale-125 transition-all duration-700 pointer-events-none italic">
@@ -193,7 +193,7 @@ const WorkshopsPage = () => {
           </p>
           <button
             onClick={() => { setContactForm({...contactForm, subject: t('workshopsPage.defaultSubject')}); setIsContactModalOpen(true); }}
-            className="inline-block px-6 sm:px-10 py-3 sm:py-4 bg-white text-slate-stone font-sans uppercase tracking-[0.3em] text-[10px] sm:text-sm hover:bg-slate-stone hover:text-white transition-all duration-250 shadow-xl rounded-full hover:scale-105 transform"
+            className="inline-block px-6 sm:px-10 py-3 sm:py-4 bg-ivory text-slate-stone font-sans uppercase tracking-[0.3em] text-[10px] sm:text-sm hover:bg-slate-stone hover:text-white transition-all duration-250 shadow-xl rounded-full hover:scale-105 transform"
           >
             {t('workshopsPage.ctaButton')}
           </button>
@@ -203,7 +203,7 @@ const WorkshopsPage = () => {
       {isContactModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsContactModalOpen(false)}></div>
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+          <div className="relative bg-ivory rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
             <div className="p-8">
               <h2 className="font-serif text-3xl text-slate-stone mb-2">{t('workshopsPage.modalTitle')}</h2>
               <p className="text-stone-gray text-sm mb-6">{t('workshopsPage.modalText')}</p>
