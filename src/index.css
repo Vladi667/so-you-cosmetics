@@ -95,6 +95,31 @@
   }
 }
 
+/* Hero footage drift — a very slow, very small ken-burns. 1.5% of scale over
+   28s is below the threshold where the eye reads it as movement; it reads as
+   the image being alive. Gated behind motion-safe in the markup. */
+@keyframes heroDrift {
+  0%   { transform: scale(1.02) translate3d(0, 0, 0); }
+  50%  { transform: scale(1.055) translate3d(-0.6%, -0.8%, 0); }
+  100% { transform: scale(1.02) translate3d(0, 0, 0); }
+}
+
+/* Scroll cue: the line grows downward and fades, hinting the direction rather
+   than pulsing in place. */
+@keyframes scrollHint {
+  0%   { transform: scaleY(0.35); transform-origin: top; opacity: 0.15; }
+  45%  { transform: scaleY(1);    transform-origin: top; opacity: 0.85; }
+  100% { transform: scaleY(1);    transform-origin: bottom; opacity: 0; }
+}
+
+/* Botanical band. Each frame drifts on its own cycle, scale kept under 4% so
+   nothing reads as animation — the band just never looks quite static. */
+@keyframes frameDrift {
+  0%   { transform: scale(1.03) translate3d(0, 0, 0); }
+  50%  { transform: scale(1.075) translate3d(1%, -1.2%, 0); }
+  100% { transform: scale(1.03) translate3d(0, 0, 0); }
+}
+
 @keyframes float {
   0% { transform: translateY(0px) rotate(0deg); }
   50% { transform: translateY(-15px) rotate(1deg); }

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
+import AutoPlayVideo from '../components/AutoPlayVideo';
 
 const AboutPage = () => {
   const { t } = useLanguage();
@@ -15,22 +16,29 @@ const AboutPage = () => {
       {/* Hero Section */}
       <section className="relative h-[85vh] flex items-center justify-center">
         <div className="absolute inset-0 bg-slate-stone overflow-hidden">
-          <img 
-            src="/artisanal_soap_crafting.png" 
-            alt="Artisanal Soap Crafting Studio" 
-            className="w-full h-full object-cover opacity-75 brightness-125 contrast-95 mix-blend-overlay scale-110 animate-[float_20s_ease-in-out_infinite]"
+          {/* The water-and-lavender footage, moved here from the home page at her
+              request. Graded brighter with the pebbles pulled towards off-white
+              rather than grey: brightness lifts, saturation drops so the stones
+              lose their cool cast, and a travertine wash warms what remains. */}
+          <AutoPlayVideo
+            src="/Water_rippling_over_river_stones_202605070445.mp4"
+            className="absolute inset-0 w-full h-full object-cover
+                       brightness-[1.22] contrast-[0.94] saturate-[0.72] sepia-[.06]
+                       motion-safe:animate-[heroDrift_32s_ease-in-out_infinite]"
           />
-          {/* Top gradient for Navbar visibility, bottom gradient for transition */}
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-stone/60 via-transparent to-slate-stone/45"></div>
+          <div className="absolute inset-0 bg-[#B9A891]/[0.16] mix-blend-soft-light"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-stone/45 via-transparent to-slate-stone/35"></div>
         </div>
         <div className="relative z-10 container mx-auto px-6 text-center reveal mt-20">
           <p className="text-white/80 uppercase tracking-[0.5em] text-[10px] md:text-xs mb-8 font-sans font-bold">{t('about.eyebrow')}</p>
           <h1 className="leading-[1.06] font-serif text-4xl sm:text-6xl md:text-8xl text-white max-w-6xl mx-auto drop-shadow-2xl">
             {t('about.title')}
           </h1>
-          <p className="text-white/90 font-serif italic text-lg sm:text-2xl md:text-3xl mt-8 max-w-3xl mx-auto drop-shadow-lg opacity-80">
-            {t('about.quote')}
-          </p>
+          {t('about.quote') && (
+            <p className="text-white/90 font-serif italic text-lg sm:text-2xl md:text-3xl mt-8 max-w-3xl mx-auto drop-shadow-lg opacity-80">
+              {t('about.quote')}
+            </p>
+          )}
         </div>
       </section>
 
