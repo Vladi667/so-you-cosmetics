@@ -82,7 +82,10 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
 
       // Allow enter animation to play
       setTimeout(() => setIsAnimating(false), 50);
-    }, 300);
+      // 150ms, matched to the grid's fade-out (duration-250, already well past
+      // visible by then) rather than 300ms. Waiting longer only delays the
+      // results the shopper just asked for.
+    }, 150);
 
     return () => clearTimeout(timer);
   }, [activeCategory, productsList, searchQuery]);
