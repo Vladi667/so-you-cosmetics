@@ -244,12 +244,12 @@
 /* Frosted surfaces become near-solid rather than translucent. */
 @media (prefers-reduced-transparency: reduce) {
   .glass { background: rgba(255,255,255,0.94); backdrop-filter: none; }
-  .glass-dark { background: rgba(42,52,57,0.96); backdrop-filter: none; }
+  .glass-dark { background: rgba(58,51,43,0.96); backdrop-filter: none; }
 }
 
 /* High contrast: solid chrome with a defined edge, and no text shadows. */
 @media (prefers-contrast: more) {
-  .glass { background: #fff; backdrop-filter: none; border-color: rgba(42,52,57,0.5); }
-  .glass-dark { background: #2a3439; backdrop-filter: none; border-color: rgba(255,255,255,0.5); }
+  .glass { background: #fff; backdrop-filter: none; border-color: rgba(58,51,43,0.5); }
+  .glass-dark { background: #3a332b; backdrop-filter: none; border-color: rgba(255,255,255,0.5); }
   .text-shadow { text-shadow: none; }
 }
