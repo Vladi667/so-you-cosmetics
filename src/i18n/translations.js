@@ -30,18 +30,18 @@ const translations = {
       handmadeInGeneva: 'Fait main à Genève',
       language: 'Langue',
     },
-    loader: { text: 'Pureté Suisse' },
+    loader: { text: 'Fait main à Genève' },
     hero: {
       titleLine1: 'Cosmétiques Naturels,',
       titleLine2: 'Faits Main à Genève',
-      subtitle: 'Savons artisanaux, rituels de bain, soins du corps et bien-être botanique, élaborés avec la pureté suisse.',
+      subtitle: 'Savons artisanaux, rituels de bain, soins du corps et bien-être botanique, élaborés à la main dans notre atelier genevois.',
       cta1: 'Découvrir la Collection',
       cta2: 'Nos Ateliers',
       marieClaire: 'Article Marie Claire',
       scroll: 'Défiler',
     },
     brandEssence: {
-      marquee: 'PURETÉ SUISSE & SAVOIR-FAIRE ARTISANAL • ZÉRO COMPROMIS SUR LA QUALITÉ • COSMÉTIQUE 100% NATURELLE • ',
+      marquee: 'SAVOIR-FAIRE ARTISANAL • ZÉRO COMPROMIS SUR LA QUALITÉ • FAIT MAIN À GENÈVE • ',
     },
     signature: {
       title: 'Nos coups de cœur',
@@ -50,10 +50,10 @@ const translations = {
     },
     handmade: {
       eyebrow: 'Notre Philosophie',
-      titleLine1: '100% Fait Main',
+      titleLine1: 'Fait Main',
       titleLine2: 'à Genève',
       pillars: [
-        { title: 'Local', text: 'Artisanal genevois, ingrédients suisses, parfums de Grasse.' },
+        { title: 'Local', text: 'Artisanal genevois, parfums de Grasse.' },
         { title: 'Écologique', text: 'Végétal, RSPO, vegan-friendly, emballages recyclables.' },
         { title: 'Bon', text: 'Zéro parabènes, sulfates, silicones ou graisses animales.' },
       ],
@@ -108,7 +108,7 @@ const translations = {
       'Soin des cheveux': 'Soin des cheveux',
     },
     footer: {
-      tagline: 'Cosmétiques naturels Swiss Made',
+      tagline: 'Cosmétiques naturels faits main à Genève',
       explore: 'Explorer',
       address: '3 av. Pictet-De-Rochemont, 1207 Genève',
       links: { home: 'So You', products: 'Boutique', about: 'Notre histoire', workshops: 'Ateliers', contact: 'Contact' },
@@ -181,7 +181,7 @@ const translations = {
       valuesIntro: "Nous offrons à nos clients la possibilité d'utiliser quotidiennement des cosmétiques naturels sains et de qualité :",
       values: [
         { title: 'Hydratation & Bien-être', text: 'Qui aident notre peau à être naturellement hydratée et de se sentir bien.' },
-        { title: '100% Naturel', text: 'Exempts de conservateurs et autres ingrédients chimiques indésirables.' },
+        { title: 'Ingrédients Choisis', text: "Sélectionnés avec soin, en privilégiant les matières premières d'origine naturelle." },
         { title: 'Éco-Responsable', text: "Dont la fabrication et l'utilisation sont respectueuses de l'environnement et de la biodiversité." },
         { title: 'Zéro Déchet', text: "Dont l'emballage est minimaliste et entièrement recyclable." },
         { title: 'Cruelty Free', text: 'Qui ne sont pas testés sur les animaux et ne contiennent aucune graisse animale.' },
@@ -391,18 +391,18 @@ const translations = {
       handmadeInGeneva: 'Handmade in Geneva',
       language: 'Language',
     },
-    loader: { text: 'Swiss Purity' },
+    loader: { text: 'Handmade in Geneva' },
     hero: {
       titleLine1: 'Natural Cosmetics,',
       titleLine2: 'Handmade in Geneva',
-      subtitle: 'Artisanal soaps, bath rituals, body care and botanical wellness crafted with Swiss purity.',
+      subtitle: 'Artisanal soaps, bath rituals, body care and botanical wellness handcrafted in our Geneva studio.',
       cta1: 'Discover the Collection',
       cta2: 'Our Workshops',
       marieClaire: 'Marie Claire feature',
       scroll: 'Scroll',
     },
     brandEssence: {
-      marquee: 'SWISS PURITY & ARTISANAL CRAFT • ZERO COMPROMISE ON QUALITY • 100% NATURAL COSMETICS • ',
+      marquee: 'ARTISANAL CRAFT • ZERO COMPROMISE ON QUALITY • HANDMADE IN GENEVA • ',
     },
     signature: {
       title: 'The ones we love',
@@ -411,10 +411,10 @@ const translations = {
     },
     handmade: {
       eyebrow: 'Our Philosophy',
-      titleLine1: '100% Handmade',
+      titleLine1: 'Handmade',
       titleLine2: 'in Geneva',
       pillars: [
-        { title: 'Local', text: 'Geneva craftsmanship, Swiss ingredients, fragrances from Grasse.' },
+        { title: 'Local', text: 'Geneva craftsmanship, fragrances from Grasse.' },
         { title: 'Eco-friendly', text: 'Plant-based, RSPO, vegan-friendly, recyclable packaging.' },
         { title: 'Wholesome', text: 'Zero parabens, sulfates, silicones or animal fats.' },
       ],
@@ -469,7 +469,7 @@ const translations = {
       'Soin des cheveux': 'Hair Care',
     },
     footer: {
-      tagline: 'Natural cosmetics Made in Switzerland',
+      tagline: 'Natural cosmetics handmade in Geneva',
       explore: 'Explore',
       address: '3 av. Pictet-De-Rochemont, 1207 Geneva',
       links: { home: 'So You', products: 'Shop', about: 'Our Story', workshops: 'Atelier', contact: 'Contact' },
@@ -542,7 +542,7 @@ const translations = {
       valuesIntro: 'We give our customers the chance to use healthy, quality natural cosmetics every day:',
       values: [
         { title: 'Hydration & Well-being', text: 'Which help our skin stay naturally hydrated and feel good.' },
-        { title: '100% Natural', text: 'Free of preservatives and other unwanted chemical ingredients.' },
+        { title: 'Carefully Chosen Ingredients', text: 'Selected with care, favouring raw materials of natural origin.' },
         { title: 'Eco-Responsible', text: 'Whose production and use respect the environment and biodiversity.' },
         { title: 'Zero Waste', text: 'Whose packaging is minimal and fully recyclable.' },
         { title: 'Cruelty Free', text: 'Not tested on animals and containing no animal fats.' },
@@ -752,18 +752,18 @@ const translations = {
       handmadeInGeneva: 'Handgemacht in Genf',
       language: 'Sprache',
     },
-    loader: { text: 'Schweizer Reinheit' },
+    loader: { text: 'Handgemacht in Genf' },
     hero: {
       titleLine1: 'Natürliche Kosmetik,',
       titleLine2: 'Handgemacht in Genf',
-      subtitle: 'Handgemachte Seifen, Baderituale, Körperpflege und botanisches Wohlbefinden, gefertigt mit Schweizer Reinheit.',
+      subtitle: 'Handgemachte Seifen, Baderituale, Körperpflege und botanisches Wohlbefinden, handgefertigt in unserem Genfer Atelier.',
       cta1: 'Die Kollektion entdecken',
       cta2: 'Unsere Workshops',
       marieClaire: 'Marie-Claire-Artikel',
       scroll: 'Scrollen',
     },
     brandEssence: {
-      marquee: 'SCHWEIZER REINHEIT & HANDWERKSKUNST • KEINE KOMPROMISSE BEI DER QUALITÄT • 100% NATÜRLICHE KOSMETIK • ',
+      marquee: 'HANDWERKSKUNST • KEINE KOMPROMISSE BEI DER QUALITÄT • HANDGEMACHT IN GENF • ',
     },
     signature: {
       title: 'Unsere Favoriten',
@@ -772,10 +772,10 @@ const translations = {
     },
     handmade: {
       eyebrow: 'Unsere Philosophie',
-      titleLine1: '100% Handgemacht',
+      titleLine1: 'Handgemacht',
       titleLine2: 'in Genf',
       pillars: [
-        { title: 'Lokal', text: 'Genfer Handwerk, Schweizer Zutaten, Düfte aus Grasse.' },
+        { title: 'Lokal', text: 'Genfer Handwerk, Düfte aus Grasse.' },
         { title: 'Ökologisch', text: 'Pflanzlich, RSPO, vegan-freundlich, recycelbare Verpackungen.' },
         { title: 'Rein', text: 'Frei von Parabenen, Sulfaten, Silikonen oder tierischen Fetten.' },
       ],
@@ -830,7 +830,7 @@ const translations = {
       'Soin des cheveux': 'Haarpflege',
     },
     footer: {
-      tagline: 'Natürliche Kosmetik Swiss Made',
+      tagline: 'Natürliche Kosmetik, handgemacht in Genf',
       explore: 'Entdecken',
       address: '3 av. Pictet-De-Rochemont, 1207 Genf',
       links: { home: 'So You', products: 'Shop', about: 'Unsere Geschichte', workshops: 'Workshops', contact: 'Kontakt' },
@@ -903,7 +903,7 @@ const translations = {
       valuesIntro: 'Wir geben unseren Kundinnen und Kunden die Möglichkeit, täglich gesunde, hochwertige Naturkosmetik zu verwenden:',
       values: [
         { title: 'Feuchtigkeit & Wohlbefinden', text: 'Die unserer Haut helfen, natürlich mit Feuchtigkeit versorgt zu sein und sich wohlzufühlen.' },
-        { title: '100% Natürlich', text: 'Frei von Konservierungsstoffen und anderen unerwünschten chemischen Inhaltsstoffen.' },
+        { title: 'Sorgfältig gewählte Zutaten', text: 'Mit Bedacht ausgewählt, bevorzugt Rohstoffe natürlichen Ursprungs.' },
         { title: 'Öko-Verantwortlich', text: 'Deren Herstellung und Verwendung Umwelt und Biodiversität respektieren.' },
         { title: 'Zero Waste', text: 'Deren Verpackung minimal und vollständig recycelbar ist.' },
         { title: 'Cruelty Free', text: 'Nicht an Tieren getestet und ohne tierische Fette.' },
