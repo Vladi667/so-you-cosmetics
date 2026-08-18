@@ -327,19 +327,73 @@ router.post('/orders', async (req, res) => {
   }
 });
 
+// Confirms an order as paid — shared by SumUp's webhook and by the customer's
+// browser once the card widget reports success. Neither caller is trusted: both
+// only say *which* order to look at, and SumUp is asked whether it was really
+// paid. That is what makes it safe to expose this to a browser at all.
+//
+// Two independent triggers because one of them will eventually fail. A webhook
+// that is never delivered used to mean an order stayed Pending for ever and the
+// customer heard nothing; now the browser confirms it a moment later, and if
+// the customer closes the tab first, the webhook still does.
+async function confirmOrderPaid(orderId, source) {
+  const order = await db.getOrderById(orderId);
+  if (!order) {
+    console.warn(`SumUp confirmation (${source}): order ${orderId} not found`);
+    return { confirmed: false, status: null };
+  }
+  // Case-insensitive: orders written before the status vocabulary was
+  // normalised still hold 'paid', and must not be confirmed twice — that would
+  // send the customer a second confirmation email.
+  if (String(order.status || '').toLowerCase() === 'paid') {
+    return { confirmed: true, status: 'Paid' };
+  }
+
+  const checkout = await fetchCheckoutFromSumup(order.id);
+  if (!checkout) {
+    console.error(`SumUp confirmation (${source}): could not reach SumUp for order ${order.id} — left unconfirmed rather than assumed paid.`);
+    return { confirmed: false, status: order.status };
+  }
+  if (!checkout.paid) {
+    console.warn(`SumUp confirmation (${source}): order ${order.id} announced but SumUp does not report it paid — ignored.`);
+    return { confirmed: false, status: order.status };
+  }
+  // Guard the amount too: confirming an order for less than it is worth is as
+  // damaging as confirming an unpaid one. Compared with a tolerance because the
+  // two sides are floating-point currency values.
+  const expected = Number(order.total);
+  if (Number.isFinite(expected) && Math.abs(checkout.amount - expected) > 0.01) {
+    console.error(`SumUp confirmation (${source}): order ${order.id} paid ${checkout.amount} ${checkout.currency} but is worth ${expected} — not confirmed, needs review.`);
+    return { confirmed: false, status: order.status };
+  }
+
+  await db.updateOrderStatus(order.id, 'Paid');
+  const { name, email } = orderContact(order);
+  if (!email) {
+    console.error(`SumUp confirmation (${source}): order ${order.id} is marked paid but has no customer email — confirmation not sent.`);
+    return { confirmed: true, status: 'Paid' };
+  }
+  try {
+    await emailService.sendMail({
+      to: email,
+      subject: `Merci pour votre achat ${order.id} - SoYou Cosmetics`,
+      html: buildPaymentConfirmedEmail({ name, orderId: order.id, total: order.total })
+    });
+  } catch (mailErr) {
+    // The payment is real either way — never fail the confirmation over email.
+    console.error(`SumUp confirmation (${source}): order ${order.id} confirmed but the email failed:`, mailErr);
+  }
+  return { confirmed: true, status: 'Paid' };
+}
+
 // 3b. SumUp Webhook — fired by SumUp once a checkout completes.
 // Reference: https://developer.sumup.com/docs/online-payments/introduction/webhooks/
-//
-// This endpoint is public and unauthenticated, so nothing in the delivered body
-// is evidence of anything: previously a paid status in the payload was enough to
-// mark an order paid and email the customer, which any anonymous POST could
-// forge. SumUp's own guidance is to always confirm the event by calling their
-// API, so that is what decides here — the payload is used only to learn which
-// order to ask about.
+// Subscribed per-checkout through return_url; there is no dashboard where an
+// endpoint is registered once.
 router.post('/sumup/webhook', async (req, res) => {
   // Enforced strictly when a secret is configured. When none is, the signature
   // cannot be checked and the request is simply unproven — harmless, because
-  // the confirmation below rests on SumUp's API rather than on this body.
+  // confirmation rests on SumUp's API rather than on this body.
   if (!verifySumupSignature(req)) {
     console.warn('SumUp webhook rejected: signature mismatch');
     return res.status(401).json({ error: 'Invalid signature' });
@@ -356,50 +410,22 @@ router.post('/sumup/webhook', async (req, res) => {
     console.warn('SumUp webhook missing checkout_reference', event);
     return;
   }
-
   try {
-    const order = await db.getOrderById(checkoutRef);
-    if (!order) {
-      console.warn(`SumUp webhook: order ${checkoutRef} not found`);
-      return;
-    }
-    // Case-insensitive: orders written before the status vocabulary was
-    // normalised still hold 'paid', and must not be re-confirmed by a retry.
-    if (String(order.status || '').toLowerCase() === 'paid') {
-      return; // Idempotent: already processed
-    }
-
-    const checkout = await fetchCheckoutFromSumup(order.id);
-    if (!checkout) {
-      console.error(`SumUp webhook: could not confirm order ${order.id} with SumUp — left unconfirmed rather than assumed paid.`);
-      return;
-    }
-    if (!checkout.paid) {
-      console.warn(`SumUp webhook: order ${order.id} announced but SumUp does not report it paid — ignored.`);
-      return;
-    }
-    // Guard the amount too: confirming an order for less than it is worth is
-    // as damaging as confirming an unpaid one. Compared with a tolerance
-    // because the two sides are floating-point currency values.
-    const expected = Number(order.total);
-    if (Number.isFinite(expected) && Math.abs(checkout.amount - expected) > 0.01) {
-      console.error(`SumUp webhook: order ${order.id} paid ${checkout.amount} ${checkout.currency} but is worth ${expected} — not confirmed, needs review.`);
-      return;
-    }
-
-    await db.updateOrderStatus(order.id, 'Paid');
-    const { name, email } = orderContact(order);
-    if (!email) {
-      console.error(`SumUp webhook: order ${order.id} is marked paid but has no customer email — confirmation not sent.`);
-      return;
-    }
-    await emailService.sendMail({
-      to: email,
-      subject: `Merci pour votre achat ${order.id} - SoYou Cosmetics`,
-      html: buildPaymentConfirmedEmail({ name, orderId: order.id, total: order.total })
-    });
+    await confirmOrderPaid(checkoutRef, 'webhook');
   } catch (err) {
     console.error('SumUp webhook handler error:', err);
+  }
+});
+
+// 3c. Confirmation from the customer's browser, once the card widget reports
+// success. Safe to expose: the caller only names an order, and SumUp decides.
+router.post('/orders/:id/confirm', async (req, res) => {
+  try {
+    const result = await confirmOrderPaid(req.params.id, 'browser');
+    res.json({ paid: result.confirmed, status: result.status });
+  } catch (err) {
+    console.error('Order confirmation error:', err);
+    res.status(500).json({ error: 'Confirmation failed' });
   }
 });
 

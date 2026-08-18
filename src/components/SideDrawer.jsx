@@ -9,6 +9,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [sumupCheckoutId, setSumupCheckoutId] = useState(null);
+  const [orderId, setOrderId] = useState(null);
 
   // Reset checkout states when drawer opens/closes
   useEffect(() => {
@@ -17,6 +18,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
         setIsCheckoutMode(false);
         setCheckoutSuccess(false);
         setSumupCheckoutId(null);
+        setOrderId(null);
         setCheckoutForm({ name: '', email: '' });
       }, 500); // Wait for transition animation to end
     }
@@ -39,11 +41,19 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
           if (type === 'success') {
             setCheckoutSuccess(true);
             setSumupCheckoutId(null);
+            // Tell the shop straight away rather than waiting on SumUp's
+            // webhook. The server does not take our word for it — it asks
+            // SumUp — so this only shortens the delay, it cannot fake a
+            // payment. If this request never lands, the webhook still does.
+            if (orderId) {
+              fetch(`/api/orders/${orderId}/confirm`, { method: 'POST' })
+                .catch(err => console.error('Confirmation request failed:', err));
+            }
           }
         },
       });
     }
-  }, [sumupCheckoutId]);
+  }, [sumupCheckoutId, orderId]);
 
   const getPrice = (product) => {
     return product.price || product['Variant Price'] || 0;
@@ -83,6 +93,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
       })
       .then(data => {
         setIsSubmitting(false);
+        setOrderId(data.orderId);
         if (data.checkoutId && !data.checkoutId.startsWith('mock_')) {
           setSumupCheckoutId(data.checkoutId);
         } else {
