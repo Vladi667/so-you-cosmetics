@@ -47,6 +47,9 @@ const translations = {
       title: 'Nos coups de cœur',
       subtitle: '',
       add: 'Ajouter',
+      previous: 'Produits précédents',
+      next: 'Produits suivants',
+      favorite: 'Ajouter aux favoris',
     },
     handmade: {
       eyebrow: 'Notre Philosophie',
@@ -408,6 +411,9 @@ const translations = {
       title: 'The ones we love',
       subtitle: '',
       add: 'Add',
+      previous: 'Previous products',
+      next: 'Next products',
+      favorite: 'Add to favourites',
     },
     handmade: {
       eyebrow: 'Our Philosophy',
@@ -769,6 +775,9 @@ const translations = {
       title: 'Unsere Favoriten',
       subtitle: '',
       add: 'Hinzufügen',
+      previous: 'Vorherige Produkte',
+      next: 'Nächste Produkte',
+      favorite: 'Zu Favoriten hinzufügen',
     },
     handmade: {
       eyebrow: 'Unsere Philosophie',
