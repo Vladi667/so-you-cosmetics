@@ -250,7 +250,7 @@ router.post('/orders', async (req, res) => {
     // /api/sumup/webhook path below (real payment.successful), no other change.
     if (!sumupActive) {
       try {
-        await db.updateOrderStatus(newOrder.id, 'paid');
+        await db.updateOrderStatus(newOrder.id, 'Paid');
         await emailService.sendMail({
           to: email,
           subject: `Merci pour votre achat ${newOrder.id} - SoYou Cosmetics`,
@@ -304,12 +304,14 @@ router.post('/sumup/webhook', async (req, res) => {
       console.warn(`SumUp webhook: order ${checkoutRef} not found`);
       return;
     }
-    if (order.status === 'paid') {
+    // Case-insensitive: orders written before the status vocabulary was
+    // normalised still hold 'paid', and must not be re-confirmed by a retry.
+    if (String(order.status || '').toLowerCase() === 'paid') {
       // Idempotent: already processed
       return;
     }
 
-    await db.updateOrderStatus(order.id, 'paid');
+    await db.updateOrderStatus(order.id, 'Paid');
     const { name, email } = orderContact(order);
     if (!email) {
       console.error(`SumUp webhook: order ${order.id} is marked paid but has no customer email — confirmation not sent.`);

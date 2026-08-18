@@ -826,7 +826,23 @@ async function getOrderById(orderId) {
 }
 
 // 9. Update Order Status
+// The admin dashboard renders an order's status by exact string match against
+// 'Paid' / 'Shipped' / 'ReadyForPickup' / 'Pending'. Both payment paths wrote
+// 'paid' in lower case, so a genuinely paid SumUp order missed every branch and
+// displayed as "En attente" — the shop owner sees a real payment reported as
+// unpaid, and concludes the payment provider is broken. Normalising here fixes
+// every writer at once instead of at each call site, and also repairs rows that
+// were already stored in the wrong case the next time they are updated.
+const ORDER_STATUSES = ['Pending', 'Paid', 'ReadyForPickup', 'Shipped', 'Cancelled', 'Refunded'];
+
+function canonicalOrderStatus(status) {
+  if (typeof status !== 'string') return status;
+  const trimmed = status.trim();
+  return ORDER_STATUSES.find(s => s.toLowerCase() === trimmed.toLowerCase()) || trimmed;
+}
+
 async function updateOrderStatus(orderId, status) {
+  status = canonicalOrderStatus(status);
   if (pool) {
     try {
       await pool.query('UPDATE orders SET status = ? WHERE id = ?', [status, orderId]);
@@ -1050,6 +1066,7 @@ module.exports = {
   getOrders,
   getOrderById,
   updateOrderStatus,
+  canonicalOrderStatus,
   getBookings,
   getClients,
   hashPassword,

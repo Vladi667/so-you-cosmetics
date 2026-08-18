@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
 
+// Order status has been written in mixed case over the life of the shop
+// ('paid' from the payment paths, 'Paid' from the admin dropdown). Compare on
+// a folded key so a paid order is never displayed as "En attente".
+const statusKey = (s) => String(s || '').toLowerCase();
+
 const AdminDashboard = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState('orders');
   const [orders, setOrders] = useState([]);
@@ -570,8 +575,8 @@ const AdminDashboard = ({ onLogout }) => {
                         </td>
                         <td className="p-6 text-right font-medium">CHF {order.total.toFixed(2)}</td>
                         <td className="p-6 text-center">
-                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${order.status === 'Paid' ? 'bg-green-100 text-green-700' : order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' : order.status === 'ReadyForPickup' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
-                            {order.status === 'Paid' ? 'Payé' : order.status === 'Shipped' ? 'Envoyé' : order.status === 'ReadyForPickup' ? 'À retirer' : 'En attente'}
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusKey(order.status) === 'paid' ? 'bg-green-100 text-green-700' : statusKey(order.status) === 'shipped' ? 'bg-blue-100 text-blue-700' : statusKey(order.status) === 'readyforpickup' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {statusKey(order.status) === 'paid' ? 'Payé' : statusKey(order.status) === 'shipped' ? 'Envoyé' : statusKey(order.status) === 'readyforpickup' ? 'À retirer' : 'En attente'}
                           </span>
                         </td>
                         <td className="p-6 text-center">
