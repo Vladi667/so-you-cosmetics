@@ -24,6 +24,14 @@ function timingSafeEqualStr(a, b) {
 // The webhook is subscribed per-checkout, via return_url — SumUp has no
 // dashboard where an endpoint is registered once. Everything downstream depends
 // on this URL being correct and publicly reachable.
+// Overridable so the payment path can be exercised end to end against a stub.
+// A real payment cannot be driven from a test — a card has to be entered — so
+// without this the happy path could only ever be verified in production, by
+// spending money. Defaults to the real API; production sets nothing.
+function sumupApiBase() {
+  return (process.env.SUMUP_API_BASE || 'https://api.sumup.com').replace(/\/+$/, '');
+}
+
 function publicBaseUrl() {
   return (process.env.PUBLIC_BASE_URL || 'https://soyoucosmetics.com').replace(/\/+$/, '');
 }
@@ -41,7 +49,7 @@ async function fetchCheckoutFromSumup(orderId) {
   if (!apiKey) return null;
   try {
     const axios = require('axios');
-    const { data } = await axios.get('https://api.sumup.com/v0.1/checkouts', {
+    const { data } = await axios.get(`${sumupApiBase()}/v0.1/checkouts`, {
       params: { checkout_reference: orderId },
       headers: { Authorization: `Bearer ${apiKey}` },
       timeout: 10000
@@ -267,7 +275,7 @@ router.post('/orders', async (req, res) => {
       sumupActive = true;
       try {
         const axios = require('axios');
-        const sumupRes = await axios.post('https://api.sumup.com/v0.1/checkouts', {
+        const sumupRes = await axios.post(`${sumupApiBase()}/v0.1/checkouts`, {
           checkout_reference: newOrder.id,
           amount: parseFloat(total),
           currency: "CHF",
