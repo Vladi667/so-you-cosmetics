@@ -21,9 +21,53 @@ function timingSafeEqualStr(a, b) {
 // SumUp sends the header as either `x-payload-signature` or `x-sumup-signature`
 // (depending on product/version), sometimes prefixed with "sha256=". If
 // SUMUP_WEBHOOK_SECRET is unset we skip verification (development mode).
+// The webhook is subscribed per-checkout, via return_url — SumUp has no
+// dashboard where an endpoint is registered once. Everything downstream depends
+// on this URL being correct and publicly reachable.
+function publicBaseUrl() {
+  return (process.env.PUBLIC_BASE_URL || 'https://soyoucosmetics.com').replace(/\/+$/, '');
+}
+
+// Ask SumUp directly whether a checkout was really paid, and for how much.
+// SumUp's own guidance is that an application must always confirm an event by
+// calling their API rather than trusting the delivered payload: the webhook is
+// an unauthenticated public endpoint, so its body proves nothing on its own.
+// Looking the checkout up by our order id avoids having to store SumUp's id.
+//
+// Returns { paid, amount, currency } or null when the answer is unknown — the
+// caller must treat null as "do not confirm", never as "assume paid".
+async function fetchCheckoutFromSumup(orderId) {
+  const { apiKey } = db.getSumupConfig();
+  if (!apiKey) return null;
+  try {
+    const axios = require('axios');
+    const { data } = await axios.get('https://api.sumup.com/v0.1/checkouts', {
+      params: { checkout_reference: orderId },
+      headers: { Authorization: `Bearer ${apiKey}` },
+      timeout: 10000
+    });
+    const list = Array.isArray(data) ? data : [data];
+    // A reference can carry more than one attempt (a failed card, then a
+    // successful retry). Any PAID attempt means the order is paid.
+    const paidOne = list.find(c => c && String(c.status).toUpperCase() === 'PAID');
+    const chosen = paidOne || list[0];
+    if (!chosen) return null;
+    return {
+      paid: Boolean(paidOne),
+      amount: Number(chosen.amount),
+      currency: chosen.currency
+    };
+  } catch (err) {
+    console.error('SumUp checkout lookup failed:', err.response ? err.response.data : err.message);
+    return null;
+  }
+}
+
 function verifySumupSignature(req) {
   const { webhookSecret: secret } = db.getSumupConfig();
-  if (!secret) return true; // dev mode
+  // No secret configured: SumUp signs nothing we can check, so this stage
+  // simply passes. It is not the gate — the caller confirms with SumUp's API.
+  if (!secret) return true;
   if (!req.rawBody) return false;
   const provided = (req.headers['x-payload-signature']
     || req.headers['x-sumup-signature']
@@ -228,7 +272,11 @@ router.post('/orders', async (req, res) => {
           amount: parseFloat(total),
           currency: "CHF",
           pay_to_email: sumup.merchantEmail,
-          description: `Commande ${newOrder.id} - SoYou Cosmetics`
+          description: `Commande ${newOrder.id} - SoYou Cosmetics`,
+          // Without this, SumUp has nowhere to notify: the payment succeeds on
+          // their side and the shop never learns of it, so the order sits at
+          // "Pending" for ever and no confirmation email is ever sent.
+          return_url: `${publicBaseUrl()}/api/sumup/webhook`
         }, {
           headers: {
             'Authorization': `Bearer ${sumup.apiKey}`,
@@ -272,27 +320,30 @@ router.post('/orders', async (req, res) => {
 });
 
 // 3b. SumUp Webhook — fired by SumUp once a checkout completes.
-// Reference: https://developer.sumup.com/api/webhooks
-// We accept POST with JSON body. Configure SUMUP_WEBHOOK_SECRET in env if SumUp
-// signs requests; if unset, this endpoint accepts any well-formed payload.
+// Reference: https://developer.sumup.com/docs/online-payments/introduction/webhooks/
+//
+// This endpoint is public and unauthenticated, so nothing in the delivered body
+// is evidence of anything: previously a paid status in the payload was enough to
+// mark an order paid and email the customer, which any anonymous POST could
+// forge. SumUp's own guidance is to always confirm the event by calling their
+// API, so that is what decides here — the payload is used only to learn which
+// order to ask about.
 router.post('/sumup/webhook', async (req, res) => {
+  // Enforced strictly when a secret is configured. When none is, the signature
+  // cannot be checked and the request is simply unproven — harmless, because
+  // the confirmation below rests on SumUp's API rather than on this body.
   if (!verifySumupSignature(req)) {
     console.warn('SumUp webhook rejected: signature mismatch');
     return res.status(401).json({ error: 'Invalid signature' });
   }
 
   const event = req.body || {};
-  const eventType = event.event_type || event.type;
   const payload = event.payload || event.data || event;
   const checkoutRef = payload.checkout_reference || payload.reference || payload.checkout_id;
-  const status = (payload.status || '').toLowerCase();
 
   // Always ack quickly so SumUp doesn't retry
   res.status(200).json({ received: true });
 
-  if (status && status !== 'paid' && status !== 'successful' && eventType !== 'checkout.completed') {
-    return; // Not a success event
-  }
   if (!checkoutRef) {
     console.warn('SumUp webhook missing checkout_reference', event);
     return;
@@ -307,7 +358,24 @@ router.post('/sumup/webhook', async (req, res) => {
     // Case-insensitive: orders written before the status vocabulary was
     // normalised still hold 'paid', and must not be re-confirmed by a retry.
     if (String(order.status || '').toLowerCase() === 'paid') {
-      // Idempotent: already processed
+      return; // Idempotent: already processed
+    }
+
+    const checkout = await fetchCheckoutFromSumup(order.id);
+    if (!checkout) {
+      console.error(`SumUp webhook: could not confirm order ${order.id} with SumUp — left unconfirmed rather than assumed paid.`);
+      return;
+    }
+    if (!checkout.paid) {
+      console.warn(`SumUp webhook: order ${order.id} announced but SumUp does not report it paid — ignored.`);
+      return;
+    }
+    // Guard the amount too: confirming an order for less than it is worth is
+    // as damaging as confirming an unpaid one. Compared with a tolerance
+    // because the two sides are floating-point currency values.
+    const expected = Number(order.total);
+    if (Number.isFinite(expected) && Math.abs(checkout.amount - expected) > 0.01) {
+      console.error(`SumUp webhook: order ${order.id} paid ${checkout.amount} ${checkout.currency} but is worth ${expected} — not confirmed, needs review.`);
       return;
     }
 
