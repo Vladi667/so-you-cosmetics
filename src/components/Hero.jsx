@@ -7,44 +7,77 @@ import { useLanguage } from '../i18n/LanguageContext';
 // hidden, so nothing broken ships in the meantime.
 const MARIE_CLAIRE_URL = '';
 
+// Composition follows the mockup she supplied: the wordmark leads, the promise
+// sits under it, then a rule, then the two-line nature/science couplet. The
+// workshops CTA moved out of the hero at her request — it now lives in the
+// workshops section, where the context is.
 const Hero = () => {
   const { t } = useLanguage();
+
   return (
     <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
       <AutoPlayVideo
         src="/hero-video.mp4"
-        className="absolute inset-0 z-0 w-full h-full object-cover sepia-[.03]"
+        className="absolute inset-0 z-0 w-full h-full object-cover sepia-[.04] saturate-[.92] brightness-105
+                   motion-safe:animate-[heroDrift_28s_ease-in-out_infinite]"
       />
 
-      {/* Vignette: darkens edges to draw focus to center */}
-      <div className="absolute inset-0 z-10" style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.5) 100%)' }}></div>
-      {/* Warm amber whisper */}
-      <div className="absolute inset-0 z-10 bg-amber-900/[0.04]"></div>
-      {/* Top gradient for navbar readability */}
-      <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/40 via-transparent to-transparent"></div>
-      
-      <div className="relative z-20 text-center px-4 max-w-4xl mx-auto flex flex-col items-center mt-16 sm:mt-20">
-        <h1 className="font-serif text-3xl sm:text-5xl md:text-7xl text-ivory mb-4 sm:mb-6 leading-tight opacity-0 animate-[fadeIn_1.5s_ease-out_forwards]" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
-          {t('hero.titleLine1')}<br/>{t('hero.titleLine2')}
+      {/* Warm grade. The vignette is softer than before so the travertine tones
+          in the footage survive instead of being crushed to grey at the edges. */}
+      <div className="absolute inset-0 z-10" style={{ background: 'radial-gradient(ellipse at center, rgba(58,51,43,0.08) 0%, rgba(58,51,43,0.06) 45%, rgba(58,51,43,0.42) 100%)' }} />
+      <div className="absolute inset-0 z-10 bg-[#B9A891]/[0.10] mix-blend-soft-light" />
+      <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/35 via-transparent to-black/25" />
+
+      <div className="relative z-20 text-center px-5 max-w-3xl mx-auto flex flex-col items-center mt-14 sm:mt-16">
+        {/* Wordmark */}
+        <p
+          className="font-serif text-ivory text-5xl sm:text-6xl md:text-7xl mb-5 sm:mb-7
+                     opacity-0 animate-[fadeIn_1.1s_cubic-bezier(0.16,1,0.3,1)_forwards]"
+          style={{ letterSpacing: '-0.02em', textShadow: '0 2px 24px rgba(0,0,0,0.45), 0 1px 6px rgba(0,0,0,0.28)' }}
+        >
+          {t('hero.brand')}
+        </p>
+
+        {/* The promise */}
+        <h1
+          className="font-serif font-light text-ivory text-[1.375rem] sm:text-3xl md:text-[2.6rem] leading-[1.18] max-w-2xl
+                     opacity-0 animate-[fadeInUp_1.1s_cubic-bezier(0.16,1,0.3,1)_0.18s_forwards]"
+          style={{ textShadow: '0 2px 20px rgba(0,0,0,0.45), 0 1px 6px rgba(0,0,0,0.25)' }}
+        >
+          {t('hero.titleLine1')}<br className="hidden sm:block" /> {t('hero.titleLine2')}
         </h1>
 
-        <p className="font-sans text-sm sm:text-base md:text-xl text-ivory/90 mb-6 sm:mb-10 max-w-2xl opacity-0 animate-[fadeInUp_1.5s_ease-out_0.5s_forwards]" style={{ textShadow: '0 1px 12px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.2)' }}>
-          {t('hero.subtitle')}
+        {/* Hairline — the divider she drew between the two thoughts */}
+        <span
+          className="block h-px w-14 sm:w-20 bg-ivory/45 my-6 sm:my-8 origin-center
+                     opacity-0 animate-[fadeIn_0.9s_ease-out_0.5s_forwards]"
+        />
+
+        {/* Nature / science couplet */}
+        <p
+          className="font-sans font-light text-ivory/85 text-[0.8125rem] sm:text-base leading-relaxed
+                     opacity-0 animate-[fadeInUp_1.1s_cubic-bezier(0.16,1,0.3,1)_0.62s_forwards]"
+          style={{ textShadow: '0 1px 12px rgba(0,0,0,0.38)' }}
+        >
+          {t('hero.subtitleLine1')}<br />{t('hero.subtitleLine2')}
         </p>
-        
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 opacity-0 animate-[fadeInUp_2s_ease-out_1s_forwards] w-full sm:w-auto px-4 sm:px-0">
-          <a href="#products" className="px-6 sm:px-8 py-3 sm:py-4 bg-white text-slate-stone font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-slate-stone hover:text-white transition-all duration-500 shadow-lg rounded-full text-center">
+
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-9 sm:mt-11 w-full sm:w-auto px-2 sm:px-0
+                        opacity-0 animate-[fadeInUp_1.1s_cubic-bezier(0.16,1,0.3,1)_0.9s_forwards]">
+          <a
+            href="#products"
+            className="px-8 sm:px-10 py-3.5 sm:py-4 bg-ivory text-slate-stone font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs
+                       hover:bg-ivory/90 transition-all duration-250 shadow-lg rounded-full text-center active:scale-[0.97]"
+          >
             {t('hero.cta1')}
-          </a>
-          <a href="#workshops" className="px-6 sm:px-8 py-3 sm:py-4 border border-white/50 text-white font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-white/10 hover:border-white transition-all duration-500 backdrop-blur-sm rounded-full text-center">
-            {t('hero.cta2')}
           </a>
           {MARIE_CLAIRE_URL && (
             <a
               href={MARIE_CLAIRE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-6 sm:px-8 py-3 sm:py-4 border border-white/50 text-white font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-white/10 hover:border-white transition-all duration-500 backdrop-blur-sm rounded-full text-center"
+              className="px-8 sm:px-10 py-3.5 sm:py-4 border border-ivory/45 text-ivory font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs
+                         hover:bg-ivory/10 hover:border-ivory/70 transition-all duration-250 backdrop-blur-sm rounded-full text-center active:scale-[0.97]"
             >
               {t('hero.marieClaire')}
             </a>
@@ -52,9 +85,9 @@ const Hero = () => {
         </div>
       </div>
 
-      <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex flex-col items-center animate-pulse opacity-50 hover:opacity-100 transition-opacity duration-500 cursor-pointer hidden sm:flex">
-        <span className="text-white font-sans text-[10px] uppercase tracking-widest mb-3">{t('hero.scroll')}</span>
-        <div className="w-[1px] h-16 bg-gradient-to-b from-white to-transparent"></div>
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex-col items-center opacity-45 hover:opacity-90 transition-opacity duration-250 cursor-pointer hidden sm:flex">
+        <span className="text-ivory font-sans text-[10px] uppercase tracking-[0.25em] mb-3">{t('hero.scroll')}</span>
+        <span className="block w-px h-14 bg-gradient-to-b from-ivory to-transparent motion-safe:animate-[scrollHint_2.4s_ease-in-out_infinite]" />
       </div>
     </section>
   );

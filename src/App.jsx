@@ -27,15 +27,26 @@ function App() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('adminToken'));
   const [cart, setCart] = useState([]);
   const [favorites, setFavorites] = useState([]);
+  // The loader now only covers the first paint. It used to be held open by a
+  // 2s timer ("load simulation") and re-triggered for 1.2s on every navigation,
+  // which meant ~3.2s of deliberate waiting on a site whose routing is entirely
+  // client-side. Latency on the interaction path is the fastest way to make an
+  // interface feel unresponsive, so both timers are gone.
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('All');
   const [cartOpen, setCartOpen] = useState(false);
   const [favOpen, setFavOpen] = useState(false);
 
   useEffect(() => {
-    // Initial load simulation
-    const timer = setTimeout(() => setIsLoading(false), 2000);
-    return () => clearTimeout(timer);
+    // Dismiss on the next frame: long enough to avoid a flash of unstyled
+    // content, short enough to be imperceptible.
+    //
+    // rAF alone is not enough: a background tab does not composite, so the
+    // callback never runs and the loader would stay up until the tab is
+    // focused. The timeout is the floor that guarantees dismissal either way.
+    const raf = requestAnimationFrame(() => setIsLoading(false));
+    const fallback = setTimeout(() => setIsLoading(false), 300);
+    return () => { cancelAnimationFrame(raf); clearTimeout(fallback); };
   }, []);
 
   const navigate = useNavigate();
@@ -43,21 +54,17 @@ function App() {
   const isAdminPage = location.pathname.startsWith('/admin');
 
   const handleCategorySelect = (category) => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      if (category === 'All' || category === 'Home') {
-        navigate('/');
-      } else if (category === 'About Us') {
-        navigate('/about');
-      } else if (category === 'Workshops') {
-        navigate('/workshops');
-      } else if (category === 'Contact') {
-        navigate('/contact');
-      } else {
-        navigate(`/category/${encodeURIComponent(category)}`);
-      }
-    }, 1200);
+    if (category === 'All' || category === 'Home') {
+      navigate('/');
+    } else if (category === 'About Us') {
+      navigate('/about');
+    } else if (category === 'Workshops') {
+      navigate('/workshops');
+    } else if (category === 'Contact') {
+      navigate('/contact');
+    } else {
+      navigate(`/category/${encodeURIComponent(category)}`);
+    }
   };
 
   const addToCart = (product) => {

@@ -70,7 +70,7 @@ const WorkshopsPage = () => {
         </div>
         <div className="relative z-20 container mx-auto px-6 text-center reveal mt-20">
           <p className="text-white/80 uppercase tracking-[0.5em] text-[10px] md:text-xs mb-6 md:mb-8 font-sans font-bold">{t('workshopsPage.eyebrow')}</p>
-          <h1 className="font-serif text-4xl sm:text-6xl md:text-8xl text-white leading-tight max-w-5xl mx-auto" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
+          <h1 className="leading-[1.06] font-serif text-4xl sm:text-6xl md:text-8xl text-white max-w-5xl mx-auto" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
             {t('workshopsPage.title')}
           </h1>
           <p className="text-white/90 font-serif italic text-lg sm:text-xl md:text-3xl mt-6 md:mt-8 max-w-3xl mx-auto opacity-80" style={{ textShadow: '0 1px 12px rgba(0,0,0,0.4)' }}>
@@ -80,11 +80,11 @@ const WorkshopsPage = () => {
       </section>
 
       {/* Introduction — The pitch */}
-      <section className="py-12 sm:py-24 md:py-32 bg-white relative">
+      <section className="py-12 sm:py-24 md:py-32 bg-ivory relative">
         <div className="container mx-auto px-6 md:px-12 max-w-5xl">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12 md:gap-20 items-center">
             <div className="reveal">
-              <h2 className="font-serif text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-slate-stone mb-4 sm:mb-8 md:mb-12 leading-tight">
+              <h2 className="leading-[1.1] font-serif text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-slate-stone mb-4 sm:mb-8 md:mb-12">
                 {t('workshopsPage.introTitleLine1')}<br/><span className="italic text-slate-stone/40">{t('workshopsPage.introTitleLine2')}</span>
               </h2>
               <div className="space-y-3 sm:space-y-6 md:space-y-8 font-sans text-stone-gray font-light leading-relaxed text-sm md:text-lg lg:text-xl text-left sm:text-justify">
@@ -103,7 +103,7 @@ const WorkshopsPage = () => {
                 <img
                   src="/workshop_ingredients.png"
                   alt="Ingrédients Naturels"
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-1000"
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
                 />
               </div>
             </div>
@@ -114,10 +114,10 @@ const WorkshopsPage = () => {
       {workshops.length > 0 && (
         <section className="py-12 sm:py-24 bg-mist-white relative">
           <div className="container mx-auto px-6 md:px-12 max-w-6xl">
-            <h2 className="font-serif text-3xl sm:text-5xl md:text-6xl text-slate-stone mb-12 text-center reveal">{t('workshopsPage.nextWorkshops')}</h2>
+            <h2 className="leading-[1.1] font-serif text-3xl sm:text-5xl md:text-6xl text-slate-stone mb-12 text-center reveal">{t('workshopsPage.nextWorkshops')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
               {workshops.map((ws, idx) => (
-                <div key={idx} className="bg-white rounded-3xl p-6 sm:p-10 shadow-xl reveal">
+                <div key={idx} className="bg-ivory rounded-3xl p-6 sm:p-10 shadow-xl reveal">
                   <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
                     <img src={ws.image_url || '/workshop_ingredients.png'} alt={ws.title} className="w-32 h-32 object-cover rounded-2xl shadow-md" />
                     <div className="flex-1 text-center sm:text-left">
@@ -143,7 +143,7 @@ const WorkshopsPage = () => {
 
         <div className="container mx-auto px-6 md:px-12 relative z-10">
           <div className="text-center max-w-4xl mx-auto mb-8 sm:mb-16 md:mb-24 reveal">
-            <h2 className="font-serif text-2xl sm:text-5xl md:text-7xl text-slate-stone mb-4 sm:mb-6 md:mb-10">{t('workshopsPage.detailsTitle')}</h2>
+            <h2 className="leading-[1.1] font-serif text-2xl sm:text-5xl md:text-7xl text-slate-stone mb-4 sm:mb-6 md:mb-10">{t('workshopsPage.detailsTitle')}</h2>
             <p className="font-sans font-light text-stone-gray text-sm sm:text-xl md:text-2xl max-w-3xl mx-auto leading-relaxed">
               {t('workshopsPage.detailsSubtitle')}
             </p>
@@ -153,14 +153,14 @@ const WorkshopsPage = () => {
             {details.map((item, index) => (
               <div
                 key={index}
-                className="group relative bg-white rounded-[16px] sm:rounded-[30px] md:rounded-[40px] p-3 sm:p-8 md:p-12 shadow-[0_15px_50px_rgb(0,0,0,0.05)] hover:shadow-[0_30px_70px_rgb(0,0,0,0.1)] transform hover:-translate-y-4 transition-all duration-700 reveal overflow-hidden border border-slate-stone/5"
+                className="group relative bg-ivory rounded-[16px] sm:rounded-[30px] md:rounded-[40px] p-3 sm:p-8 md:p-12 shadow-[0_15px_50px_rgb(0,0,0,0.05)] hover:shadow-[0_30px_70px_rgb(0,0,0,0.1)] transform hover:-translate-y-4 transition-all duration-700 reveal overflow-hidden border border-slate-stone/5"
                 style={{ transitionDelay: `${index * 100}ms` }}
               >
-                <div className="absolute -right-2 -bottom-4 sm:-right-4 sm:-bottom-8 md:-right-6 md:-bottom-10 text-[4.5rem] sm:text-[8rem] md:text-[12rem] font-serif text-slate-stone/[0.04] group-hover:text-slate-stone/[0.08] group-hover:scale-125 transition-all duration-1000 pointer-events-none italic">
+                <div className="absolute -right-2 -bottom-4 sm:-right-4 sm:-bottom-8 md:-right-6 md:-bottom-10 text-[4.5rem] sm:text-[8rem] md:text-[12rem] font-serif text-slate-stone/[0.04] group-hover:text-slate-stone/[0.08] group-hover:scale-125 transition-all duration-700 pointer-events-none italic">
                   {index + 1}
                 </div>
                 <div className="relative z-10">
-                  <div className="w-8 h-8 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-mist-white rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center mb-3 sm:mb-6 md:mb-10 group-hover:bg-slate-stone group-hover:text-white transition-all duration-500 transform group-hover:rotate-12">
+                  <div className="w-8 h-8 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-mist-white rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center mb-3 sm:mb-6 md:mb-10 group-hover:bg-slate-stone group-hover:text-white transition-all duration-250 transform group-hover:rotate-12">
                     <span className="font-serif text-xs sm:text-lg md:text-2xl font-bold">0{index + 1}</span>
                   </div>
                   <h3 className="font-sans tracking-[0.1em] sm:tracking-[0.2em] uppercase text-[9px] sm:text-xs md:text-sm mb-2 sm:mb-4 font-bold text-slate-stone">
@@ -187,13 +187,13 @@ const WorkshopsPage = () => {
           <div className="absolute inset-0 bg-slate-stone/35"></div>
         </div>
         <div className="relative z-10 container mx-auto px-6 text-center reveal">
-          <h2 className="font-serif text-2xl sm:text-5xl md:text-7xl text-white mb-6 sm:mb-10 drop-shadow-lg">{t('workshopsPage.ctaTitle')}</h2>
+          <h2 className="leading-[1.1] font-serif text-2xl sm:text-5xl md:text-7xl text-white mb-6 sm:mb-10 drop-shadow-lg">{t('workshopsPage.ctaTitle')}</h2>
           <p className="font-sans text-white/80 text-sm sm:text-xl md:text-2xl font-light mb-8 sm:mb-16 max-w-2xl mx-auto leading-relaxed">
             {t('workshopsPage.ctaText')}
           </p>
           <button
             onClick={() => { setContactForm({...contactForm, subject: t('workshopsPage.defaultSubject')}); setIsContactModalOpen(true); }}
-            className="inline-block px-6 sm:px-10 py-3 sm:py-4 bg-white text-slate-stone font-sans uppercase tracking-[0.3em] text-[10px] sm:text-sm hover:bg-slate-stone hover:text-white transition-all duration-500 shadow-xl rounded-full hover:scale-105 transform"
+            className="inline-block px-6 sm:px-10 py-3 sm:py-4 bg-ivory text-slate-stone font-sans uppercase tracking-[0.3em] text-[10px] sm:text-sm hover:bg-slate-stone hover:text-white transition-all duration-250 shadow-xl rounded-full hover:scale-105 transform"
           >
             {t('workshopsPage.ctaButton')}
           </button>
@@ -203,7 +203,7 @@ const WorkshopsPage = () => {
       {isContactModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsContactModalOpen(false)}></div>
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+          <div className="relative bg-ivory rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
             <div className="p-8">
               <h2 className="font-serif text-3xl text-slate-stone mb-2">{t('workshopsPage.modalTitle')}</h2>
               <p className="text-stone-gray text-sm mb-6">{t('workshopsPage.modalText')}</p>
@@ -218,7 +218,7 @@ const WorkshopsPage = () => {
                 <textarea required placeholder={t('workshopsPage.messagePlaceholder')} rows="4" value={contactForm.message} onChange={e => setContactForm({...contactForm, message: e.target.value})} className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40"></textarea>
 
                 <div className="pt-2 flex gap-4">
-                  <button type="submit" disabled={contactStatus.sending} className="flex-1 py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-slate-stone/90 transition-all">{contactStatus.sending ? t('workshopsPage.sending') : t('workshopsPage.send')}</button>
+                  <button type="submit" disabled={contactStatus.sending} className="flex-1 py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-slate-stone/90 transition-all active:scale-[0.97]">{contactStatus.sending ? t('workshopsPage.sending') : t('workshopsPage.send')}</button>
                   <button type="button" onClick={() => setIsContactModalOpen(false)} className="flex-1 py-3 bg-mist-white text-slate-stone font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-gray-200 transition-all">{t('workshopsPage.cancel')}</button>
                 </div>
               </form>

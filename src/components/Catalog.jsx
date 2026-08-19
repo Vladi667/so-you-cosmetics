@@ -82,7 +82,10 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
 
       // Allow enter animation to play
       setTimeout(() => setIsAnimating(false), 50);
-    }, 300);
+      // 150ms, matched to the grid's fade-out (duration-250, already well past
+      // visible by then) rather than 300ms. Waiting longer only delays the
+      // results the shopper just asked for.
+    }, 150);
 
     return () => clearTimeout(timer);
   }, [activeCategory, productsList, searchQuery]);
@@ -163,16 +166,16 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
         )}
 
         {/* Products Grid */}
-        <div className={`grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8 transition-all duration-500 ease-in-out ${isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
+        <div className={`grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8 transition-all duration-250 ease-in-out ${isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
           {displayedProducts.slice(0, visibleCount).map((product, index) => {
             const placeholderImg = placeholders[product.name.length % placeholders.length];
             return (
               <div 
                 key={product.id} 
-                className="group relative flex flex-col bg-white rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 reveal"
+                className="group relative flex flex-col bg-ivory rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-250 reveal"
                 style={{ transitionDelay: `${(index % 12) * 100}ms` }}
               >
-                <div className="aspect-[4/5] w-full overflow-hidden bg-slate-100 relative">
+                <div className="aspect-[4/5] w-full overflow-hidden bg-lake-mist relative">
                   <img
                     src={product.images.length > 0 ? product.images[0] : placeholderImg}
                     alt={product.name}
@@ -193,7 +196,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                   )}
                   {/* Hover Overlay — on mobile the card image is directly tappable */}
                   <Link to={`/product/${product.id}`} className="absolute inset-0 bg-slate-stone/10 opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center md:backdrop-blur-[2px]">
-                    <span className="transform translate-y-4 md:group-hover:translate-y-0 opacity-0 md:group-hover:opacity-100 transition-all duration-500 bg-white text-slate-stone px-8 py-3 rounded-full font-medium tracking-wide shadow-lg hover:bg-slate-stone hover:text-white hidden md:inline">
+                    <span className="transform translate-y-4 md:group-hover:translate-y-0 opacity-0 md:group-hover:opacity-100 transition-all duration-250 bg-ivory text-slate-stone px-8 py-3 rounded-full font-medium tracking-wide shadow-lg hover:bg-slate-stone hover:text-white hidden md:inline">
                       {t('catalog.viewDetails')}
                     </span>
                   </Link>
@@ -217,7 +220,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                     <div className="flex space-x-2 sm:space-x-3">
                       <button 
                         onClick={() => toggleFavorite(product)}
-                        className={`transition-colors duration-300 ${favorites.find(f => f.id === product.id) ? 'text-red-400' : 'text-slate-stone/60 hover:text-red-400'}`}
+                        className={`transition-colors duration-200 ${favorites.find(f => f.id === product.id) ? 'text-red-400' : 'text-slate-stone/60 hover:text-red-400'}`}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill={favorites.find(f => f.id === product.id) ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -260,7 +263,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
           <div className="mt-16 text-center">
             <button 
               onClick={loadMore}
-              className="inline-block border-b border-slate-stone text-slate-stone tracking-widest uppercase text-sm pb-1 hover:text-slate-stone/70 hover:border-slate-stone/70 transition-colors"
+              className="inline-block border-b border-slate-stone text-slate-stone tracking-widest uppercase text-sm pb-1 hover:text-slate-stone/70 hover:border-slate-stone/70 transition-colors active:scale-[0.97]"
             >
               {t('catalog.loadMore')}
             </button>

@@ -6,14 +6,36 @@
 @plugin "@tailwindcss/typography";
 
 @theme {
-  --color-ivory: #FAF9F6;
-  --color-mist-white: #F5F7FA;
-  --color-mist-blue: #A5B4C2;
-  --color-stone-gray: #596068;
-  --color-slate-stone: #2A3439;
-  --color-alpine-silver: #D9E0E3;
-  --color-lake-mist: #E2E8F0;
-  --color-sage: #9DC183;
+  /* Palette — pierre ivoire chaude, travertin, calcaire, plâtre, lin naturel.
+     Les tons précédents venaient d'un imaginaire lacustre et alpin (mist, lake,
+     slate, alpine) : bleutés et froids. La cliente demande l'inverse — de la
+     chaleur minérale, sans blanc cru ni gris.
+
+     Les noms de jetons sont conservés pour ne pas réécrire des centaines de
+     classes ; seules les valeurs changent. Des alias correctement nommés sont
+     ajoutés plus bas pour le code à venir.
+
+     Contrastes vérifiés (AA, seuil 4,5) : texte 5,49 · titres 11,25 ·
+     texte sur carte 5,87 · blanc sur pied de page 12,44. */
+  --color-ivory: #FDFBF7;          /* céramique — cartes, texte sur fond sombre */
+  --color-mist-white: #F7F3EC;     /* plâtre — fond de page */
+  --color-mist-blue: #B9A891;      /* travertin — accent sourd */
+  --color-stone-gray: #6A6157;     /* taupe chaud — texte courant */
+  --color-slate-stone: #3A332B;    /* brun charbon — titres, pied de page */
+  --color-alpine-silver: #DED3C4;  /* calcaire — filets, bordures */
+  --color-lake-mist: #EFE8DE;      /* lin — panneaux discrets */
+  --color-sage: #9FAE86;           /* botanique, légèrement réchauffé */
+
+  /* Alias sémantiques : mêmes valeurs, noms justes. Tailwind ne génère que les
+     utilitaires réellement utilisés, donc ceux-ci ne coûtent rien tant qu'ils
+     ne servent pas. */
+  --color-ceramic: #FDFBF7;
+  --color-plaster: #F7F3EC;
+  --color-travertine: #B9A891;
+  --color-taupe: #6A6157;
+  --color-charcoal: #3A332B;
+  --color-limestone: #DED3C4;
+  --color-linen: #EFE8DE;
   
   --font-sans: 'Outfit', sans-serif;
   --font-serif: 'Cormorant Garamond', serif;
@@ -73,6 +95,31 @@
   }
 }
 
+/* Hero footage drift — a very slow, very small ken-burns. 1.5% of scale over
+   28s is below the threshold where the eye reads it as movement; it reads as
+   the image being alive. Gated behind motion-safe in the markup. */
+@keyframes heroDrift {
+  0%   { transform: scale(1.02) translate3d(0, 0, 0); }
+  50%  { transform: scale(1.055) translate3d(-0.6%, -0.8%, 0); }
+  100% { transform: scale(1.02) translate3d(0, 0, 0); }
+}
+
+/* Scroll cue: the line grows downward and fades, hinting the direction rather
+   than pulsing in place. */
+@keyframes scrollHint {
+  0%   { transform: scaleY(0.35); transform-origin: top; opacity: 0.15; }
+  45%  { transform: scaleY(1);    transform-origin: top; opacity: 0.85; }
+  100% { transform: scaleY(1);    transform-origin: bottom; opacity: 0; }
+}
+
+/* Botanical band. Each frame drifts on its own cycle, scale kept under 4% so
+   nothing reads as animation — the band just never looks quite static. */
+@keyframes frameDrift {
+  0%   { transform: scale(1.03) translate3d(0, 0, 0); }
+  50%  { transform: scale(1.075) translate3d(1%, -1.2%, 0); }
+  100% { transform: scale(1.03) translate3d(0, 0, 0); }
+}
+
 @keyframes float {
   0% { transform: translateY(0px) rotate(0deg); }
   50% { transform: translateY(-15px) rotate(1deg); }
@@ -109,14 +156,32 @@
   body {
     @apply bg-mist-white text-stone-gray font-sans selection:bg-slate-stone selection:text-ivory;
   }
+  /* Tracking and leading are size-specific, never one value for every heading.
+     As type grows, letters read too far apart and lines too loose — so display
+     sizes tighten on both axes, while small headings keep slight positive
+     tracking for legibility. The previous single `tracking-wide` on h1–h6 put
+     +0.025em on 72px display type, which is the wrong direction. */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif text-slate-stone font-light tracking-wide;
+    @apply font-serif text-slate-stone font-light;
+    text-wrap: balance;
+  }
+  h1 { letter-spacing: -0.022em; line-height: 1.05; }
+  h2 { letter-spacing: -0.018em; line-height: 1.10; }
+  h3 { letter-spacing: -0.012em; line-height: 1.20; }
+  h4 { letter-spacing: -0.006em; line-height: 1.30; }
+  h5, h6 { letter-spacing: 0.010em; line-height: 1.40; }
+
+  /* Below the display range the negative tracking stops paying off — a 30px
+     serif heading needs its counters back. */
+  @media (max-width: 640px) {
+    h1 { letter-spacing: -0.012em; line-height: 1.12; }
+    h2 { letter-spacing: -0.008em; line-height: 1.18; }
   }
 }
 
 @layer utilities {
   .glass {
-    @apply bg-white/40 backdrop-blur-xl border border-white/30 shadow-[0_8px_32px_0_rgba(42,52,57,0.05)];
+    @apply bg-ivory/50 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_0_rgba(58,51,43,0.06)];
   }
   .glass-dark {
     @apply bg-slate-stone/60 backdrop-blur-xl border border-white/10 shadow-2xl;
@@ -133,18 +198,24 @@
   }
 }
 
-/* Custom Animations */
+/* Scroll reveal.
+   Was `transition: all 1.5s` with an animated `filter: blur()`. `all` transitions
+   every property that happens to change, and `filter` is not compositor-friendly,
+   so each reveal cost a paint. Now only transform and opacity animate — both run
+   on the compositor — and 1.5s is down to 600ms, because content that is still
+   arriving after the reader's eye has landed reads as lag, not elegance. */
 .reveal {
   opacity: 0;
-  filter: blur(10px);
-  transform: translateY(30px);
-  transition: all 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(24px);
+  transition: opacity 600ms cubic-bezier(0.16, 1, 0.3, 1),
+              transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
 }
 
 .reveal.active {
   opacity: 1;
-  filter: blur(0);
   transform: translateY(0);
+  will-change: auto;
 }
 
 /* Touch devices: pause carousel on touch */
@@ -158,4 +229,52 @@
     /* Slightly slower on mobile for readability */
     animation-duration: 120s;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Accessibility preferences
+
+   The site previously honoured none of these. It runs a 20s float on a
+   full-viewport background, blurred scroll reveals, a marquee and parallax —
+   exactly the motion that makes some people ill.
+
+   Reduced motion does not mean no feedback: transitions become short opacity
+   cross-fades instead of travel, so the interface still confirms what happened.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 150ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Reveals stop travelling and simply fade in. */
+  .reveal { transform: none; filter: none; opacity: 0; transition: opacity 200ms ease; }
+  .reveal.active { opacity: 1; }
+
+  /* The looping background float and the marquee stop entirely. */
+  .animate-marquee-slow,
+  .animate-marquee,
+  [class*="animate-[float"] { animation: none !important; transform: none !important; }
+
+  /* Hover lifts and card scaling are travel, not information. */
+  .group:hover .group-hover\:scale-105,
+  .hover\:-translate-y-1:hover,
+  .hover\:-translate-y-2:hover { transform: none !important; }
+}
+
+/* Frosted surfaces become near-solid rather than translucent. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass { background: rgba(255,255,255,0.94); backdrop-filter: none; }
+  .glass-dark { background: rgba(58,51,43,0.96); backdrop-filter: none; }
+}
+
+/* High contrast: solid chrome with a defined edge, and no text shadows. */
+@media (prefers-contrast: more) {
+  .glass { background: #fff; backdrop-filter: none; border-color: rgba(58,51,43,0.5); }
+  .glass-dark { background: #3a332b; backdrop-filter: none; border-color: rgba(255,255,255,0.5); }
+  .text-shadow { text-shadow: none; }
 }

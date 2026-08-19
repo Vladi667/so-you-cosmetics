@@ -87,7 +87,7 @@ const LanguageSwitcher = ({ className = '', variant = 'inherit', inline = false 
       {open && (
         <div
           role="listbox"
-          className="absolute right-0 top-full mt-2 z-[60] min-w-[7rem] bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-slate-stone/10 p-1.5 flex flex-col"
+          className="absolute right-0 top-full mt-2 z-[60] min-w-[7rem] bg-ivory/95 backdrop-blur-md rounded-xl shadow-2xl border border-slate-stone/10 p-1.5 flex flex-col"
         >
           {languages.map((lng) => {
             const active = lng.code === language;
