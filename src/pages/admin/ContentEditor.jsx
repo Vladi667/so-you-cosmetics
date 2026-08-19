@@ -8,6 +8,14 @@ import translations, { DEFAULT_LANGUAGE, LANGUAGES } from '../../i18n/translatio
 // `loader`, `category`, `categories` (interface labels — changing them breaks
 // consistency without giving her anything). That exclusion is what keeps this
 // panel to ~139 fields per language instead of 317.
+// Every section of the site, so nothing on the page is beyond her reach.
+//
+// An earlier draft withheld the legal pages and the interface labels, reasoning
+// that CGV do not belong behind a free-text form and that renaming a button
+// breaks consistency. Both remain true as *advice* — they were the wrong thing
+// to enforce by hiding the fields. Where a section carries a real risk it now
+// says so and lets her decide, which is what an owner of her own site should
+// get. The coded default stays one click away in every case.
 const SECTIONS = [
   { key: 'hero', label: 'Accueil — bannière', page: '/' },
   { key: 'brandEssence', label: 'Accueil — bandeau défilant', page: '/' },
@@ -19,6 +27,35 @@ const SECTIONS = [
   { key: 'workshopsPage', label: 'Page « Ateliers »', page: '/workshops' },
   { key: 'contact', label: 'Page « Contact »', page: '/contact' },
   { key: 'footer', label: 'Pied de page', page: '/' },
+  { key: 'nav', label: 'Menu de navigation', page: '/' },
+  { key: 'catalog', label: 'Boutique — liste et filtres', page: '/' },
+  {
+    key: 'categories',
+    label: 'Boutique — noms des catégories',
+    page: '/',
+    warning:
+      "Ces noms servent aussi de repères dans le catalogue. Traduisez-les, mais gardez le sens : un nom trop éloigné rend une catégorie difficile à retrouver.",
+  },
+  { key: 'category', label: 'Boutique — page catégorie', page: '/' },
+  { key: 'product', label: 'Fiche produit', page: '/' },
+  { key: 'search', label: 'Recherche', page: '/' },
+  { key: 'drawer', label: 'Panier et favoris', page: '/' },
+  { key: 'loader', label: 'Écran de chargement', page: '/' },
+  { key: 'legal', label: 'Mentions légales — libellés', page: '/terms' },
+  {
+    key: 'terms',
+    label: 'Conditions générales de vente',
+    page: '/terms',
+    warning:
+      "Texte juridique. Il vous engage vis-à-vis de vos clients : modifiez-le en connaissance de cause, et faites-le relire si le changement porte sur les prix, la livraison, les retours ou la responsabilité.",
+  },
+  {
+    key: 'privacy',
+    label: 'Politique de confidentialité',
+    page: '/privacy',
+    warning:
+      "Texte juridique, encadré par la LPD suisse. Il décrit ce que vous faites réellement des données de vos clients : ne lui faites pas dire autre chose que la réalité.",
+  },
 ];
 
 // Fields where the design has little slack: a heading set in display type, or a
@@ -68,8 +105,15 @@ const resolve = (obj, path) =>
 // looks like.
 const blankLike = (sample) => {
   if (typeof sample === 'string') return '';
+  if (Array.isArray(sample)) return [];
   if (sample && typeof sample === 'object') {
-    return Object.keys(sample).reduce((acc, k) => ({ ...acc, [k]: '' }), {});
+    // Follow the shape field by field: a new legal section needs body to be an
+    // empty array, not an empty string, or the paragraph editor would refuse it
+    // the moment she adds a row.
+    return Object.entries(sample).reduce(
+      (acc, [k, v]) => ({ ...acc, [k]: blankLike(v) }),
+      {}
+    );
   }
   return '';
 };
@@ -287,6 +331,13 @@ const ContentEditor = ({ fetchHeaders }) => {
         <div className="mb-6 p-4 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm">{status.error}</div>
       )}
 
+      {(SECTIONS.find((s) => s.key === section) || {}).warning && (
+        <div className="mb-6 p-4 bg-mist-white border border-slate-stone/15 rounded-xl text-sm text-slate-stone">
+          <strong className="font-medium">À savoir avant de modifier.</strong>{' '}
+          {(SECTIONS.find((s) => s.key === section) || {}).warning}
+        </div>
+      )}
+
       {partialPaths.length > 0 && (
         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-900">
           <strong className="font-medium">
@@ -461,19 +512,67 @@ const ContentEditor = ({ fetchHeaders }) => {
                     />
                   ) : (
                     <div className="space-y-2">
-                      {champs.map((champ) => (
-                        <div key={champ}>
-                          <label className="block text-[11px] uppercase tracking-widest text-stone-gray mb-1">{prettify(champ)}</label>
-                          <textarea
-                            rows={String((item && item[champ]) || '').length > 70 ? 3 : 1}
-                            value={(item && item[champ]) || ''}
-                            onChange={(e) =>
-                              remplace(items.map((v, k) => (k === i ? { ...v, [champ]: e.target.value } : v)))
-                            }
-                            className="w-full px-4 py-2.5 bg-white border border-slate-stone/15 rounded-xl text-sm text-slate-stone focus:outline-none focus:border-slate-stone/40"
-                          />
-                        </div>
-                      ))}
+                      {champs.map((champ) => {
+                        const valeur = item && item[champ];
+
+                        // The legal pages hold {heading, body: [paragraphs]} —
+                        // the one shape a flat field cannot express. Rendering
+                        // the array as text would turn her CGV into
+                        // "[object Object]" on save, so paragraphs get their own
+                        // small editor rather than being flattened.
+                        if (Array.isArray(valeur)) {
+                          const majParas = (next) =>
+                            remplace(items.map((v, k) => (k === i ? { ...v, [champ]: next } : v)));
+                          return (
+                            <div key={champ}>
+                              <label className="block text-[11px] uppercase tracking-widest text-stone-gray mb-1">
+                                {prettify(champ)} — {valeur.length} paragraphe(s)
+                              </label>
+                              <div className="space-y-2">
+                                {valeur.map((para, pi) => (
+                                  <div key={pi} className="flex gap-2">
+                                    <textarea
+                                      rows={String(para || '').length > 90 ? 3 : 2}
+                                      value={para || ''}
+                                      onChange={(e) => majParas(valeur.map((p, k) => (k === pi ? e.target.value : p)))}
+                                      className="flex-1 px-4 py-2.5 bg-white border border-slate-stone/15 rounded-xl text-sm text-slate-stone focus:outline-none focus:border-slate-stone/40"
+                                    />
+                                    <div className="flex flex-col gap-1">
+                                      <button type="button" aria-label="Monter le paragraphe" disabled={pi === 0}
+                                        onClick={() => { const n = valeur.slice(); [n[pi], n[pi - 1]] = [n[pi - 1], n[pi]]; majParas(n); }}
+                                        className="w-7 h-7 rounded-lg bg-white border border-slate-stone/10 text-slate-stone disabled:opacity-30 hover:bg-slate-stone hover:text-white transition-colors">↑</button>
+                                      <button type="button" aria-label="Supprimer le paragraphe"
+                                        onClick={() => majParas(valeur.filter((_, k) => k !== pi))}
+                                        className="w-7 h-7 rounded-lg bg-white border border-red-200 text-red-500 hover:bg-red-500 hover:text-white transition-colors">×</button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => majParas([...valeur, ''])}
+                                className="mt-2 px-4 py-1.5 border border-slate-stone/20 text-stone-gray rounded-full text-[11px] uppercase tracking-widest hover:bg-slate-stone hover:text-white transition-colors"
+                              >
+                                Ajouter un paragraphe
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={champ}>
+                            <label className="block text-[11px] uppercase tracking-widest text-stone-gray mb-1">{prettify(champ)}</label>
+                            <textarea
+                              rows={String(valeur || '').length > 70 ? 3 : 1}
+                              value={valeur || ''}
+                              onChange={(e) =>
+                                remplace(items.map((v, k) => (k === i ? { ...v, [champ]: e.target.value } : v)))
+                              }
+                              className="w-full px-4 py-2.5 bg-white border border-slate-stone/15 rounded-xl text-sm text-slate-stone focus:outline-none focus:border-slate-stone/40"
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
