@@ -231,7 +231,16 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                 aria-hidden={isDuplicate || undefined}
                 inert={isDuplicate || undefined}
               >
-                <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-white mb-5 shadow-sm
+                {/* The photography behind these cards comes from several different
+                    shoots — some on white, some on black, some overhead in a
+                    bowl — and side by side in one band they read as a jumble
+                    rather than a collection. The hairline keeps the pale
+                    packshots from dissolving into the page, and the wash below
+                    pulls the extremes toward a common warmth. Neither is a
+                    substitute for reshooting on one ground, but both stop the
+                    band from looking accidental. */}
+                <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-ivory mb-5
+                                border border-slate-stone/[0.07] shadow-sm
                                 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group/card">
                   {product.images && product.images.length > 0 ? (
                     <img
@@ -240,6 +249,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                       loading="lazy"
                       draggable={false}
                       className="w-full h-full object-cover object-center absolute inset-0
+                                 brightness-[1.02] saturate-[0.93]
                                  transition-transform duration-500 group-hover/card:scale-[1.04]"
                     />
                   ) : (
@@ -249,6 +259,10 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                       </div>
                     </div>
                   )}
+
+                  {/* No z-index: DOM order alone puts this above the image and below the
+                      hover gradient that follows, so the overlay stays clean. */}
+                  <div className="absolute inset-0 bg-[#B9A891]/[0.12] mix-blend-soft-light pointer-events-none" />
 
                   <Link
                     to={`/product/${product.id}`}
