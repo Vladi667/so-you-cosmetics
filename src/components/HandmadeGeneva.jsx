@@ -19,16 +19,14 @@ const FRAMES = [
 
 const HandmadeGeneva = () => {
   const { t } = useLanguage();
+  // The first card used to carry a Swiss flag, back when it read "Local —
+  // Geneva craftsmanship, Swiss ingredients". The copy is now a statement about
+  // skin, and the flag would restate an origin claim that was removed from the
+  // site this morning precisely because the ingredients are not all Swiss.
   const icons = [
-    (
-      <svg viewBox="0 0 32 32" className="w-8 h-8" aria-hidden="true">
-        <rect width="32" height="32" rx="4" fill="#FF0000" />
-        <rect x="13" y="6" width="6" height="20" rx="1" fill="white" />
-        <rect x="6" y="13" width="20" height="6" rx="1" fill="white" />
-      </svg>
-    ),
+    <span className="text-3xl" aria-hidden="true">🤍</span>,
     <span className="text-3xl" aria-hidden="true">🌿</span>,
-    <span className="text-3xl" aria-hidden="true">✨</span>,
+    <span className="text-3xl" aria-hidden="true">💧</span>,
   ];
   const pillars = t('handmade.pillars').map((p, i) => ({ ...p, icon: icons[i] }));
 
