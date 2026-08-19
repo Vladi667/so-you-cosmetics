@@ -17,6 +17,7 @@ import CategoryPage from './pages/CategoryPage';
 import AboutPage from './pages/AboutPage';
 import WorkshopsPage from './pages/WorkshopsPage';
 import WorkshopDetailPage from './pages/WorkshopDetailPage';
+import JournalPage from './pages/JournalPage';
 import ContactPage from './pages/ContactPage';
 import ProductPage from './pages/ProductPage';
 import SearchPage from './pages/SearchPage';
@@ -62,6 +63,8 @@ function App() {
       navigate('/about');
     } else if (category === 'Workshops') {
       navigate('/workshops');
+    } else if (category === 'Journal') {
+      navigate('/journal');
     } else if (category === 'Contact') {
       navigate('/contact');
     } else {
@@ -151,6 +154,8 @@ function App() {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/workshops" element={<WorkshopsPage />} />
           <Route path="/workshops/:id" element={<WorkshopDetailPage />} />
+          <Route path="/journal" element={<JournalPage />} />
+          <Route path="/journal/:slug" element={<JournalPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/category/:categoryName" element={<CategoryPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
           <Route path="/product/:id" element={<ProductPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />

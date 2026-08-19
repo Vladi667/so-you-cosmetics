@@ -547,6 +547,71 @@ router.put('/admin/settings/shop', requireAdmin, (req, res) => {
   }
 });
 
+// 3f. Journal — public reading, admin writing.
+//
+// The public route returns published articles only. A draft she is still working
+// on must not be reachable by guessing its address: unlisted is not private.
+router.get('/articles', (req, res) => {
+  try {
+    res.json(db.getArticles({ publishedOnly: true }));
+  } catch (err) {
+    console.error('Failed to read articles:', err);
+    res.status(500).json({ error: 'Lecture impossible' });
+  }
+});
+
+router.get('/articles/:slug', (req, res) => {
+  try {
+    const article = db.getArticleBySlug(req.params.slug);
+    if (!article || !article.published) return res.status(404).json({ error: 'Article introuvable' });
+    res.json(article);
+  } catch (err) {
+    console.error('Failed to read article:', err);
+    res.status(500).json({ error: 'Lecture impossible' });
+  }
+});
+
+router.get('/admin/articles', requireAdmin, (req, res) => {
+  try {
+    res.json(db.getArticles());
+  } catch (err) {
+    res.status(500).json({ error: 'Lecture impossible' });
+  }
+});
+
+router.post('/admin/articles', requireAdmin, (req, res) => {
+  if (!req.body || !String(req.body.title || '').trim()) {
+    return res.status(400).json({ error: 'Un titre est requis' });
+  }
+  try {
+    res.status(201).json(db.createArticle(req.body));
+  } catch (err) {
+    console.error('Failed to create article:', err);
+    res.status(500).json({ error: 'Création impossible' });
+  }
+});
+
+router.put('/admin/articles/:id', requireAdmin, (req, res) => {
+  try {
+    const updated = db.updateArticle(req.params.id, req.body || {});
+    if (!updated) return res.status(404).json({ error: 'Article introuvable' });
+    res.json(updated);
+  } catch (err) {
+    console.error('Failed to update article:', err);
+    res.status(500).json({ error: 'Enregistrement impossible' });
+  }
+});
+
+router.delete('/admin/articles/:id', requireAdmin, (req, res) => {
+  try {
+    if (!db.deleteArticle(req.params.id)) return res.status(404).json({ error: 'Article introuvable' });
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error('Failed to delete article:', err);
+    res.status(500).json({ error: 'Suppression impossible' });
+  }
+});
+
 // 4. Get Booking Slots
 router.get('/workshops/slots', (req, res) => {
   try {

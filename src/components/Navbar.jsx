@@ -6,7 +6,7 @@ import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '../i18n/LanguageContext';
 
 // Maps the routing keys used by onCategorySelect/isLinkActive to translation keys.
-const NAV_LABELS = { 'About Us': 'nav.about', Workshops: 'nav.workshops', Contact: 'nav.contact' };
+const NAV_LABELS = { 'About Us': 'nav.about', Workshops: 'nav.workshops', Journal: 'nav.journal', Contact: 'nav.contact' };
 
 const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick }) => {
   const { t, tCategory } = useLanguage();
@@ -36,6 +36,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
     if (item === 'Home') return location.pathname === '/';
     if (item === 'About Us') return location.pathname === '/about';
     if (item === 'Workshops') return location.pathname === '/workshops';
+    if (item === 'Journal') return location.pathname.startsWith('/journal');
     if (item === 'Contact') return location.pathname === '/contact';
     if (item === 'Shop') return location.pathname.startsWith('/category/');
     return false;
@@ -139,7 +140,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
               </div>
             </div>
 
-            {['About Us', 'Workshops', 'Contact'].map((item) => (
+            {['About Us', 'Workshops', 'Journal', 'Contact'].map((item) => (
               <button 
                 key={item} 
                 onClick={() => onCategorySelect(item)}

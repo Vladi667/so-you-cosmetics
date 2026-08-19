@@ -212,6 +212,25 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                 </button>
               </li>
 
+              {/* Journal */}
+              <li
+                className={`transform transition-all duration-250 ${
+                  isOpen ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
+                }`}
+                style={{ transitionDelay: isOpen ? '275ms' : '0ms' }}
+              >
+                <button
+                  onClick={() => handleNav('Journal')}
+                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase transition-all duration-300 flex items-center justify-between active:scale-[0.98] border-l-2 pl-4 -ml-4 transform-gpu ${
+                    isLinkActive('Journal')
+                      ? 'text-white border-white font-medium'
+                      : 'text-white/60 hover:text-white border-transparent'
+                  }`}
+                >
+                  {t('nav.journal')}
+                </button>
+              </li>
+
               {/* Contact */}
               <li
                 className={`transform transition-all duration-250 ${

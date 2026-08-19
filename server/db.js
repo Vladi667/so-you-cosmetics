@@ -15,6 +15,7 @@ const ADMIN_FILE = path.join(DATA_DIR, 'admin.json');
 const WORKSHOPS_FILE = path.join(DATA_DIR, 'workshops.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 const CONTENT_FILE = path.join(DATA_DIR, 'content.json');
+const ARTICLES_FILE = path.join(DATA_DIR, 'articles.json');
 const NEWSLETTER_FILE = path.join(DATA_DIR, 'newsletter.json');
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 const PRODUCTS_FILE = path.join(__dirname, 'products.json');
@@ -85,6 +86,7 @@ initJsonFile(CONTACTS_FILE);
 initJsonFile(WORKSHOPS_FILE);
 initJsonFile(SETTINGS_FILE, {});
 initJsonFile(CONTENT_FILE, {});
+initJsonFile(ARTICLES_FILE, []);
 initJsonFile(NEWSLETTER_FILE);
 initJsonFile(SESSIONS_FILE);
 
@@ -968,6 +970,92 @@ async function getClients() {
 }
 
 // ------------- Settings (admin-managed runtime config) -------------
+// Journal articles. She asked for "un accès administrateur me permettant de
+// rédiger, modifier, annuler et publier moi-même mes articles" — so a draft is a
+// first-class state, not a missing article: she can write over several sittings
+// and publish when ready.
+//
+// One language per article rather than three. Writing every post three times is
+// not sustainable for one person, and a half-translated post reads worse than an
+// honestly monolingual one. The article carries its language so the site can say
+// which it is.
+function readArticles() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(ARTICLES_FILE, 'utf8'));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function writeArticles(list) {
+  fs.writeFileSync(ARTICLES_FILE, JSON.stringify(list, null, 2), 'utf8');
+}
+
+// A readable, stable URL. Built from the title once, at creation: regenerating
+// it on every edit would break links she has already shared the moment she fixes
+// a typo in the title.
+function slugify(str) {
+  return String(str || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 70) || 'article';
+}
+
+function getArticles({ publishedOnly = false } = {}) {
+  const list = readArticles();
+  const filtered = publishedOnly ? list.filter((a) => a.published) : list;
+  return filtered.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+}
+
+function getArticleBySlug(slug) {
+  return readArticles().find((a) => a.slug === slug) || null;
+}
+
+function createArticle(input) {
+  const list = readArticles();
+  const base = slugify(input.title);
+  let slug = base;
+  let n = 2;
+  while (list.some((a) => a.slug === slug)) slug = `${base}-${n++}`;
+  const article = {
+    id: 'art_' + Math.random().toString(36).slice(2, 11),
+    slug,
+    language: input.language || 'fr',
+    title: input.title || '',
+    excerpt: input.excerpt || '',
+    body: input.body || '',
+    image_url: input.image_url || '',
+    published: Boolean(input.published),
+    date: input.date || new Date().toISOString().slice(0, 10),
+    created_at: new Date().toISOString(),
+  };
+  list.push(article);
+  writeArticles(list);
+  return article;
+}
+
+function updateArticle(id, patch) {
+  const list = readArticles();
+  const i = list.findIndex((a) => a.id === id);
+  if (i === -1) return null;
+  // slug, id et created_at ne bougent pas : les liens déjà partagés doivent survivre.
+  const { slug, id: _ignored, created_at, ...modifiable } = patch || {};
+  list[i] = { ...list[i], ...modifiable };
+  writeArticles(list);
+  return list[i];
+}
+
+function deleteArticle(id) {
+  const list = readArticles();
+  const next = list.filter((a) => a.id !== id);
+  if (next.length === list.length) return false;
+  writeArticles(next);
+  return true;
+}
+
 // Content overrides — what she has rewritten from the admin, keyed by language
 // and then by the same dot-paths the site already uses ({ fr: { 'hero.titleLine1': '…' } }).
 //
@@ -1165,6 +1253,11 @@ module.exports = {
   deleteProduct,
   getSetting,
   updateSettings,
+  getArticles,
+  getArticleBySlug,
+  createArticle,
+  updateArticle,
+  deleteArticle,
   getShopSettings,
   updateShopSettings,
   readContent,

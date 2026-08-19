@@ -18,6 +18,7 @@ export const DEFAULT_LANGUAGE = 'fr';
 const translations = {
   fr: {
     nav: {
+      journal: "Journal",
       home: 'Accueil',
       shop: 'Boutique',
       about: 'Notre histoire',
@@ -114,11 +115,20 @@ const translations = {
       'Savon Liquide': 'Savon Liquide',
       'Soin des cheveux': 'Soin des cheveux',
     },
+    journal: {
+      eyebrow: "Le Journal",
+      title: "Journal",
+      intro: "Nos conseils, nos coulisses et nos réflexions autour de la beauté naturelle.",
+      empty: "Les premiers articles arrivent bientôt.",
+      backToList: "Retour au journal",
+      notFoundTitle: "Cet article n'est pas disponible",
+      otherLanguage: "Cet article a été rédigé dans une autre langue que celle du site.",
+    },
     footer: {
       tagline: 'Cosmétiques naturels faits main à Genève',
       explore: 'Explorer',
       address: '3 av. Pictet-De-Rochemont, 1207 Genève',
-      links: { home: 'So You', products: 'Boutique', about: 'Notre histoire', workshops: 'Ateliers', contact: 'Contact' },
+      links: { home: 'So You', products: 'Boutique', about: 'Notre histoire', workshops: 'Ateliers', journal: 'Journal', contact: 'Contact' },
       newsletter: 'Newsletter',
       newsletterText: 'Rejoignez notre communauté pour des conseils bien-être botanique et des offres exclusives.',
       emailPlaceholder: 'Votre adresse e-mail',
@@ -395,6 +405,7 @@ const translations = {
 
   en: {
     nav: {
+      journal: "Journal",
       home: 'Home',
       shop: 'Shop',
       about: 'Our Story',
@@ -491,11 +502,20 @@ const translations = {
       'Savon Liquide': 'Liquid Soap',
       'Soin des cheveux': 'Hair Care',
     },
+    journal: {
+      eyebrow: "The Journal",
+      title: "Journal",
+      intro: "Our advice, our behind-the-scenes and our thoughts on natural beauty.",
+      empty: "The first articles are coming soon.",
+      backToList: "Back to the journal",
+      notFoundTitle: "This article is not available",
+      otherLanguage: "This article was written in a language other than the site's.",
+    },
     footer: {
       tagline: 'Natural cosmetics handmade in Geneva',
       explore: 'Explore',
       address: '3 av. Pictet-De-Rochemont, 1207 Geneva',
-      links: { home: 'So You', products: 'Shop', about: 'Our Story', workshops: 'Atelier', contact: 'Contact' },
+      links: { home: 'So You', products: 'Shop', about: 'Our Story', workshops: 'Atelier', journal: 'Journal', contact: 'Contact' },
       newsletter: 'Newsletter',
       newsletterText: 'Join our community for botanical wellness tips and exclusive offers.',
       emailPlaceholder: 'Your email address',
@@ -772,6 +792,7 @@ const translations = {
 
   de: {
     nav: {
+      journal: "Journal",
       home: 'Startseite',
       shop: 'Shop',
       about: 'Unsere Geschichte',
@@ -868,11 +889,20 @@ const translations = {
       'Savon Liquide': 'Flüssigseife',
       'Soin des cheveux': 'Haarpflege',
     },
+    journal: {
+      eyebrow: "Das Journal",
+      title: "Journal",
+      intro: "Unsere Tipps, unsere Einblicke und unsere Gedanken zu natürlicher Schönheit.",
+      empty: "Die ersten Beiträge folgen in Kürze.",
+      backToList: "Zurück zum Journal",
+      notFoundTitle: "Dieser Beitrag ist nicht verfügbar",
+      otherLanguage: "Dieser Beitrag wurde in einer anderen Sprache als der Website verfasst.",
+    },
     footer: {
       tagline: 'Natürliche Kosmetik, handgemacht in Genf',
       explore: 'Entdecken',
       address: '3 av. Pictet-De-Rochemont, 1207 Genf',
-      links: { home: 'So You', products: 'Shop', about: 'Unsere Geschichte', workshops: 'Workshops', contact: 'Kontakt' },
+      links: { home: 'So You', products: 'Shop', about: 'Unsere Geschichte', workshops: 'Workshops', journal: 'Journal', contact: 'Kontakt' },
       newsletter: 'Newsletter',
       newsletterText: 'Treten Sie unserer Community bei für botanische Wellness-Tipps und exklusive Angebote.',
       emailPlaceholder: 'Ihre E-Mail-Adresse',
