@@ -9,17 +9,23 @@ import translations, { DEFAULT_LANGUAGE, LANGUAGES } from '../../i18n/translatio
 // consistency without giving her anything). That exclusion is what keeps this
 // panel to ~139 fields per language instead of 317.
 const SECTIONS = [
-  { key: 'hero', label: 'Accueil — bannière' },
-  { key: 'brandEssence', label: 'Accueil — bandeau défilant' },
-  { key: 'signature', label: 'Accueil — coups de cœur' },
-  { key: 'handmade', label: 'Accueil — philosophie' },
-  { key: 'ingredients', label: 'Accueil — ingrédients' },
-  { key: 'workshopsSection', label: 'Accueil — ateliers' },
-  { key: 'about', label: 'Page « Notre histoire »' },
-  { key: 'workshopsPage', label: 'Page « Ateliers »' },
-  { key: 'contact', label: 'Page « Contact »' },
-  { key: 'footer', label: 'Pied de page' },
+  { key: 'hero', label: 'Accueil — bannière', page: '/' },
+  { key: 'brandEssence', label: 'Accueil — bandeau défilant', page: '/' },
+  { key: 'signature', label: 'Accueil — coups de cœur', page: '/' },
+  { key: 'handmade', label: 'Accueil — philosophie', page: '/' },
+  { key: 'ingredients', label: 'Accueil — ingrédients', page: '/' },
+  { key: 'workshopsSection', label: 'Accueil — ateliers', page: '/' },
+  { key: 'about', label: 'Page « Notre histoire »', page: '/about' },
+  { key: 'workshopsPage', label: 'Page « Ateliers »', page: '/workshops' },
+  { key: 'contact', label: 'Page « Contact »', page: '/contact' },
+  { key: 'footer', label: 'Pied de page', page: '/' },
 ];
+
+// Fields where the design has little slack: a heading set in display type, or a
+// button whose pill is sized to its label. A warning is honest about what it
+// knows — it flags a length the layout was not drawn for, it cannot promise the
+// text will break. Length guidance helps; it does not remove the problem.
+const TIGHT = /(title|Line\d|cta\d|brand|eyebrow|label|add|scroll)/i;
 
 // Collect the string leaves of a section as dot-paths. Arrays are skipped on
 // purpose: editing a list means adding, removing and reordering its items, which
@@ -38,8 +44,35 @@ function flatten(node, prefix, out) {
   return out;
 }
 
+// The lists inside a section, as dot-paths. Excluding the legal pages dropped
+// this from 31 lists across the file to 5 in the sections she can reach, and all
+// five are shallow: three of {title, text}, one of {label, value}, one of plain
+// strings. That is why list editing is an afternoon rather than a project.
+function collectLists(node, prefix, out) {
+  if (Array.isArray(node)) {
+    out.push(prefix);
+    return out;
+  }
+  if (node === null || typeof node !== 'object') return out;
+  for (const [key, value] of Object.entries(node)) {
+    collectLists(value, prefix ? `${prefix}.${key}` : key, out);
+  }
+  return out;
+}
+
 const resolve = (obj, path) =>
   path.split('.').reduce((acc, key) => (acc == null ? undefined : acc[key]), obj);
+
+// An item is either a plain string or a flat object; the shape comes from the
+// coded default so a list she has never touched still knows what a new row
+// looks like.
+const blankLike = (sample) => {
+  if (typeof sample === 'string') return '';
+  if (sample && typeof sample === 'object') {
+    return Object.keys(sample).reduce((acc, k) => ({ ...acc, [k]: '' }), {});
+  }
+  return '';
+};
 
 // A dot-path makes a poor label. Turn "titleLine1" into "Title line 1" so the
 // list reads as fields rather than as code.
@@ -80,6 +113,11 @@ const ContentEditor = ({ fetchHeaders }) => {
     [section]
   );
 
+  const listPaths = useMemo(
+    () => collectLists(translations[DEFAULT_LANGUAGE][section], section, []),
+    [section]
+  );
+
   const draftKey = (path) => `${language}::${path}`;
 
   // What the site shows for this field today: her text if she wrote one,
@@ -96,24 +134,83 @@ const ContentEditor = ({ fetchHeaders }) => {
     return Object.prototype.hasOwnProperty.call(drafts, key) ? drafts[key] : savedValue(path);
   };
 
-  const isOverridden = (path) => {
-    const own = overrides[language] && overrides[language][path];
-    return own != null && own !== '';
+  const hasOverrideIn = (lang, path) => {
+    const own = overrides[lang] && overrides[lang][path];
+    return Array.isArray(own) ? own.length > 0 : own != null && own !== '';
   };
+
+  const isOverridden = (path) => hasOverrideIn(language, path);
+
+  // Which languages she has rewritten this field in, and which she has not.
+  //
+  // This is the failure the whole phase exists for: rewriting a text in French
+  // leaves English and German showing the *old* coded wording, and nothing on
+  // the site says so. The visitor sees stale copy, the shop looks neglected in
+  // two of its three languages, and it is invisible from the admin unless the
+  // editor says it out loud. Falling back silently is the correct behaviour for
+  // the site and the wrong behaviour for the person maintaining it.
+  const coverage = (path) => {
+    const done = LANGUAGES.filter((l) => hasOverrideIn(l.code, path)).map((l) => l.code);
+    const missing = LANGUAGES.filter((l) => !hasOverrideIn(l.code, path)).map((l) => l.code);
+    return { done, missing, partial: done.length > 0 && missing.length > 0 };
+  };
+
+  const partialPaths = useMemo(
+    () => [...paths, ...listPaths].filter((p) => coverage(p).partial),
+    [paths, listPaths, overrides] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const isDirty = (path) => {
     const key = draftKey(path);
     return Object.prototype.hasOwnProperty.call(drafts, key) && drafts[key] !== savedValue(path);
   };
 
+  // The list her edits start from: her saved version, else the coded one for
+  // this language, else French.
+  const savedList = (path) => {
+    const own = overrides[language] && overrides[language][path];
+    if (Array.isArray(own)) return own;
+    const coded = resolve(translations[language], path);
+    if (Array.isArray(coded)) return coded;
+    const fr = resolve(translations[DEFAULT_LANGUAGE], path);
+    return Array.isArray(fr) ? fr : [];
+  };
+
+  const currentList = (path) => {
+    const key = draftKey(path);
+    const draft = drafts[key];
+    if (draft === '__RESET__') return savedListDefault(path);
+    return Array.isArray(draft) ? draft : savedList(path);
+  };
+
+  // What Rétablir returns a list to: the code, never her previous save.
+  const savedListDefault = (path) => {
+    const coded = resolve(translations[language], path);
+    if (Array.isArray(coded)) return coded;
+    const fr = resolve(translations[DEFAULT_LANGUAGE], path);
+    return Array.isArray(fr) ? fr : [];
+  };
+
+  const setList = (path, next) => {
+    setStatus({ success: '', error: '' });
+    setDrafts((prev) => ({ ...prev, [draftKey(path)]: next }));
+  };
+
+  // Arrays are compared by value: two arrays holding the same rows are never
+  // the same reference, so a reference check would report every list as
+  // unsaved for ever and leave the Enregistrer button permanently lit.
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
   const dirtyCount = Object.keys(drafts).filter((k) => {
     const [lang, ...rest] = k.split('::');
     const path = rest.join('::');
     const own = overrides[lang] && overrides[lang][path];
-    const saved = own != null && own !== ''
+    const hasOwn = Array.isArray(own) ? true : own != null && own !== '';
+    const saved = hasOwn
       ? own
       : (resolve(translations[lang], path) ?? resolve(translations[DEFAULT_LANGUAGE], path) ?? '');
-    return drafts[k] !== saved;
+    if (drafts[k] === '__RESET__') return hasOwn;
+    return !same(drafts[k], saved);
   }).length;
 
   const setDraft = (path, value) => {
@@ -137,9 +234,11 @@ const ContentEditor = ({ fetchHeaders }) => {
       const coded = resolve(translations[lang], path);
       let next;
       if (value === '__RESET__') next = '';
-      // Typing the coded default back by hand should also clear the override
-      // rather than store a duplicate of what the code already says.
-      else if (value === coded) next = '';
+      // Restoring the coded default by hand — retyping the text, or putting a
+      // list back the way it was — should clear the override rather than store
+      // a duplicate of what the code already says. Otherwise the day we improve
+      // a default, her frozen copy of the old one would keep it off the site.
+      else if (same(value, coded)) next = '';
       else next = value;
       patch[lang] = patch[lang] || {};
       patch[lang][path] = next;
@@ -188,6 +287,16 @@ const ContentEditor = ({ fetchHeaders }) => {
         <div className="mb-6 p-4 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm">{status.error}</div>
       )}
 
+      {partialPaths.length > 0 && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-900">
+          <strong className="font-medium">
+            {partialPaths.length} texte(s) de cette section réécrit(s) dans une langue seulement.
+          </strong>{' '}
+          Dans les autres langues, le site affiche encore l'ancienne version. Basculez la langue
+          ci-dessous pour les compléter.
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="flex gap-1 p-1 bg-mist-white rounded-xl border border-slate-stone/10">
           {LANGUAGES.map((l) => (
@@ -232,6 +341,11 @@ const ContentEditor = ({ fetchHeaders }) => {
                   {isOverridden(path) && (
                     <span className="ml-2 normal-case tracking-normal text-[11px] text-mist-blue">modifié</span>
                   )}
+                  {coverage(path).partial && (
+                    <span className="ml-2 normal-case tracking-normal text-[11px] text-amber-700">
+                      ancien texte encore affiché en {coverage(path).missing.join(', ').toUpperCase()}
+                    </span>
+                  )}
                   {isDirty(path) && (
                     <span className="ml-2 normal-case tracking-normal text-[11px] text-amber-600">non enregistré</span>
                   )}
@@ -268,10 +382,114 @@ const ContentEditor = ({ fetchHeaders }) => {
                   Texte d'origine : {String(coded).slice(0, 120)}{String(coded).length > 120 ? '…' : ''}
                 </p>
               )}
+
+              {TIGHT.test(path) && String(coded || '').length > 0 &&
+                String(value).length > String(coded).length * 1.6 && (
+                <p className="mt-1 text-[11px] text-amber-700">
+                  {String(value).length} caractères contre {String(coded).length} à l'origine —
+                  la mise en page n'a pas été dessinée pour un texte aussi long. Vérifiez la page.
+                </p>
+              )}
             </div>
           );
         })}
       </div>
+
+      {listPaths.map((path) => {
+        const items = currentList(path);
+        const coded = savedListDefault(path);
+        const modifie = Array.isArray(overrides[language] && overrides[language][path]);
+        const sample = coded[0] !== undefined ? coded[0] : (items[0] !== undefined ? items[0] : '');
+        const champs = typeof sample === 'string' ? null : Object.keys(sample || {});
+
+        const remplace = (next) => setList(path, next);
+        const deplace = (i, delta) => {
+          const j = i + delta;
+          if (j < 0 || j >= items.length) return;
+          const next = items.slice();
+          [next[i], next[j]] = [next[j], next[i]];
+          remplace(next);
+        };
+
+        return (
+          <div key={path} className="mt-6 bg-white rounded-3xl border border-slate-stone/5 p-6 sm:p-8 shadow-sm">
+            <div className="flex items-baseline justify-between gap-3 mb-1">
+              <h2 className="font-serif text-xl text-slate-stone">{prettify(path)}</h2>
+              {modifie && (
+                <button
+                  type="button"
+                  onClick={() => resetField(path)}
+                  className="text-[11px] text-stone-gray hover:text-slate-stone underline underline-offset-2"
+                >
+                  Rétablir la liste
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-stone-gray mb-5">
+              {items.length} élément(s){modifie ? ' · modifiée' : ''}
+              {coverage(path).partial && (
+                <span className="ml-2 text-amber-700">
+                  · ancienne liste encore affichée en {coverage(path).missing.join(', ').toUpperCase()}
+                </span>
+              )}
+            </p>
+
+            <div className="space-y-4">
+              {items.map((item, i) => (
+                <div key={i} className="p-4 bg-mist-white rounded-2xl border border-slate-stone/10">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[11px] uppercase tracking-widest text-stone-gray">#{i + 1}</span>
+                    <div className="flex items-center gap-1">
+                      <button type="button" onClick={() => deplace(i, -1)} disabled={i === 0}
+                        aria-label="Monter"
+                        className="w-7 h-7 rounded-lg bg-white border border-slate-stone/10 text-slate-stone disabled:opacity-30 hover:bg-slate-stone hover:text-white transition-colors">↑</button>
+                      <button type="button" onClick={() => deplace(i, 1)} disabled={i === items.length - 1}
+                        aria-label="Descendre"
+                        className="w-7 h-7 rounded-lg bg-white border border-slate-stone/10 text-slate-stone disabled:opacity-30 hover:bg-slate-stone hover:text-white transition-colors">↓</button>
+                      <button type="button" onClick={() => remplace(items.filter((_, k) => k !== i))}
+                        aria-label="Supprimer"
+                        className="w-7 h-7 rounded-lg bg-white border border-red-200 text-red-500 hover:bg-red-500 hover:text-white transition-colors">×</button>
+                    </div>
+                  </div>
+
+                  {champs === null ? (
+                    <input
+                      type="text"
+                      value={item ?? ''}
+                      onChange={(e) => remplace(items.map((v, k) => (k === i ? e.target.value : v)))}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-stone/15 rounded-xl text-sm text-slate-stone focus:outline-none focus:border-slate-stone/40"
+                    />
+                  ) : (
+                    <div className="space-y-2">
+                      {champs.map((champ) => (
+                        <div key={champ}>
+                          <label className="block text-[11px] uppercase tracking-widest text-stone-gray mb-1">{prettify(champ)}</label>
+                          <textarea
+                            rows={String((item && item[champ]) || '').length > 70 ? 3 : 1}
+                            value={(item && item[champ]) || ''}
+                            onChange={(e) =>
+                              remplace(items.map((v, k) => (k === i ? { ...v, [champ]: e.target.value } : v)))
+                            }
+                            className="w-full px-4 py-2.5 bg-white border border-slate-stone/15 rounded-xl text-sm text-slate-stone focus:outline-none focus:border-slate-stone/40"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => remplace([...items, blankLike(sample)])}
+              className="mt-4 px-5 py-2 border border-slate-stone/20 text-slate-stone rounded-full text-xs uppercase tracking-widest hover:bg-slate-stone hover:text-white transition-colors"
+            >
+              Ajouter un élément
+            </button>
+          </div>
+        );
+      })}
 
       <div className="flex items-center gap-4 mt-6">
         <button
@@ -285,6 +503,15 @@ const ContentEditor = ({ fetchHeaders }) => {
         <span className="text-xs text-stone-gray">
           {dirtyCount === 0 ? 'Aucune modification en attente' : `${dirtyCount} modification(s) en attente`}
         </span>
+
+        <a
+          href={(SECTIONS.find((s) => s.key === section) || {}).page || '/'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ml-auto text-xs text-stone-gray hover:text-slate-stone underline underline-offset-2"
+        >
+          Voir la page ↗
+        </a>
       </div>
     </div>
   );
