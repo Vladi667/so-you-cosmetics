@@ -43,16 +43,20 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
     (p.collections || []).some(c => FEATURED_TAGS.includes(normalise(c)))
   );
 
+  // Une intention par ligne, six categories, de 14.90 a 39.90. L'ancienne
+  // liste alignait six savons quasi identiques : la bande lisait comme du
+  // remplissage plutot que comme un choix. Ceci ne s'affiche que tant que
+  // rien n'est etiquete « Coup de coeur » — des qu'elle en etiquette un,
+  // sa selection remplace celle-ci entierement.
   const fallbackNames = [
-    'Stick lèvres naturel - cacao, coco, amande douce et cranberry',
-    'Stick lèvres naturel - cacao bio, coco bio, amande douce bio sans parfum',
-    'Soin des lèvres bonne mine - karité, coco et jojoba',
-    'Savon olive, coco, ricin, palme RSPO - Senteur Vanilla Moon',
-    'Savon olive, coco, ricin, palme RSPO - Senteur Woody',
-    'Savon olive, coco, ricin, palme RSPO - Senteur Agrumes',
-    'Savon olive, coco, ricin, palme RSPO - Senteur Eté Indien',
-    'Savon olive, coco, ricin, palme RSPO - Senteur Lolipop - Edition Limitée',
-    'Savon olive, coco, ricin, palme RSPO - Senteur Légère Fraise',
+    "Coffret cadeau savon liquide Blue Linen lotion corporelleDragée", // 28.00 — coffret, le geste cadeau
+    "Sels de Bain à l'huile essentielle de lavandin bio", // 27.50 — rituel de bain
+    "'Oasis'- Crème anhydre peaux sèches", // 32.50 — soin visage haut de gamme
+    "Eau de Parfum", // 39.90 — haut de la fourchette
+    "Masque Visage Argile Rouge à l'extrait d'Echinacée et de Pivoine - 15 ml", // 15.00 — photo maison, pas Wix
+    "Shampoings solide pour cheveux secs enrichi à l'huile d'avocat bio", // 15.00 — cheveux, zéro déchet
+    "Stick lèvres naturel - cacao, coco, amande douce et cranberry", // 14.90 — entrée de gamme
+    "Pochette découverte 5 savons", // 39.90 — ses savons, sans six tuiles jumelles
   ];
   const products = tagged.length > 0
     ? tagged
