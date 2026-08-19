@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ContentEditor from './admin/ContentEditor';
 
 // Order status has been written in mixed case over the life of the shop
 // ('paid' from the payment paths, 'Paid' from the admin dropdown). Compare on
@@ -160,7 +161,16 @@ const AdminDashboard = ({ onLogout }) => {
       products: '/api/admin/products'
     };
 
-    fetch(endpoints[activeTab], { headers: fetchHeaders })
+    // Tabs that own their loading (Textes du site, Configuration, API SumUp)
+    // have no entry here. Without this guard the fetch would go to the literal
+    // URL "undefined" and paint an error banner over a panel that is working.
+    const endpoint = endpoints[activeTab];
+    if (!endpoint) {
+      setLoading(false);
+      return;
+    }
+
+    fetch(endpoint, { headers: fetchHeaders })
       .then(res => {
         if (res.status === 401) {
           onLogout(); // Token expired or invalid
@@ -500,6 +510,7 @@ const AdminDashboard = ({ onLogout }) => {
               { id: 'clients', label: 'Fichier Clients', icon: '👤' },
               { id: 'inbox', label: 'Boîte de réception', icon: '📥' },
               { id: 'sumup', label: 'API SumUp', icon: '💳' },
+              { id: 'content', label: 'Textes du site', icon: '✏️' },
               { id: 'settings', label: 'Configuration / Password', icon: '⚙️' }
             ].map(tab => (
               <button
@@ -1158,6 +1169,8 @@ const AdminDashboard = ({ onLogout }) => {
         )}
 
         {/* Tab: API SumUp */}
+        {activeTab === 'content' && <ContentEditor fetchHeaders={fetchHeaders} />}
+
         {activeTab === 'sumup' && (
           <div className="max-w-2xl">
             <h1 className="font-serif text-3xl md:text-4xl text-slate-stone mb-2">API SumUp</h1>
