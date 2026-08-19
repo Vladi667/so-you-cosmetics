@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Logo from './Logo';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '../i18n/LanguageContext';
+import { visibleCategories } from '../data/categories';
+import { getProducts } from '../services/products';
 
 const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
   const location = useLocation();
@@ -40,11 +42,15 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
     }
   }, [isOpen, location.pathname]);
 
-  const categories = [
-    'Savons', 'Soins de la peau', 'Bien-être et détente', 'Bébés',
-    'Accessoires', 'Hommes', 'Shampoings', 'Enfants',
-    'Soin des lèvres', 'Ambiance', 'Savon Liquide', 'Soin des cheveux'
-  ];
+  // Même source que le menu de bureau : les deux listes divergeaient à la
+  // première modification puisqu'elles étaient écrites deux fois.
+  const [products, setProducts] = useState([]);
+  useEffect(() => {
+    let actif = true;
+    getProducts().then((d) => { if (actif) setProducts(Array.isArray(d) ? d : []); });
+    return () => { actif = false; };
+  }, []);
+  const categories = visibleCategories(products);
 
   const handleNav = (category) => {
     onClose();

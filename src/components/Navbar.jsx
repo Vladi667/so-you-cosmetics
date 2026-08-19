@@ -4,6 +4,8 @@ import MobileMenu from './MobileMenu';
 import Logo from './Logo';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '../i18n/LanguageContext';
+import { visibleCategories } from '../data/categories';
+import { getProducts } from '../services/products';
 
 // Maps the routing keys used by onCategorySelect/isLinkActive to translation keys.
 const NAV_LABELS = { 'About Us': 'nav.about', Workshops: 'nav.workshops', Journal: 'nav.journal', Contact: 'nav.contact' };
@@ -14,6 +16,14 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Les rubriques affichées suivent le catalogue : celles qui n'ont aucun
+  // produit ne s'affichent pas, et réapparaissent seules dès qu'elle en ajoute.
+  const [products, setProducts] = useState([]);
+  useEffect(() => {
+    let actif = true;
+    getProducts().then((d) => { if (actif) setProducts(Array.isArray(d) ? d : []); });
+    return () => { actif = false; };
+  }, []);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -123,7 +133,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
               {/* Dropdown Menu */}
               <div className="absolute top-full left-0 mt-0 w-64 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
                 <div className="bg-ivory/95 backdrop-blur-md rounded-xl shadow-2xl border border-slate-stone/10 p-4 flex flex-col space-y-1">
-                  {['Savons', 'Soins de la peau', 'Bien-être et détente', 'Bébés', 'Accessoires', 'Hommes', 'Shampoings', 'Enfants', 'Soin des lèvres', 'Ambiance', 'Savon Liquide', 'Soin des cheveux'].map((item) => (
+                  {visibleCategories(products).map((item) => (
                     <button 
                       key={item} 
                       onClick={() => onCategorySelect(item)}
