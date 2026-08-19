@@ -972,6 +972,47 @@ async function getClients() {
 // file therefore has to leave the site exactly as it was — which is why every
 // read here swallows its error and returns {} rather than throwing. There is no
 // state in which the text disappears.
+// Shop settings she controls herself: opening hours, an absence notice, and
+// maintenance mode. They live in settings.json alongside the SumUp and inbox
+// config, so they inherit the same protection — server/data/ is excluded from
+// deployment, and nothing she saves is overwritten by our next release.
+//
+// The defaults reproduce what the site showed when these were hard-coded, so
+// turning the feature on changes nothing until she edits something.
+const SHOP_DEFAULTS = {
+  hours: [
+    { day: 'lundi',    closed: true,  hours: '' },
+    { day: 'mardi',    closed: false, hours: '11:00–13:00 / 14:00–18:30' },
+    { day: 'mercredi', closed: false, hours: '11:00–13:00 / 14:00–18:30' },
+    { day: 'jeudi',    closed: false, hours: '11:00–13:00 / 14:00–18:30' },
+    { day: 'vendredi', closed: false, hours: '11:00–13:00 / 14:00–18:30' },
+    { day: 'samedi',   closed: false, hours: '11:00–16:30' },
+  ],
+  absence: { active: false, fr: '', en: '', de: '' },
+  maintenance: { active: false, fr: '', en: '', de: '' },
+};
+
+function getShopSettings() {
+  const saved = readSettings().shop;
+  if (!saved || typeof saved !== 'object') return SHOP_DEFAULTS;
+  return {
+    hours: Array.isArray(saved.hours) && saved.hours.length ? saved.hours : SHOP_DEFAULTS.hours,
+    absence: { ...SHOP_DEFAULTS.absence, ...(saved.absence || {}) },
+    maintenance: { ...SHOP_DEFAULTS.maintenance, ...(saved.maintenance || {}) },
+  };
+}
+
+function updateShopSettings(patch) {
+  const current = getShopSettings();
+  const next = {
+    hours: Array.isArray(patch.hours) ? patch.hours : current.hours,
+    absence: { ...current.absence, ...(patch.absence || {}) },
+    maintenance: { ...current.maintenance, ...(patch.maintenance || {}) },
+  };
+  writeSettings({ ...readSettings(), shop: next });
+  return next;
+}
+
 function readContent() {
   try {
     const parsed = JSON.parse(fs.readFileSync(CONTENT_FILE, 'utf8'));
@@ -1092,6 +1133,8 @@ module.exports = {
   deleteProduct,
   getSetting,
   updateSettings,
+  getShopSettings,
+  updateShopSettings,
   readContent,
   writeContent,
   updateContent,

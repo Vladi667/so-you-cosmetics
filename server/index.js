@@ -54,6 +54,14 @@ app.use(express.static(buildPath, { index: false }));
 // the tag early and break every page on the site. Escaping < > & as unicode
 // sequences keeps the value a valid JS string while making that impossible.
 // U+2028/U+2029 are legal in JSON but not in JS string literals, so they go too.
+// Her maintenance message goes into HTML text, not into a script, so it needs
+// the ordinary entity escaping rather than the unicode form used below.
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function serialiseContent(content) {
   // The replacement is the six characters backslash-u-0-0-3-c, not the character
   // it denotes: writing the escape sequence itself here would substitute '<' for
@@ -82,9 +90,30 @@ app.get('*', (req, res, next) => {
 
   const indexPath = path.join(buildPath, 'index.html');
   try {
+    const shop = db.getShopSettings();
+
+    // Maintenance mode. She asked for a way to take the shop off the air while
+    // it is still being finished, without it also locking her — or us — out.
+    // /admin and /api stay reachable, so she can turn it back off from the same
+    // interface that turned it on; anything else gets a plain notice.
+    if (shop.maintenance && shop.maintenance.active && !req.path.startsWith('/admin')) {
+      const message = shop.maintenance.fr || 'Le site est momentanément en maintenance. Merci de votre patience.';
+      return res.status(503).type('html').send(
+        `<!doctype html><html lang="fr"><head><meta charset="utf-8">` +
+        `<meta name="viewport" content="width=device-width,initial-scale=1">` +
+        `<title>So You Cosmetics</title><style>` +
+        `body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;` +
+        `background:#F7F3EC;color:#3A332B;font-family:system-ui,-apple-system,sans-serif;padding:2rem}` +
+        `div{max-width:32rem;text-align:center}h1{font-weight:300;letter-spacing:.02em}` +
+        `p{color:#6A6157;line-height:1.6}</style></head><body><div>` +
+        `<h1>So You Cosmetics</h1><p>${escapeHtml(message)}</p></div></body></html>`
+      );
+    }
+
     const html = fs.readFileSync(indexPath, 'utf8');
     const content = db.readContent();
-    const tag = `<script>window.__CONTENT__=${serialiseContent(content)}</script>`;
+    const tag = `<script>window.__CONTENT__=${serialiseContent(content)};` +
+                `window.__SHOP__=${serialiseContent(shop)}</script>`;
     // If </head> is somehow absent, fall through to the untouched file rather
     // than guessing where to put the tag.
     if (!html.includes('</head>')) return res.sendFile(indexPath);

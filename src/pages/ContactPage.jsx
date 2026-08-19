@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
+import { getHours } from '../services/shop';
 
 const ContactPage = () => {
   const { t } = useLanguage();
@@ -38,15 +39,15 @@ const ContactPage = () => {
       });
   };
 
+  // The day names stay translated; the times come from what she saved in the
+  // admin. She asked to be able to change these herself around her holidays,
+  // and hard-coded hours meant a deployment every time she did.
   const days = t('contact.days');
-  const schedule = [
-    { day: days[0], hours: t('contact.closed'), closed: true },
-    { day: days[1], hours: "11:00–13:00 / 14:00–18:30" },
-    { day: days[2], hours: "11:00–13:00 / 14:00–18:30" },
-    { day: days[3], hours: "11:00–13:00 / 14:00–18:30" },
-    { day: days[4], hours: "11:00–13:00 / 14:00–18:30" },
-    { day: days[5], hours: "11:00–16:30" },
-  ];
+  const schedule = getHours().map((entry, i) => ({
+    day: days[i] || entry.day,
+    hours: entry.closed ? t('contact.closed') : entry.hours,
+    closed: Boolean(entry.closed),
+  }));
 
   return (
     <div className="min-h-screen bg-mist-white overflow-hidden">

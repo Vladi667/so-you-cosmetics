@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from './components/Navbar';
+import AbsenceNotice from './components/AbsenceNotice';
 import Hero from './components/Hero';
 import BrandEssence from './components/BrandEssence';
 import SignatureProducts from './components/SignatureProducts';
@@ -132,6 +133,7 @@ function App() {
   return (
     <div className="font-sans antialiased text-stone-gray bg-mist-white min-h-screen flex flex-col overflow-x-hidden">
       {!isAdminPage && <PageLoader isVisible={isLoading} />}
+      {!isAdminPage && <AbsenceNotice />}
       {!isAdminPage && (
         <Navbar 
           cartCount={cart.length} 

@@ -472,6 +472,34 @@ router.put('/content', requireAdmin, (req, res) => {
   }
 });
 
+// 3e. Shop settings — opening hours, absence notice, maintenance mode.
+// Read by the admin only; the public site receives them injected into the page
+// (server/index.js), like the content overrides.
+router.get('/admin/settings/shop', requireAdmin, (req, res) => {
+  try {
+    res.json(db.getShopSettings());
+  } catch (err) {
+    console.error('Failed to read shop settings:', err);
+    res.status(500).json({ error: 'Lecture des réglages impossible' });
+  }
+});
+
+router.put('/admin/settings/shop', requireAdmin, (req, res) => {
+  const patch = req.body;
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) {
+    return res.status(400).json({ error: 'Format invalide' });
+  }
+  if (patch.hours !== undefined && !Array.isArray(patch.hours)) {
+    return res.status(400).json({ error: 'Les horaires doivent être une liste' });
+  }
+  try {
+    res.json(db.updateShopSettings(patch));
+  } catch (err) {
+    console.error('Failed to write shop settings:', err);
+    res.status(500).json({ error: 'Enregistrement impossible' });
+  }
+});
+
 // 4. Get Booking Slots
 router.get('/workshops/slots', (req, res) => {
   try {

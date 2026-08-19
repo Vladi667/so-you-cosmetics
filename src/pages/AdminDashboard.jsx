@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ContentEditor from './admin/ContentEditor';
+import ShopSettings from './admin/ShopSettings';
 
 // Order status has been written in mixed case over the life of the shop
 // ('paid' from the payment paths, 'Paid' from the admin dropdown). Compare on
@@ -511,6 +512,7 @@ const AdminDashboard = ({ onLogout }) => {
               { id: 'inbox', label: 'Boîte de réception', icon: '📥' },
               { id: 'sumup', label: 'API SumUp', icon: '💳' },
               { id: 'content', label: 'Textes du site', icon: '✏️' },
+              { id: 'shop', label: 'Horaires & absences', icon: '🕓' },
               { id: 'settings', label: 'Configuration / Password', icon: '⚙️' }
             ].map(tab => (
               <button
@@ -1170,6 +1172,8 @@ const AdminDashboard = ({ onLogout }) => {
 
         {/* Tab: API SumUp */}
         {activeTab === 'content' && <ContentEditor fetchHeaders={fetchHeaders} />}
+
+        {activeTab === 'shop' && <ShopSettings fetchHeaders={fetchHeaders} />}
 
         {activeTab === 'sumup' && (
           <div className="max-w-2xl">
