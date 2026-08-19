@@ -16,6 +16,7 @@ import Home from './pages/Home';
 import CategoryPage from './pages/CategoryPage';
 import AboutPage from './pages/AboutPage';
 import WorkshopsPage from './pages/WorkshopsPage';
+import WorkshopDetailPage from './pages/WorkshopDetailPage';
 import ContactPage from './pages/ContactPage';
 import ProductPage from './pages/ProductPage';
 import SearchPage from './pages/SearchPage';
@@ -149,6 +150,7 @@ function App() {
           <Route path="/" element={<Home addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/workshops" element={<WorkshopsPage />} />
+          <Route path="/workshops/:id" element={<WorkshopDetailPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/category/:categoryName" element={<CategoryPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
           <Route path="/product/:id" element={<ProductPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
