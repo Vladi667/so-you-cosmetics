@@ -189,6 +189,64 @@ function orderContact(order) {
 
 // Used both by the order-create flow (when SumUp is mocked) and by the
 // SumUp webhook (in production), so the customer's purchase email is identical.
+// La facture jointe à la confirmation de paiement. Elle a signalé le manque :
+// « selon les tests ok mais pas de facture ».
+//
+// Envoyée en HTML dans le corps du message plutôt qu'en PDF : elle est lisible
+// depuis un téléphone sans rien télécharger, imprimable en PDF par le lecteur
+// s'il le souhaite, et n'ajoute aucune dépendance de génération de document au
+// serveur. Le numéro, lui, est réservé une seule fois et ne recule jamais.
+function buildInvoiceHtml({ invoiceNumber, order, settings }) {
+  const inv = settings.invoice;
+  const lignes = (order.items || []).map((it) => {
+    const qty = Math.max(1, parseInt(it.qty, 10) || 1);
+    const prix = Number(it.price) || 0;
+    return `<tr>
+      <td style="padding:8px 0;border-bottom:1px solid #eee;">${escapeForEmail(it.name || it.id || '')}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:center;">${qty}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">CHF ${(prix * qty).toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+
+  const livraison = order.shipping && Number(order.shipping.cost) > 0
+    ? `<tr><td style="padding:8px 0;">${escapeForEmail(order.shipping.label || 'Livraison')}</td>
+         <td></td><td style="padding:8px 0;text-align:right;">CHF ${Number(order.shipping.cost).toFixed(2)}</td></tr>`
+    : (order.shipping ? `<tr><td style="padding:8px 0;">${escapeForEmail(order.shipping.label || 'Livraison')}</td>
+         <td></td><td style="padding:8px 0;text-align:right;">Offerte</td></tr>` : '');
+
+  const tva = Number(inv.vatRate) > 0 && inv.vatNumber
+    ? `<p style="margin:4px 0;color:#888;font-size:12px;">TVA ${inv.vatRate}% incluse — ${escapeForEmail(inv.vatNumber)}</p>`
+    : `<p style="margin:4px 0;color:#888;font-size:12px;">TVA non applicable</p>`;
+
+  return `
+    <div style="font-family:sans-serif;color:#3A332B;max-width:600px;margin:0 auto;padding:24px;border:1px solid #eee;border-radius:12px;">
+      <table style="width:100%;margin-bottom:24px;"><tr>
+        <td><strong style="font-size:18px;">${escapeForEmail(inv.company)}</strong><br>
+          <span style="color:#6A6157;font-size:12px;">${escapeForEmail(inv.address)}<br>${escapeForEmail(inv.email)}</span></td>
+        <td style="text-align:right;vertical-align:top;">
+          <strong>Facture ${escapeForEmail(invoiceNumber)}</strong><br>
+          <span style="color:#6A6157;font-size:12px;">${new Date(order.created_at || Date.now()).toLocaleDateString('fr-CH')}</span></td>
+      </tr></table>
+      <p style="margin:0 0 4px;"><strong>${escapeForEmail(order.customer_name || '')}</strong></p>
+      <p style="margin:0 0 20px;color:#6A6157;font-size:13px;">Commande ${escapeForEmail(order.id)}</p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <thead><tr>
+          <th style="text-align:left;padding-bottom:6px;border-bottom:2px solid #3A332B;">Article</th>
+          <th style="text-align:center;padding-bottom:6px;border-bottom:2px solid #3A332B;">Qté</th>
+          <th style="text-align:right;padding-bottom:6px;border-bottom:2px solid #3A332B;">Montant</th>
+        </tr></thead>
+        <tbody>${lignes}${livraison}</tbody>
+      </table>
+      <p style="text-align:right;font-size:18px;margin:18px 0 0;"><strong>Total : CHF ${Number(order.total).toFixed(2)}</strong></p>
+      ${tva}
+      <p style="color:#888;font-size:12px;margin-top:18px;">Payé par carte via SumUp. Ce document tient lieu de facture acquittée.</p>
+    </div>`;
+}
+
+function escapeForEmail(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function buildPaymentConfirmedEmail({ name, orderId, total }) {
   return `
       <div style="font-family: sans-serif; color: #444; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
@@ -426,11 +484,35 @@ async function confirmOrderPaid(orderId, source) {
       subject: `Merci pour votre achat ${order.id} - SoYou Cosmetics`,
       html: buildPaymentConfirmedEmail({ name, orderId: order.id, total: order.total })
     });
+    await sendInvoiceIfEnabled(order, email);
   } catch (mailErr) {
     // The payment is real either way — never fail the confirmation over email.
     console.error(`SumUp confirmation (${source}): order ${order.id} confirmed but the email failed:`, mailErr);
   }
   return { confirmed: true, status: 'Paid' };
+}
+
+// Émet la facture une seule fois par commande. Le numéro est réservé au moment
+// de l'envoi : une commande confirmée deux fois (webhook puis navigateur) ne
+// doit pas consommer deux numéros ni envoyer deux factures.
+async function sendInvoiceIfEnabled(order, email) {
+  const settings = db.getShopSettings();
+  if (!settings.invoice || !settings.invoice.enabled) return;
+  if (order.invoice_number) return;             // déjà facturée
+  if (!email) return;
+
+  try {
+    const invoiceNumber = db.nextInvoiceNumber();
+    await db.updateOrderFields(order.id, { invoice_number: invoiceNumber });
+    await emailService.sendMail({
+      to: email,
+      subject: `Facture ${invoiceNumber} - So You Cosmetics`,
+      html: buildInvoiceHtml({ invoiceNumber, order, settings }),
+    });
+  } catch (err) {
+    // Une facture qui échoue ne doit pas remettre en cause un paiement encaissé.
+    console.error(`Invoice for order ${order.id} could not be sent:`, err.message);
+  }
 }
 
 // 3b. SumUp Webhook — fired by SumUp once a checkout completes.

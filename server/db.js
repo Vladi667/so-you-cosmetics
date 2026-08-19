@@ -849,6 +849,32 @@ function canonicalOrderStatus(status) {
   return ORDER_STATUSES.find(s => s.toLowerCase() === trimmed.toLowerCase()) || trimmed;
 }
 
+// Écrit quelques champs sur une commande sans toucher au reste — le numéro de
+// facture, par exemple. En mode fichier on relit puis on réécrit : deux
+// confirmations simultanées de la même commande sont improbables ici, et la
+// garde d'idempotence en amont les empêche de toute façon d'écrire deux fois.
+async function updateOrderFields(orderId, fields) {
+  if (pool) {
+    const colonnes = Object.keys(fields);
+    if (colonnes.length === 0) return true;
+    try {
+      await pool.query(
+        `UPDATE orders SET ${colonnes.map((c) => `\`${c}\` = ?`).join(', ')} WHERE id = ?`,
+        [...colonnes.map((c) => fields[c]), orderId]
+      );
+      return true;
+    } catch (err) {
+      console.error('MySQL updateOrderFields failed, falling back to JSON file', err);
+    }
+  }
+  const data = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
+  const order = data.find((o) => o.id === orderId);
+  if (!order) return false;
+  Object.assign(order, fields);
+  fs.writeFileSync(ORDERS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  return true;
+}
+
 async function updateOrderStatus(orderId, status) {
   status = canonicalOrderStatus(status);
   if (pool) {
@@ -970,6 +996,20 @@ async function getClients() {
 }
 
 // ------------- Settings (admin-managed runtime config) -------------
+// Réserve le prochain numéro de facture et l'incrémente aussitôt.
+//
+// Le compteur vit dans les réglages plutôt que d'être déduit du nombre de
+// commandes : une commande supprimée ou une facture annulée ne doit jamais
+// permettre de réattribuer un numéro déjà émis. Une numérotation qui recule est
+// un problème comptable, pas un détail.
+function nextInvoiceNumber() {
+  const settings = getShopSettings();
+  const numero = Number(settings.invoice.nextNumber) || 1;
+  const annee = new Date().getFullYear();
+  updateShopSettings({ invoice: { ...settings.invoice, nextNumber: numero + 1 } });
+  return `${settings.invoice.prefix || 'SY'}-${annee}-${String(numero).padStart(4, '0')}`;
+}
+
 // Journal articles. She asked for "un accès administrateur me permettant de
 // rédiger, modifier, annuler et publier moi-même mes articles" — so a draft is a
 // first-class state, not a missing article: she can write over several sittings
@@ -1088,6 +1128,22 @@ const SHOP_DEFAULTS = {
   // « freeFrom » ne s'applique qu'à l'option marquée « economy » : offrir un
   // envoi Priority sur un panier à 150 peut effacer la marge, alors que
   // l'Economy est plafonné. Décision prise pour elle, réversible ici même.
+  // Facturation. Le statut TVA de So You n'a jamais été communiqué : par défaut
+  // la facture n'affiche aucune TVA, ce qui est le cas d'une entreprise non
+  // assujettie — la situation de la plupart des petites structures suisses sous
+  // le seuil de CHF 100'000 de chiffre d'affaires. Si elle est assujettie, il
+  // suffit de renseigner le numéro et le taux ici : imprimer « TVA 0.00 » en
+  // étant assujettie serait faux, ne rien imprimer ne l'est pas.
+  invoice: {
+    enabled: true,
+    company: 'So You Cosmetics — Boutique Soap Opera',
+    address: '3 av. Pictet-De-Rochemont, 1207 Genève',
+    email: 'contact@soyoucosmetics.com',
+    vatNumber: '',
+    vatRate: 0,
+    prefix: 'SY',
+    nextNumber: 1,
+  },
   shipping: {
     freeFrom: 150,
     options: [
@@ -1112,6 +1168,7 @@ function getShopSettings() {
     hours: Array.isArray(saved.hours) && saved.hours.length ? saved.hours : SHOP_DEFAULTS.hours,
     absence: { ...SHOP_DEFAULTS.absence, ...(saved.absence || {}) },
     maintenance: { ...SHOP_DEFAULTS.maintenance, ...(saved.maintenance || {}) },
+    invoice: { ...SHOP_DEFAULTS.invoice, ...(saved.invoice || {}) },
     shipping: {
       freeFrom: saved.shipping && saved.shipping.freeFrom !== undefined
         ? saved.shipping.freeFrom : SHOP_DEFAULTS.shipping.freeFrom,
@@ -1127,6 +1184,7 @@ function updateShopSettings(patch) {
     hours: Array.isArray(patch.hours) ? patch.hours : current.hours,
     absence: { ...current.absence, ...(patch.absence || {}) },
     maintenance: { ...current.maintenance, ...(patch.maintenance || {}) },
+    invoice: { ...current.invoice, ...(patch.invoice || {}) },
     shipping: { ...current.shipping, ...(patch.shipping || {}) },
   };
   writeSettings({ ...readSettings(), shop: next });
@@ -1260,6 +1318,7 @@ module.exports = {
   deleteArticle,
   getShopSettings,
   updateShopSettings,
+  nextInvoiceNumber,
   readContent,
   writeContent,
   updateContent,
@@ -1279,6 +1338,7 @@ module.exports = {
   getOrders,
   getOrderById,
   updateOrderStatus,
+  updateOrderFields,
   canonicalOrderStatus,
   getBookings,
   getClients,

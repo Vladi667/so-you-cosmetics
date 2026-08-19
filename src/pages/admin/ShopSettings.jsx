@@ -134,6 +134,43 @@ const ShopSettings = ({ fetchHeaders }) => {
         </div>
       </div>
 
+      {/* Facturation */}
+      <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 sm:p-8 shadow-sm mb-6">
+        <div className="flex items-baseline justify-between gap-4 mb-1">
+          <h2 className="font-serif text-xl text-slate-stone">Facturation</h2>
+          <label className="flex items-center gap-2 text-sm text-slate-stone">
+            <input
+              type="checkbox"
+              checked={Boolean(settings.invoice?.enabled)}
+              onChange={(e) => maj({ invoice: { ...settings.invoice, enabled: e.target.checked } })}
+            />
+            Envoyer une facture
+          </label>
+        </div>
+        <p className="text-xs text-stone-gray mb-5">
+          Une facture numérotée est envoyée au client dès le paiement confirmé. Laissez le numéro
+          de TVA vide si vous n'êtes pas assujettie : la facture indiquera « TVA non applicable ».
+          <strong className="text-slate-stone"> Afficher une TVA à 0 % en étant assujettie serait faux.</strong>
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-[11px] uppercase tracking-widest text-stone-gray mb-1">Numéro de TVA</label>
+            <input type="text" placeholder="CHE-123.456.789 TVA" value={settings.invoice?.vatNumber || ''}
+              onChange={(e) => maj({ invoice: { ...settings.invoice, vatNumber: e.target.value } })} className={champ} />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-widest text-stone-gray mb-1">Taux (%)</label>
+            <input type="number" step="0.1" min="0" value={settings.invoice?.vatRate ?? 0}
+              onChange={(e) => maj({ invoice: { ...settings.invoice, vatRate: Number(e.target.value) } })} className={champ} />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-widest text-stone-gray mb-1">Prochain numéro</label>
+            <input type="number" min="1" value={settings.invoice?.nextNumber ?? 1}
+              onChange={(e) => maj({ invoice: { ...settings.invoice, nextNumber: Number(e.target.value) } })} className={champ} />
+          </div>
+        </div>
+      </div>
+
       {/* Maintenance */}
       <div className="bg-white rounded-3xl border border-amber-200 p-6 sm:p-8 shadow-sm">
         <div className="flex items-baseline justify-between gap-4 mb-1">
