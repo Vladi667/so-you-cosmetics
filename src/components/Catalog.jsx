@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import SectionHeader from './SectionHeader';
 import { getProducts } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
+import { visibleCategories } from '../data/categories';
 import ProductBadge from './ProductBadge';
 
 const placeholders = [
@@ -33,21 +34,11 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
   const scrollRef = useRef(null);
   const isSearching = searchQuery.trim().length > 0;
 
-  const categories = [
-    'All',
-    'Savons',
-    'Soins de la peau',
-    'Bien-être et détente',
-    'Bébés',
-    'Accessoires',
-    'Hommes',
-    'Shampoings',
-    'Enfants',
-    'Soin des lèvres',
-    'Ambiance',
-    'Savon Liquide',
-    'Soin des cheveux'
-  ];
+  // Troisième endroit où les rubriques étaient écrites en dur, après les deux
+  // menus. Celui-ci affichait encore l'ancienne liste alors que les menus
+  // montraient déjà la nouvelle — exactement la divergence que la source unique
+  // devait empêcher, et que seul un coup d'œil à la page en ligne a révélée.
+  const categories = ['All', ...visibleCategories(productsList)];
 
   useEffect(() => {
     let active = true;
