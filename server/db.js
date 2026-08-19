@@ -14,6 +14,7 @@ const CONTACTS_FILE = path.join(DATA_DIR, 'contacts.json');
 const ADMIN_FILE = path.join(DATA_DIR, 'admin.json');
 const WORKSHOPS_FILE = path.join(DATA_DIR, 'workshops.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const CONTENT_FILE = path.join(DATA_DIR, 'content.json');
 const NEWSLETTER_FILE = path.join(DATA_DIR, 'newsletter.json');
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 const PRODUCTS_FILE = path.join(__dirname, 'products.json');
@@ -83,6 +84,7 @@ initJsonFile(BOOKINGS_FILE);
 initJsonFile(CONTACTS_FILE);
 initJsonFile(WORKSHOPS_FILE);
 initJsonFile(SETTINGS_FILE, {});
+initJsonFile(CONTENT_FILE, {});
 initJsonFile(NEWSLETTER_FILE);
 initJsonFile(SESSIONS_FILE);
 
@@ -962,6 +964,46 @@ async function getClients() {
 }
 
 // ------------- Settings (admin-managed runtime config) -------------
+// Content overrides — what she has rewritten from the admin, keyed by language
+// and then by the same dot-paths the site already uses ({ fr: { 'hero.titleLine1': '…' } }).
+//
+// This file is a *layer*, never a replacement: translations.js stays the source
+// of truth in code and this sits in front of it. An empty, missing or corrupt
+// file therefore has to leave the site exactly as it was — which is why every
+// read here swallows its error and returns {} rather than throwing. There is no
+// state in which the text disappears.
+function readContent() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(CONTENT_FILE, 'utf8'));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function writeContent(next) {
+  fs.writeFileSync(CONTENT_FILE, JSON.stringify(next, null, 2), 'utf8');
+}
+
+// Applies a patch of { language: { path: value } }. A value of null or '' drops
+// the override, so a field can be returned to its coded default one at a time
+// without touching its neighbours — the reversibility the whole design rests on.
+function updateContent(patch) {
+  const next = { ...readContent() };
+  for (const [lang, fields] of Object.entries(patch || {})) {
+    if (!fields || typeof fields !== 'object') continue;
+    const bucket = { ...(next[lang] || {}) };
+    for (const [dotPath, value] of Object.entries(fields)) {
+      if (value === null || value === '') delete bucket[dotPath];
+      else bucket[dotPath] = value;
+    }
+    if (Object.keys(bucket).length === 0) delete next[lang];
+    else next[lang] = bucket;
+  }
+  writeContent(next);
+  return next;
+}
+
 function readSettings() {
   try {
     return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) || {};
@@ -1050,6 +1092,9 @@ module.exports = {
   deleteProduct,
   getSetting,
   updateSettings,
+  readContent,
+  writeContent,
+  updateContent,
   getSumupConfig,
   getInboxConfig,
   updateOrderFulfillment,

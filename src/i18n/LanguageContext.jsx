@@ -24,6 +24,24 @@ const getInitialLanguage = () => {
 const resolve = (obj, path) =>
   path.split('.').reduce((acc, key) => (acc == null ? undefined : acc[key]), obj);
 
+// What she has rewritten from the admin, injected into the document by the
+// server before the page is sent (see server/index.js). Read synchronously at
+// module load, exactly like the coded translations, so there is no moment where
+// the old wording is on screen waiting to be replaced.
+//
+// Shaped { fr: { 'hero.titleLine1': '…' } } — the same dot-paths the site
+// already uses, so no mapping table has to be kept in step.
+const overrides = (typeof window !== 'undefined' && window.__CONTENT__) || {};
+
+const override = (lang, key) => {
+  const bucket = overrides[lang];
+  if (!bucket) return undefined;
+  const value = bucket[key];
+  // An empty string means "no override" rather than "blank this text": a field
+  // she cleared must show the coded default again, not nothing.
+  return value === '' || value == null ? undefined : value;
+};
+
 export const LanguageProvider = ({ children }) => {
   const [language, setLanguageState] = useState(getInitialLanguage);
 
@@ -56,7 +74,11 @@ export const LanguageProvider = ({ children }) => {
   // while a silent empty space is one nobody notices.
   const t = useCallback(
     (key, vars) => {
-      let value = resolve(translations[language], key);
+      // Her wording first, then the code, then French — and her French before
+      // the coded French, because if she rewrote it, that is the current text.
+      let value = override(language, key);
+      if (value === undefined) value = resolve(translations[language], key);
+      if (value === undefined) value = override(DEFAULT_LANGUAGE, key);
       if (value === undefined) value = resolve(translations[DEFAULT_LANGUAGE], key);
       if (value === undefined) return key;
       if (vars && typeof value === 'string') {

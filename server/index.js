@@ -1,11 +1,13 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const cors = require('cors');
 const morgan = require('morgan');
 
 const apiRouter = require('./routes');
 const { ensureUploadsDir } = require('./uploads');
+const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -39,13 +41,60 @@ app.use('/api', apiRouter);
 
 // Serve static built files from React in production
 const buildPath = path.join(__dirname, '../dist');
-app.use(express.static(buildPath));
+// index: false is load-bearing. express.static answers a directory request with
+// index.html by default, so "/" — the page most people land on — would be served
+// straight from disk and never reach the catch-all below, arriving without her
+// texts injected. Every other route worked, which is exactly what made this
+// worth catching with a test rather than by eye.
+app.use(express.static(buildPath, { index: false }));
 
-// Catch-all handler for client-side routing. Redirects any non-API page request back to index.html
+// Serialise the content overrides for embedding inside a <script> tag.
+//
+// JSON.stringify alone is not safe here: a text containing </script> would end
+// the tag early and break every page on the site. Escaping < > & as unicode
+// sequences keeps the value a valid JS string while making that impossible.
+// U+2028/U+2029 are legal in JSON but not in JS string literals, so they go too.
+function serialiseContent(content) {
+  // The replacement is the six characters backslash-u-0-0-3-c, not the character
+  // it denotes: writing the escape sequence itself here would substitute '<' for
+  // '<' and do nothing at all, which is the quiet way this protection fails.
+  return JSON.stringify(content).replace(
+    /[<>&\u2028\u2029]/g,
+    (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0')
+  );
+}
+
+// Catch-all handler for client-side routing. Serves index.html for any non-API
+// page request, with her content overrides injected into the document.
+//
+// Injecting here rather than fetching them from the client is the whole point:
+// the texts are read synchronously from the bundle today, so a fetch would make
+// the *old* wording flash on every page load before the new one replaced it.
+//
+// Both files are read per request rather than cached at startup. index.html is
+// replaced by every deploy, and a restart cannot be relied on to happen (the
+// hosting panel's restart button fails silently — see the execution plan), so a
+// process-lifetime cache would keep serving a stale bundle reference. Two small
+// reads that the OS already caches are cheaper than that class of bug.
 app.get('*', (req, res, next) => {
   // Never swallow ACME challenge requests with the SPA fallback
   if (req.path.startsWith('/.well-known/')) return next();
-  res.sendFile(path.join(buildPath, 'index.html'));
+
+  const indexPath = path.join(buildPath, 'index.html');
+  try {
+    const html = fs.readFileSync(indexPath, 'utf8');
+    const content = db.readContent();
+    const tag = `<script>window.__CONTENT__=${serialiseContent(content)}</script>`;
+    // If </head> is somehow absent, fall through to the untouched file rather
+    // than guessing where to put the tag.
+    if (!html.includes('</head>')) return res.sendFile(indexPath);
+    res.type('html').send(html.replace('</head>', `${tag}</head>`));
+  } catch (err) {
+    // The site must survive a failure here: worst case it serves the page with
+    // its coded defaults, which is exactly how it behaved before this existed.
+    console.error('Content injection failed, serving index.html as-is:', err.message);
+    res.sendFile(indexPath);
+  }
 });
 
 // Start the server

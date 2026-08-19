@@ -429,6 +429,49 @@ router.post('/orders/:id/confirm', async (req, res) => {
   }
 });
 
+// 3d. Content overrides — the texts she has rewritten from the admin.
+//
+// Both routes require admin. The public site never calls them: the server
+// injects the overrides into index.html before sending it, so there is no
+// second request to make and nothing to expose. Only the editor reads this.
+router.get('/content', requireAdmin, (req, res) => {
+  try {
+    res.json(db.readContent());
+  } catch (err) {
+    console.error('Failed to read content overrides:', err);
+    res.status(500).json({ error: 'Lecture des textes impossible' });
+  }
+});
+
+// Accepts { fr: { 'hero.titleLine1': '…' }, en: { … } } and merges it in.
+// A value of null or '' removes that one override, so a field returns to its
+// coded default without disturbing its neighbours.
+router.put('/content', requireAdmin, (req, res) => {
+  const patch = req.body;
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) {
+    return res.status(400).json({ error: 'Format attendu : { langue: { chemin: texte } }' });
+  }
+  // Guard the shape before writing: a malformed body must not be able to turn
+  // the store into something readContent() will refuse, which would silently
+  // drop every text she has already saved.
+  for (const [lang, fields] of Object.entries(patch)) {
+    if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
+      return res.status(400).json({ error: `Champs invalides pour la langue « ${lang} »` });
+    }
+    for (const [dotPath, value] of Object.entries(fields)) {
+      if (value !== null && typeof value !== 'string' && !Array.isArray(value)) {
+        return res.status(400).json({ error: `Valeur invalide pour « ${dotPath} »` });
+      }
+    }
+  }
+  try {
+    res.json(db.updateContent(patch));
+  } catch (err) {
+    console.error('Failed to write content overrides:', err);
+    res.status(500).json({ error: 'Enregistrement des textes impossible' });
+  }
+});
+
 // 4. Get Booking Slots
 router.get('/workshops/slots', (req, res) => {
   try {
