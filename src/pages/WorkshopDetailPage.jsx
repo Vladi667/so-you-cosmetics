@@ -101,9 +101,15 @@ const WorkshopDetailPage = () => {
             </div>
 
             {workshop.description && (
-              <p className="font-sans font-light text-stone-gray leading-relaxed whitespace-pre-line mb-10">
-                {workshop.description}
-              </p>
+              // Descriptions are authored with the admin's formatting editor and
+              // arrive as HTML. `prose` is what makes her paragraphs and
+              // sub-headings render as she wrote them instead of collapsing.
+              <div
+                className="prose prose-sm max-w-none font-sans font-light text-stone-gray leading-relaxed mb-10
+                           prose-headings:font-serif prose-headings:text-slate-stone prose-headings:font-normal
+                           prose-strong:text-slate-stone prose-strong:font-medium"
+                dangerouslySetInnerHTML={{ __html: workshop.description }}
+              />
             )}
 
             <button

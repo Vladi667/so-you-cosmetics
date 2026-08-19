@@ -125,7 +125,7 @@ const WorkshopsPage = () => {
                       <Link to={`/workshops/${ws.id}`} className="inline-block">
                         <h3 className="font-serif text-2xl text-slate-stone mb-2 hover:text-stone-gray transition-colors">{ws.title}</h3>
                       </Link>
-                      <p className="font-sans text-stone-gray text-sm mb-4 leading-relaxed">{ws.description}</p>
+                      <div className="prose prose-sm max-w-none font-sans text-stone-gray text-sm mb-4 leading-relaxed prose-strong:text-slate-stone" dangerouslySetInnerHTML={{ __html: ws.description || '' }} />
                       <div className="flex flex-wrap gap-4 items-center justify-center sm:justify-start">
                         <span className="font-bold text-slate-stone">CHF {ws.price}</span>
                         <span className="text-stone-gray/60 text-sm">{ws.duration}</span>

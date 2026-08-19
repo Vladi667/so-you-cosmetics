@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ContentEditor from './admin/ContentEditor';
 import ShopSettings from './admin/ShopSettings';
+import RichTextEditor from './admin/RichTextEditor';
 
 // Order status has been written in mixed case over the life of the shop
 // ('paid' from the payment paths, 'Paid' from the admin dropdown). Compare on
@@ -873,7 +874,11 @@ const AdminDashboard = ({ onLogout }) => {
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Description (HTML accepté)</label>
-                  <textarea required placeholder="Description du produit" value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} className="px-4 py-2 border rounded w-full h-40"></textarea>
+                  <RichTextEditor
+                    value={productForm.description}
+                    onChange={(html) => setProductForm({ ...productForm, description: html })}
+                    placeholder="Description du produit — utilisez les boutons ci-dessus pour les sous-titres et le gras"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Stock (interne, non affiché)</label>
@@ -1053,7 +1058,14 @@ const AdminDashboard = ({ onLogout }) => {
                   </div>
                   <input type="text" placeholder="…ou URL d'image (ex: /workshop.png)" value={workshopForm.image_url} onChange={e => setWorkshopForm({...workshopForm, image_url: e.target.value})} className="px-4 py-2 border rounded w-full" />
                 </div>
-                <textarea required placeholder="Description" value={workshopForm.description} onChange={e => setWorkshopForm({...workshopForm, description: e.target.value})} className="px-4 py-2 border rounded md:col-span-2"></textarea>
+                <div className="md:col-span-2">
+                  <RichTextEditor
+                    value={workshopForm.description}
+                    onChange={(html) => setWorkshopForm({ ...workshopForm, description: html })}
+                    placeholder="Description de l'atelier"
+                    minHeight={140}
+                  />
+                </div>
                 <div className="md:col-span-2 flex gap-4">
                   <button type="submit" className="px-6 py-2 bg-slate-stone text-white rounded">Enregistrer</button>
                   {workshopForm.id && <button type="button" onClick={() => setWorkshopForm({ id: null, title: '', description: '', price: '', duration: '', image_url: '' })} className="px-6 py-2 bg-gray-200 rounded">Annuler</button>}
