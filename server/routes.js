@@ -257,14 +257,61 @@ function buildShippedEmail({ name, orderId, carrier, trackingNumber }) {
 }
 
 // 3. Create Order / Checkout
+// Recomputes what an order is worth from the catalogue and the shipping table,
+// rather than believing the figure the browser sent.
+//
+// The total used to come straight from req.body and go straight to SumUp, so a
+// crafted request could have paid one franc for a full basket. Prices are read
+// from the catalogue by product id and shipping from her settings; the client
+// chooses *which* delivery option, never what it costs.
+async function computeOrderTotal(items, shippingId) {
+  const catalogue = await db.getProducts();
+  const byId = new Map(catalogue.map((p) => [String(p.id), p]));
+
+  let goods = 0;
+  for (const line of items || []) {
+    const product = byId.get(String(line.id));
+    if (!product) continue;                       // ligne inconnue : ignorée, jamais facturée
+    const price = Number(product.price) || 0;
+    const qty = Math.max(1, parseInt(line.qty, 10) || 1);
+    goods += price * qty;
+  }
+
+  const { shipping } = db.getShopSettings();
+  const option = (shipping.options || []).find((o) => o.id === shippingId);
+  let shippingCost = option ? Number(option.price) || 0 : 0;
+
+  // La franchise ne vaut que pour l'Economy : offrir un envoi Priority sur un
+  // panier à 150 peut effacer la marge.
+  const seuil = Number(shipping.freeFrom);
+  if (option && option.economy && Number.isFinite(seuil) && seuil > 0 && goods >= seuil) {
+    shippingCost = 0;
+  }
+
+  return {
+    goods: Math.round(goods * 100) / 100,
+    shippingCost: Math.round(shippingCost * 100) / 100,
+    total: Math.round((goods + shippingCost) * 100) / 100,
+    shippingLabel: option ? option.label : '',
+  };
+}
+
 router.post('/orders', async (req, res) => {
-  const { name, email, items, total } = req.body;
-  if (!name || !email || !items || !total) {
+  const { name, email, items, shippingId } = req.body;
+  if (!name || !email || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Missing required order details' });
   }
 
   try {
-    const newOrder = await db.createOrder({ name, email, items, total });
+    const calcul = await computeOrderTotal(items, shippingId);
+    if (!(calcul.total > 0)) {
+      return res.status(400).json({ error: 'Panier vide ou produits introuvables' });
+    }
+    const total = calcul.total;
+    const newOrder = await db.createOrder({
+      name, email, items, total,
+      shipping: { id: shippingId || '', label: calcul.shippingLabel, cost: calcul.shippingCost },
+    });
 
     let checkoutId = `mock_session_${newOrder.id}`;
     let sumupActive = false;

@@ -129,6 +129,10 @@ const translations = {
       privacy: 'Politique de Confidentialité',
     },
     drawer: {
+      shippingTitle: "Mode d'expédition",
+      shippingFree: "Offert",
+      shippingIncluded: "Gratuit",
+      shippingFreeFrom: "Livraison Economy offerte dès CHF {amount}.- d'achat",
       cartTitle: 'Votre Panier',
       favTitle: 'Vos Favoris',
       thanks: 'Merci !',
@@ -502,6 +506,10 @@ const translations = {
       privacy: 'Privacy Policy',
     },
     drawer: {
+      shippingTitle: "Delivery method",
+      shippingFree: "Free",
+      shippingIncluded: "Free",
+      shippingFreeFrom: "Free Economy delivery on orders over CHF {amount}.-",
       cartTitle: 'Your Cart',
       favTitle: 'Your Favourites',
       thanks: 'Thank you!',
@@ -875,6 +883,10 @@ const translations = {
       privacy: 'Datenschutz',
     },
     drawer: {
+      shippingTitle: "Versandart",
+      shippingFree: "Geschenkt",
+      shippingIncluded: "Kostenlos",
+      shippingFreeFrom: "Economy-Versand ab CHF {amount}.- Einkaufswert kostenlos",
       cartTitle: 'Ihr Warenkorb',
       favTitle: 'Ihre Favoriten',
       thanks: 'Danke!',

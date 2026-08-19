@@ -546,6 +546,10 @@ async function createOrder(order) {
     customer_email: order.email,
     total: order.total,
     items: order.items,
+    // Ce qu'elle doit expédier, et ce que le client a payé pour cela. Sans ce
+    // champ, une commande à retirer en boutique et un envoi Priority se
+    // ressemblent dans la liste.
+    shipping: order.shipping || null,
     status: 'Pending',
     created_at: new Date().toISOString()
   };
@@ -989,6 +993,27 @@ const SHOP_DEFAULTS = {
     { day: 'samedi',   closed: false, hours: '11:00–16:30' },
   ],
   absence: { active: false, fr: '', en: '', de: '' },
+  // Ses tarifs, repris tels quels de son document du 23 juin. Ils vivent dans
+  // les réglages plutôt que dans le code : La Poste révise ses prix, et elle ne
+  // devrait pas avoir besoin de nous pour suivre.
+  //
+  // « freeFrom » ne s'applique qu'à l'option marquée « economy » : offrir un
+  // envoi Priority sur un panier à 150 peut effacer la marge, alors que
+  // l'Economy est plafonné. Décision prise pour elle, réversible ici même.
+  shipping: {
+    freeFrom: 150,
+    options: [
+      { id: 'pickup',      label: 'Retrait à la boutique',                          price: 0,     note: 'Gratuit' },
+      { id: 'courrierB',   label: 'Courrier B (2–3 jours ouvrables)',               price: 1.00,  note: 'Bon cadeau uniquement' },
+      { id: 'courrierBsig',label: 'Courrier B avec signature',                      price: 4.70,  note: 'Bon cadeau uniquement' },
+      { id: 'courrierA',   label: 'Courrier A (distribution prioritaire)',          price: 1.20,  note: 'Bon cadeau uniquement' },
+      { id: 'courrierAsig',label: 'Courrier A avec signature',                      price: 4.90,  note: 'Bon cadeau uniquement' },
+      { id: 'economy',     label: 'Colis Economy (3–5 jours ouvrables)',            price: 11.00, note: 'Jusqu’à 2 kg', economy: true },
+      { id: 'economysig',  label: 'Colis Economy avec signature',                   price: 13.00, note: 'Jusqu’à 2 kg' },
+      { id: 'priority',    label: 'Colis Priority (2–3 jours ouvrables)',           price: 13.00, note: 'Jusqu’à 2 kg' },
+      { id: 'prioritysig', label: 'Colis Priority avec signature',                  price: 15.00, note: 'Jusqu’à 2 kg' },
+    ],
+  },
   maintenance: { active: false, fr: '', en: '', de: '' },
 };
 
@@ -999,6 +1024,12 @@ function getShopSettings() {
     hours: Array.isArray(saved.hours) && saved.hours.length ? saved.hours : SHOP_DEFAULTS.hours,
     absence: { ...SHOP_DEFAULTS.absence, ...(saved.absence || {}) },
     maintenance: { ...SHOP_DEFAULTS.maintenance, ...(saved.maintenance || {}) },
+    shipping: {
+      freeFrom: saved.shipping && saved.shipping.freeFrom !== undefined
+        ? saved.shipping.freeFrom : SHOP_DEFAULTS.shipping.freeFrom,
+      options: saved.shipping && Array.isArray(saved.shipping.options) && saved.shipping.options.length
+        ? saved.shipping.options : SHOP_DEFAULTS.shipping.options,
+    },
   };
 }
 
@@ -1008,6 +1039,7 @@ function updateShopSettings(patch) {
     hours: Array.isArray(patch.hours) ? patch.hours : current.hours,
     absence: { ...current.absence, ...(patch.absence || {}) },
     maintenance: { ...current.maintenance, ...(patch.maintenance || {}) },
+    shipping: { ...current.shipping, ...(patch.shipping || {}) },
   };
   writeSettings({ ...readSettings(), shop: next });
   return next;

@@ -31,3 +31,23 @@ export function getAbsenceNotice(language) {
   const text = a[language] || a.fr;
   return text ? String(text) : null;
 }
+
+// Les modes d'expédition qu'elle propose, et le seuil de franchise.
+// La franchise ne s'applique qu'à l'option marquée « economy » — c'est aussi ce
+// que le serveur applique, qui reste seul juge du montant facturé.
+export function getShipping() {
+  const sh = shop.shipping;
+  if (!sh || !Array.isArray(sh.options) || sh.options.length === 0) {
+    return { freeFrom: 0, options: [] };
+  }
+  return { freeFrom: Number(sh.freeFrom) || 0, options: sh.options };
+}
+
+// Ce que coûtera l'option choisie pour ce montant de panier. Sert à l'affichage
+// uniquement : le serveur recalcule tout au moment de la commande.
+export function shippingCostFor(option, goodsTotal) {
+  if (!option) return 0;
+  const { freeFrom } = getShipping();
+  if (option.economy && freeFrom > 0 && goodsTotal >= freeFrom) return 0;
+  return Number(option.price) || 0;
+}

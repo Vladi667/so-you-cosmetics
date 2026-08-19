@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
+import { getShipping, shippingCostFor } from '../services/shop';
 
 const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
   const { t } = useLanguage();
@@ -10,6 +11,8 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [sumupCheckoutId, setSumupCheckoutId] = useState(null);
   const [orderId, setOrderId] = useState(null);
+  const shipping = getShipping();
+  const [shippingId, setShippingId] = useState('');
 
   // Reset checkout states when drawer opens/closes
   useEffect(() => {
@@ -69,13 +72,17 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    // Le total n'est plus envoyé : le serveur le recalcule depuis le catalogue
+    // et la table des tarifs. Le navigateur choisit le mode d'expédition, jamais
+    // son prix.
     const orderPayload = {
       name: checkoutForm.name,
       email: checkoutForm.email,
-      total: total,
+      shippingId,
       items: items.map(item => ({
         id: item.id,
         name: getName(item),
+        qty: 1,
         price: getPrice(item)
       }))
     };
@@ -171,6 +178,43 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
           ) : isCheckoutMode ? (
             /* Checkout Form Screen */
             <form onSubmit={handleCheckoutSubmit} className="space-y-6 pt-4">
+              {shipping.options.length > 0 && (
+                <div>
+                  <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">
+                    {t('drawer.shippingTitle')}
+                  </label>
+                  <div className="space-y-2">
+                    {shipping.options.map((o) => {
+                      const cout = shippingCostFor(o, total);
+                      const offert = cout === 0 && Number(o.price) > 0;
+                      return (
+                        <label key={o.id} className="flex items-start gap-3 bg-mist-white border border-slate-stone/10 rounded-2xl px-4 py-3 cursor-pointer hover:border-slate-stone/30 transition-colors">
+                          <input
+                            type="radio"
+                            name="shipping"
+                            required
+                            checked={shippingId === o.id}
+                            onChange={() => setShippingId(o.id)}
+                            className="mt-1"
+                          />
+                          <span className="flex-1 min-w-0">
+                            <span className="block font-sans text-sm text-slate-stone">{o.label}</span>
+                            {o.note && <span className="block font-sans text-[11px] text-stone-gray/80">{o.note}</span>}
+                          </span>
+                          <span className="font-sans text-sm text-slate-stone whitespace-nowrap">
+                            {cout === 0 ? (offert ? t('drawer.shippingFree') : t('drawer.shippingIncluded')) : `CHF ${cout.toFixed(2)}`}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {shipping.freeFrom > 0 && (
+                    <p className="mt-2 font-sans text-[11px] text-stone-gray">
+                      {t('drawer.shippingFreeFrom', { amount: shipping.freeFrom })}
+                    </p>
+                  )}
+                </div>
+              )}
               <div>
                 <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">{t('drawer.fullName')}</label>
                 <input
