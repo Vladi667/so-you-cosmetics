@@ -127,7 +127,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
         <SectionHeader
           title={isSearching ? t('catalog.titleSearch') : t('catalog.titleFull')}
           subtitle={isSearching
-            ? t('catalog.resultCount')(displayedProducts.length, searchQuery.trim())
+            ? t('catalog.resultCount', { n: displayedProducts.length, q: searchQuery.trim() })
             : t('catalog.subtitleFull')}
         />
 
@@ -253,7 +253,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
         {displayedProducts.length === 0 && (
           <div className="text-center py-24">
             <p className="text-slate-stone/60 text-lg">
-              {isSearching ? t('catalog.emptySearch')(searchQuery.trim()) : t('catalog.emptyCategory')}
+              {isSearching ? t('catalog.emptySearch', { q: searchQuery.trim() }) : t('catalog.emptyCategory')}
             </p>
           </div>
         )}

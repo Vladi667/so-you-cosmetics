@@ -43,14 +43,28 @@ export const LanguageProvider = ({ children }) => {
   }, []);
 
   // t('nav.home') -> string. Missing keys fall back to French, then to the key
-  // itself. Values may also be arrays/objects (e.g. legal sections) or
-  // functions (interpolated strings); callers receive them as-is.
+  // itself. Values may also be arrays or objects (e.g. legal sections); callers
+  // receive those as-is.
+  //
+  // t('footer.rights', { year: 2026 }) fills {year} in the resolved string.
+  // Four values used to be functions — `(year) => \`© ${year} …\`` — which read
+  // naturally but cannot survive a round trip through JSON, and the content
+  // editor stores its overrides as JSON. They are plain strings with {named}
+  // placeholders now, so a text she edits can never be less capable than the
+  // one it replaces. A placeholder with no matching variable is left visible
+  // rather than blanked: a stray {year} on screen is a bug someone reports,
+  // while a silent empty space is one nobody notices.
   const t = useCallback(
-    (key) => {
-      const value = resolve(translations[language], key);
-      if (value !== undefined) return value;
-      const fallback = resolve(translations[DEFAULT_LANGUAGE], key);
-      return fallback !== undefined ? fallback : key;
+    (key, vars) => {
+      let value = resolve(translations[language], key);
+      if (value === undefined) value = resolve(translations[DEFAULT_LANGUAGE], key);
+      if (value === undefined) return key;
+      if (vars && typeof value === 'string') {
+        return value.replace(/\{(\w+)\}/g, (whole, name) =>
+          Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : whole
+        );
+      }
+      return value;
     },
     [language]
   );

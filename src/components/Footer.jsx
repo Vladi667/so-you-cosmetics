@@ -131,7 +131,7 @@ const Footer = () => {
 
         <div className="mt-20 pt-8 border-t border-mist-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-xs text-mist-white/40 font-light tracking-wide">
-            {t('footer.rights')(new Date().getFullYear())}
+            {t('footer.rights', { year: new Date().getFullYear() })}
           </p>
           <div className="flex gap-6 text-xs text-mist-white/40 font-light tracking-wide">
             <Link to="/terms" className="hover:text-white transition-colors duration-200">{t('footer.terms')}</Link>

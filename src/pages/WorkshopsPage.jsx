@@ -127,7 +127,7 @@ const WorkshopsPage = () => {
                         <span className="font-bold text-slate-stone">CHF {ws.price}</span>
                         <span className="text-stone-gray/60 text-sm">{ws.duration}</span>
                       </div>
-                      <button onClick={() => { setContactForm({...contactForm, subject: t('workshopsPage.reservationSubject')(ws.title)}); setIsContactModalOpen(true); }} className="mt-6 px-6 py-2 bg-slate-stone text-white rounded-full text-xs uppercase tracking-widest hover:bg-slate-stone/90 transition-all shadow-md">{t('workshopsPage.reserveThis')}</button>
+                      <button onClick={() => { setContactForm({...contactForm, subject: t('workshopsPage.reservationSubject', { title: ws.title })}); setIsContactModalOpen(true); }} className="mt-6 px-6 py-2 bg-slate-stone text-white rounded-full text-xs uppercase tracking-widest hover:bg-slate-stone/90 transition-all shadow-md">{t('workshopsPage.reserveThis')}</button>
                     </div>
                   </div>
                 </div>
