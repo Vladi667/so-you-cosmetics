@@ -2,15 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getProducts } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
+import ProductPlaceholder from '../components/ProductPlaceholder';
 import ProductBadge from '../components/ProductBadge';
 import { descriptionToHtml } from '../utils/description';
 
-const placeholders = [
-  'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=600&q=80',
-  'https://images.unsplash.com/photo-1599305090598-fe179d501227?auto=format&fit=crop&w=600&q=80',
-  'https://images.unsplash.com/photo-1615397323136-1681280f55aa?auto=format&fit=crop&w=600&q=80',
-  'https://images.unsplash.com/photo-1629198688000-71f23e745b6e?auto=format&fit=crop&w=600&q=80'
-];
+
 
 const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   const { t, tCategory } = useLanguage();
@@ -87,7 +83,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   // Use real images if available, otherwise fallback
   const images = product.images && product.images.length > 0 
     ? product.images 
-    : [placeholders[product.name.length % placeholders.length]];
+    : [];   // aucune photo : on montre un cadre honnête, pas l'image d'une autre marque
 
   const handleAddToCart = () => {
     // In a real app we'd pass quantity, but for now we'll just add it multiple times or rely on the cart logic
@@ -124,11 +120,14 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                       <ProductBadge ribbon={product.ribbon} size="lg" />
                     </div>
                   )}
-                  <img 
-                    src={images[activeImage]} 
-                    alt={product.name} 
-                    className="w-full h-full object-cover object-center transition-opacity duration-500"
-                  />
+                  {images.length === 0 ? <ProductPlaceholder /> : (
+                    <img
+                      src={images[activeImage]}
+                      alt={product.name}
+                      loading="lazy"
+                      className="w-full h-full object-cover object-center transition-opacity duration-500"
+                    />
+                  )}
                 </div>
                 
                 {/* Thumbnails */}
@@ -251,12 +250,14 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
             <h3 className="font-serif text-3xl text-slate-stone mb-12 text-center">{t('product.youMayAlsoLike')}</h3>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
               {relatedProducts.map((p, index) => {
-                const img = p.images.length > 0 ? p.images[0] : placeholders[p.name.length % placeholders.length];
+                const img = p.images.length > 0 ? p.images[0] : null;
                 const isFav = favorites.some(fav => fav.id === p.id);
                 return (
                   <div key={p.id} className="group relative flex flex-col bg-ivory rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-250">
                     <Link to={`/product/${p.id}`} className="aspect-[4/5] w-full overflow-hidden bg-lake-mist relative block">
-                      <img src={img} alt={p.name} className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-in-out" />
+                      {img ? (
+                        <img src={img} alt={p.name} loading="lazy" className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-in-out" />
+                      ) : <ProductPlaceholder />}
                       {p.ribbon && (
                         <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10">
                           <ProductBadge ribbon={p.ribbon} />

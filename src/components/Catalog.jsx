@@ -5,13 +5,9 @@ import { getProducts } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
 import { visibleCategories } from '../data/categories';
 import ProductBadge from './ProductBadge';
+import ProductPlaceholder from './ProductPlaceholder';
 
-const placeholders = [
-  'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=600&q=80',
-  'https://images.unsplash.com/photo-1599305090598-fe179d501227?auto=format&fit=crop&w=600&q=80',
-  'https://images.unsplash.com/photo-1615397323136-1681280f55aa?auto=format&fit=crop&w=600&q=80',
-  'https://images.unsplash.com/photo-1629198688000-71f23e745b6e?auto=format&fit=crop&w=600&q=80'
-];
+
 
 // Lowercase + strip diacritics so "levres" matches "lèvres", "bebe" matches "bébé", etc.
 const normalizeText = (s) =>
@@ -190,7 +186,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
         {/* Products Grid */}
         <div className={`grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8 transition-all duration-250 ease-in-out ${isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
           {displayedProducts.slice(0, visibleCount).map((product, index) => {
-            const placeholderImg = placeholders[product.name.length % placeholders.length];
+            const sansPhoto = !product.images || product.images.length === 0;
             // Un atelier mène à sa page de réservation, pas à une fiche produit.
             const lien = product.estAtelier ? `/workshops/${product.id}` : `/product/${product.id}`;
             return (
@@ -200,12 +196,14 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                 style={{ transitionDelay: `${(index % 12) * 100}ms` }}
               >
                 <div className="aspect-[4/5] w-full overflow-hidden bg-lake-mist relative">
+                  {sansPhoto ? <ProductPlaceholder /> : (
                   <img
-                    src={product.images.length > 0 ? product.images[0] : placeholderImg}
+                    src={product.images[0]}
                     alt={product.name}
                     loading="lazy"
                     className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-in-out"
                   />
+                  )}
                   {product.ribbon && (
                     <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10">
                       <ProductBadge ribbon={product.ribbon} />

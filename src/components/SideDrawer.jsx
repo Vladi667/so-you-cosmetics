@@ -11,20 +11,25 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [sumupCheckoutId, setSumupCheckoutId] = useState(null);
   const [orderId, setOrderId] = useState(null);
+  const [checkoutError, setCheckoutError] = useState(null);
   const shipping = getShipping();
   const [shippingId, setShippingId] = useState('');
 
   // Reset checkout states when drawer opens/closes
   useEffect(() => {
-    if (!isOpen) {
-      setTimeout(() => {
-        setIsCheckoutMode(false);
-        setCheckoutSuccess(false);
-        setSumupCheckoutId(null);
-        setOrderId(null);
-        setCheckoutForm({ name: '', email: '' });
-      }, 500); // Wait for transition animation to end
-    }
+    if (isOpen) return;
+    // Le nettoyage manquait : fermer le panier par erreur pendant un paiement
+    // puis rouvrir en moins d'une demi-seconde faisait disparaître le formulaire
+    // de carte et effaçait le nom et l'e-mail déjà saisis.
+    const id = setTimeout(() => {
+      setIsCheckoutMode(false);
+      setCheckoutSuccess(false);
+      setCheckoutError(null);
+      setSumupCheckoutId(null);
+      setOrderId(null);
+      setCheckoutForm({ name: '', email: '' });
+    }, 500); // le temps de la transition de fermeture
+    return () => clearTimeout(id);
   }, [isOpen]);
 
   const getImageUrl = (product) => {
@@ -68,9 +73,19 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
 
   const total = items.reduce((sum, item) => sum + parseFloat(getPrice(item)), 0);
 
+  // Ce qui sera réellement débité. Le serveur facture marchandise + expédition
+  // (server/routes.js, computeOrderTotal) ; le récapitulatif n'affichait que la
+  // marchandise. La cliente lisait CHF 46.00 et sa carte était débitée de
+  // CHF 59.00 — un écart de facturation, et une infraction à l'obligation
+  // suisse d'annoncer le prix effectivement à payer.
+  const optionChoisie = shipping.options.find((o) => o.id === shippingId) || null;
+  const fraisPort = shippingCostFor(optionChoisie, total);
+  const totalAPayer = total + fraisPort;
+
   const handleCheckoutSubmit = (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setCheckoutError(null);
 
     // Le total n'est plus envoyé : le serveur le recalcule depuis le catalogue
     // et la table des tarifs. Le navigateur choisit le mode d'expédition, jamais
@@ -95,7 +110,11 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
       body: JSON.stringify(orderPayload)
     })
       .then(res => {
-        if (!res.ok) throw new Error('Order creation failed');
+        if (!res.ok) {
+          const e = new Error('Order creation failed');
+          e.panier = res.status === 400;   // panier vide ou produits introuvables
+          throw e;
+        }
         return res.json();
       })
       .then(data => {
@@ -110,8 +129,11 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
       .catch(err => {
         console.error('Checkout error:', err);
         setIsSubmitting(false);
-        // Fallback checkout success for offline/mock presentation
-        setCheckoutSuccess(true);
+        // Surtout pas de succès de repli ici. Il affichait la coche verte et
+        // « nous vous avons envoyé un récapitulatif » alors qu'aucune commande
+        // n'existait et qu'aucun e-mail ne partait : la cliente attendait un
+        // colis qui n'arriverait jamais, et personne n'était au courant.
+        setCheckoutError(err && err.panier ? 'panier' : 'technique');
       });
   };
 
@@ -177,6 +199,19 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
             </div>
           ) : isCheckoutMode ? (
             /* Checkout Form Screen */
+            <>
+            {checkoutError && (
+              <div className="mb-5 p-4 bg-[#F5EDE0] border border-[#E0CFB0] rounded-2xl">
+                <p className="font-sans text-sm font-medium text-[#8A6A3B] mb-1">{t('drawer.orderFailedTitle')}</p>
+                <p className="font-sans text-xs text-stone-gray mb-3">{t('drawer.orderFailedText')}</p>
+                <p className="font-sans text-xs text-stone-gray">
+                  <a href="tel:+41225566992" className="underline underline-offset-2">022 556 69 92</a>
+                  {' · '}
+                  <a href="mailto:contact@soyoucosmetics.com" className="underline underline-offset-2">contact@soyoucosmetics.com</a>
+                </p>
+              </div>
+            )}
+
             <form onSubmit={handleCheckoutSubmit} className="space-y-6 pt-4">
               {shipping.options.length > 0 && (
                 <div>
@@ -250,9 +285,22 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
                   ))}
                 </div>
                 <div className="h-px bg-slate-stone/10 my-3"></div>
-                <div className="flex justify-between font-sans text-sm font-medium text-slate-stone">
-                  <span>{t('drawer.total')}</span>
-                  <span>CHF {total.toFixed(2)}</span>
+                <div className="flex justify-between font-sans text-xs text-stone-gray">
+                  <span>{t('drawer.subtotal')}</span>
+                  <span className="tabular-nums">CHF {total.toFixed(2)}</span>
+                </div>
+                {optionChoisie && (
+                  <div className="flex justify-between font-sans text-xs text-stone-gray mt-1">
+                    <span className="truncate pr-3">{t('drawer.shippingLine')} — {optionChoisie.label}</span>
+                    <span className="tabular-nums whitespace-nowrap">
+                      {fraisPort === 0 ? t('drawer.shippingIncluded') : `CHF ${fraisPort.toFixed(2)}`}
+                    </span>
+                  </div>
+                )}
+                <div className="h-px bg-slate-stone/10 my-3"></div>
+                <div className="flex justify-between font-sans text-base font-medium text-slate-stone">
+                  <span>{t('drawer.totalToPay')}</span>
+                  <span className="tabular-nums">CHF {totalAPayer.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -273,6 +321,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
                 </button>
               </div>
             </form>
+            </>
           ) : items.length === 0 ? (
             /* Empty Drawer State */
             <div className="flex flex-col items-center justify-center h-64 text-center">
@@ -330,8 +379,8 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
         {type === 'cart' && items.length > 0 && !isCheckoutMode && !checkoutSuccess && (
           <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-8 py-4 sm:py-6 border-t border-slate-stone/10 bg-ivory">
             <div className="flex justify-between items-center mb-6">
-              <span className="font-sans text-sm text-stone-gray">{t('drawer.estimatedTotal')}</span>
-              <span className="font-serif text-2xl text-slate-stone">
+              <span className="font-sans text-sm text-stone-gray">{t('drawer.subtotal')}</span>
+              <span className="font-serif text-2xl text-slate-stone tabular-nums">
                 CHF {total.toFixed(2)}
               </span>
             </div>
