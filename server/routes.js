@@ -337,7 +337,19 @@ async function computeOrderTotal(items, shippingId) {
 
   const { shipping } = db.getShopSettings();
   const option = (shipping.options || []).find((o) => o.id === shippingId);
-  let shippingCost = option ? Number(option.price) || 0 : 0;
+
+  // Un mode d'expédition inconnu ne doit pas coûter zéro. C'était le cas :
+  // `option` valait undefined et les frais tombaient à 0, si bien qu'une requête
+  // forgée — ou simplement un onglet resté ouvert après qu'elle a modifié ses
+  // tarifs — obtenait le port gratuit sans que rien ne le signale. On refuse,
+  // et l'appelant reçoit une raison plutôt qu'une remise silencieuse.
+  if (!option) {
+    const e = new Error('shipping-inconnu');
+    e.code = 'SHIPPING_INCONNU';
+    throw e;
+  }
+
+  let shippingCost = Number(option.price) || 0;
 
   // La franchise ne vaut que pour l'Economy : offrir un envoi Priority sur un
   // panier à 150 peut effacer la marge.
@@ -361,7 +373,15 @@ router.post('/orders', async (req, res) => {
   }
 
   try {
-    const calcul = await computeOrderTotal(items, shippingId);
+    let calcul;
+    try {
+      calcul = await computeOrderTotal(items, shippingId);
+    } catch (err) {
+      if (err && err.code === 'SHIPPING_INCONNU') {
+        return res.status(400).json({ error: "Ce mode d'expédition n'est plus proposé. Rechargez la page et choisissez à nouveau." });
+      }
+      throw err;
+    }
     if (!(calcul.total > 0)) {
       return res.status(400).json({ error: 'Panier vide ou produits introuvables' });
     }
