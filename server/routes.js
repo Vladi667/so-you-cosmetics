@@ -785,6 +785,66 @@ router.delete('/admin/articles/:id', requireAdmin, (req, res) => {
   }
 });
 
+// 3g. Export des ventes — « sortir un tableau chaque fin d'année regroupant
+// toutes les ventes effectuées pour ma compta ».
+//
+// CSV plutôt que PDF : c'est ce qui s'ouvre dans Excel et se transmet à un
+// comptable sans retaper une ligne. Séparateur point-virgule et BOM UTF-8,
+// faute de quoi Excel en français découpe mal les colonnes et mange les accents.
+function champCsv(valeur) {
+  const t = String(valeur === null || valeur === undefined ? '' : valeur);
+  // Un point-virgule, un guillemet ou un retour a la ligne dans un nom de
+  // produit casserait la colonne suivante s'il n'etait pas protege.
+  return /[";\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+}
+
+router.get('/admin/orders/export', requireAdmin, async (req, res) => {
+  try {
+    const annee = String(req.query.year || new Date().getFullYear());
+    const toutes = await db.getOrders();
+
+    // Seules les commandes encaissées intéressent la comptabilité : un panier
+    // abandonné n'est pas une vente.
+    const ventes = (toutes || []).filter((o) => {
+      const payee = ['paid', 'readyforpickup', 'shipped'].includes(String(o.status || '').toLowerCase());
+      return payee && String(o.created_at || '').startsWith(annee);
+    });
+
+    const entetes = ['Date', 'Commande', 'Facture', 'Client', 'E-mail', 'Articles',
+                     'Expedition', 'Frais de port', 'Total encaisse', 'Statut'];
+    const lignes = ventes.map((o) => {
+      const articles = (o.items || [])
+        .map((it) => `${Math.max(1, parseInt(it.qty, 10) || 1)} x ${it.name || it.id || ''}`)
+        .join(' | ');
+      return [
+        String(o.created_at || '').slice(0, 10),
+        o.id,
+        o.invoice_number || '',
+        o.customer_name || '',
+        o.customer_email || '',
+        articles,
+        (o.shipping && o.shipping.label) || '',
+        o.shipping ? Number(o.shipping.cost || 0).toFixed(2) : '',
+        Number(o.total || 0).toFixed(2),
+        o.status || '',
+      ].map(champCsv).join(';');
+    });
+
+    const total = ventes.reduce((s, o) => s + (Number(o.total) || 0), 0);
+    lignes.push('');
+    lignes.push([champCsv(`Total ${annee}`), '', '', '', '', '', '', '',
+                 champCsv(total.toFixed(2)), champCsv(`${ventes.length} vente(s)`)].join(';'));
+
+    const csv = '\ufeff' + [entetes.join(';'), ...lignes].join('\r\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="ventes-so-you-${annee}.csv"`);
+    res.send(csv);
+  } catch (err) {
+    console.error('Sales export failed:', err);
+    res.status(500).json({ error: 'Export impossible' });
+  }
+});
+
 // 4. Get Booking Slots
 router.get('/workshops/slots', (req, res) => {
   try {

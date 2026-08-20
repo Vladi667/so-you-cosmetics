@@ -29,6 +29,18 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
   const [productsList, setProductsList] = useState([]);
   const [activeCategory, setActiveCategory] = useState(globalActiveCategory);
   const [displayedProducts, setDisplayedProducts] = useState([]);
+  // « Dans la rubrique Cadeaux, j'aimerais également intégrer les ateliers. »
+  // Un atelier est un cadeau qu'on offre comme un produit ; il n'a simplement
+  // pas de panier. Chargés séparément puisqu'ils ne vivent pas au catalogue.
+  const [workshops, setWorkshops] = useState([]);
+  useEffect(() => {
+    let actif = true;
+    fetch('/api/workshops')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => { if (actif) setWorkshops(Array.isArray(d) ? d : []); })
+      .catch(() => {});
+    return () => { actif = false; };
+  }, []);
   const [visibleCount, setVisibleCount] = useState(12);
   const [isAnimating, setIsAnimating] = useState(false);
   const scrollRef = useRef(null);
@@ -68,6 +80,25 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
       } else if (activeCategory !== 'All') {
         filtered = productsList.filter(p => p.collections && p.collections.includes(activeCategory));
       }
+
+      // Les ateliers rejoignent les Cadeaux, présentés comme les produits mais
+      // menant à leur page dédiée : ils se réservent, ils ne s'ajoutent pas au
+      // panier.
+      if (activeCategory === 'Cadeaux' && workshops.length > 0) {
+        filtered = [
+          ...workshops.map((w) => ({
+            id: w.id,
+            name: w.title || '',
+            price: Number(w.price) || 0,
+            images: w.image_url ? [w.image_url] : [],
+            collections: ['Cadeaux'],
+            ribbon: null,
+            estAtelier: true,
+          })),
+          ...filtered,
+        ];
+      }
+
       setDisplayedProducts(filtered);
       setVisibleCount(12); // Reset visible count on category/search change
 
@@ -79,7 +110,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
     }, 150);
 
     return () => clearTimeout(timer);
-  }, [activeCategory, productsList, searchQuery]);
+  }, [activeCategory, productsList, searchQuery, workshops]);
 
   const loadMore = () => {
     setVisibleCount(prev => prev + 12);
@@ -160,6 +191,8 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
         <div className={`grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8 transition-all duration-250 ease-in-out ${isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
           {displayedProducts.slice(0, visibleCount).map((product, index) => {
             const placeholderImg = placeholders[product.name.length % placeholders.length];
+            // Un atelier mène à sa page de réservation, pas à une fiche produit.
+            const lien = product.estAtelier ? `/workshops/${product.id}` : `/product/${product.id}`;
             return (
               <div 
                 key={product.id} 
@@ -186,7 +219,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                     </div>
                   )}
                   {/* Hover Overlay — on mobile the card image is directly tappable */}
-                  <Link to={`/product/${product.id}`} className="absolute inset-0 bg-slate-stone/10 opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center md:backdrop-blur-[2px]">
+                  <Link to={lien} className="absolute inset-0 bg-slate-stone/10 opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center md:backdrop-blur-[2px]">
                     <span className="transform translate-y-4 md:group-hover:translate-y-0 opacity-0 md:group-hover:opacity-100 transition-all duration-250 bg-ivory text-slate-stone px-8 py-3 rounded-full font-medium tracking-wide shadow-lg hover:bg-slate-stone hover:text-white hidden md:inline">
                       {t('catalog.viewDetails')}
                     </span>
@@ -198,7 +231,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                     <p className="text-[9px] sm:text-xs text-slate-stone/60 uppercase tracking-widest mb-0.5 sm:mb-1 truncate">
                       {product.collections[0] ? tCategory(product.collections[0]) : t('catalog.cosmeticsFallback')}
                     </p>
-                    <Link to={`/product/${product.id}`}>
+                    <Link to={lien}>
                       <h3 className="text-sm sm:text-lg font-serif text-slate-stone leading-tight line-clamp-2 hover:text-stone-gray transition-colors">
                         {product.name}
                       </h3>
@@ -217,6 +250,9 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
                       </button>
+                      {/* Un atelier se réserve, il ne s'ajoute pas au panier :
+                          le bouton n'aurait mené qu'à une impasse. */}
+                      {!product.estAtelier && (
                       <button
                         onClick={(e) => {
                           if (product.inStock === false) return;
@@ -232,6 +268,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                         </svg>
                       </button>
+                      )}
                     </div>
                   </div>
                 </div>

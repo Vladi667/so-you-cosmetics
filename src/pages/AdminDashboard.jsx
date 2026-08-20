@@ -17,7 +17,7 @@ const AdminDashboard = ({ onLogout }) => {
   const [workshops, setWorkshops] = useState([]);
   const [workshopForm, setWorkshopForm] = useState({ id: null, title: '', description: '', price: '', duration: '', image_url: '' });
   const [products, setProducts] = useState([]);
-  const [productForm, setProductForm] = useState({ id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true });
+  const [productForm, setProductForm] = useState({ id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [] });
   const [productSearch, setProductSearch] = useState('');
   const [productsPage, setProductsPage] = useState(1);
   const [imageUploading, setImageUploading] = useState(false);
@@ -26,7 +26,7 @@ const AdminDashboard = ({ onLogout }) => {
   const [customBadge, setCustomBadge] = useState(false);
   const [workshopImageUploading, setWorkshopImageUploading] = useState(false);
   const PRODUCTS_PER_PAGE = 25;
-  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true };
+  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [] };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -66,6 +66,24 @@ const AdminDashboard = ({ onLogout }) => {
   const [inboxSettingsStatus, setInboxSettingsStatus] = useState({ success: '', error: '' });
   const [inboxSettingsSaving, setInboxSettingsSaving] = useState(false);
   const [showInboxSettings, setShowInboxSettings] = useState(false);
+
+  const [exportYear, setExportYear] = useState(String(new Date().getFullYear()));
+
+  // Téléchargement via fetch plutôt qu'un lien : la route exige le jeton
+  // d'administration, qu'un <a href> ne transporte pas.
+  const exporterVentes = () => {
+    fetch(`/api/admin/orders/export?year=${exportYear}`, { headers: fetchHeaders })
+      .then((r) => { if (!r.ok) throw new Error(); return r.blob(); })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ventes-so-you-${exportYear}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(() => alert("L'export n'a pas pu être généré."));
+  };
 
   const token = localStorage.getItem('adminToken');
   const username = localStorage.getItem('adminUser') || 'admin';
@@ -558,6 +576,28 @@ const AdminDashboard = ({ onLogout }) => {
                 <h1 className="font-serif text-3xl md:text-4xl text-slate-stone">Gestion des Commandes</h1>
                 <p className="text-xs text-stone-gray font-light mt-1">Historique des achats et suivi des envois.</p>
               </div>
+
+              {/* « Sortir un tableau chaque fin d'année regroupant toutes les
+                  ventes effectuées pour ma compta ». Le fichier s'ouvre dans
+                  Excel et part chez le comptable sans retaper une ligne. */}
+              <div className="flex items-center gap-2">
+                <select
+                  value={exportYear}
+                  onChange={(e) => setExportYear(e.target.value)}
+                  className="px-3 py-2 border rounded-lg text-sm text-slate-stone bg-white"
+                >
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={exporterVentes}
+                  className="px-5 py-2 bg-slate-stone text-white rounded-full text-xs uppercase tracking-widest hover:bg-slate-stone/90 transition-colors"
+                >
+                  Export comptable
+                </button>
+              </div>
               <button onClick={loadData} className="px-4 py-2 bg-white rounded-lg border border-slate-stone/10 text-xs text-stone-gray hover:bg-slate-stone/5 transition-all">Rafraîchir 🔄</button>
             </div>
 
@@ -750,6 +790,7 @@ const AdminDashboard = ({ onLogout }) => {
                   // product's images; the server ignores an empty list otherwise.
                   clearImages: productForm.images.length === 0,
                   stock: productForm.stock === '' ? null : productForm.stock,
+                  related: productForm.related || [],
                   inStock: !!productForm.inStock
                 };
                 fetch(url, { method, headers: fetchHeaders, body: JSON.stringify(payload) })
@@ -883,6 +924,46 @@ const AdminDashboard = ({ onLogout }) => {
                   />
                 </div>
                 <div>
+                  <div className="md:col-span-2 mb-4">
+                    <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">
+                      « Vous aimerez aussi » — jusqu'à 4 produits
+                    </label>
+                    <p className="text-[11px] text-stone-gray mb-2">
+                      Laissé vide, le site propose automatiquement des produits de la même catégorie.
+                    </p>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {(productForm.related || []).map((rid) => {
+                        const p = products.find((x) => x.id === rid);
+                        return (
+                          <span key={rid} className="inline-flex items-center gap-2 bg-mist-white border border-slate-stone/15 rounded-full px-3 py-1 text-xs text-slate-stone">
+                            {p ? p.name.slice(0, 40) : rid}
+                            <button type="button" aria-label="Retirer"
+                              onClick={() => setProductForm({ ...productForm, related: productForm.related.filter((x) => x !== rid) })}
+                              className="text-red-500 hover:text-red-700">×</button>
+                          </span>
+                        );
+                      })}
+                      {(productForm.related || []).length === 0 && (
+                        <span className="text-xs text-stone-gray/70">Sélection automatique</span>
+                      )}
+                    </div>
+                    <select
+                      value=""
+                      disabled={(productForm.related || []).length >= 4}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (!v || (productForm.related || []).includes(v)) return;
+                        setProductForm({ ...productForm, related: [...(productForm.related || []), v] });
+                      }}
+                      className="px-4 py-2 border rounded w-full text-sm disabled:opacity-40"
+                    >
+                      <option value="">{(productForm.related || []).length >= 4 ? 'Maximum atteint (4)' : 'Ajouter un produit…'}</option>
+                      {products.filter((p) => p.id !== productForm.id).map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Stock (interne, non affiché)</label>
                   <input type="number" min="0" step="1" placeholder="ex: 12" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} className="px-4 py-2 border rounded w-full" />
                 </div>

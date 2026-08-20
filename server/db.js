@@ -436,6 +436,9 @@ function normalizeProductInput(input, base = {}) {
   if (input.price !== undefined) out.price = Number(input.price) || 0;
   if (input.ribbon !== undefined) out.ribbon = input.ribbon || null;
   if (input.collections !== undefined) out.collections = toArray(input.collections);
+  // Les produits qu'elle a choisi de mettre en « Vous aimerez aussi ». Stockés
+  // comme identifiants : un nom changé ne doit pas rompre l'association.
+  if (input.related !== undefined) out.related = toArray(input.related);
   if (input.images !== undefined) {
     const next = toArray(input.images).map(normalizeImageUrl);
     const had = Array.isArray(base.images) && base.images.length > 0;

@@ -34,9 +34,25 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
         setActiveImage(0);
         setQuantity(1);
         
-        // Find coherent related products: rank other products by how many
-        // categories they share with the current one (most shared = most
-        // relevant), so a soap suggests soaps, a hydrolat suggests hydrolats…
+        // Ce qu'elle a choisi elle-même passe avant tout calcul : « dans la
+        // section Vous aimerez aussi, j'aimerais pouvoir choisir moi-même les
+        // produits qui apparaissent, plutôt que de laisser une sélection
+        // automatique ». Elle connaît ses clients mieux qu'un score de
+        // catégories communes.
+        //
+        // Les identifiants absents du catalogue sont ignorés : un produit
+        // supprimé ne doit pas laisser un trou dans la rangée.
+        const choisis = (foundProduct.related || [])
+          .map((rid) => productsList.find((p) => p.id === rid))
+          .filter(Boolean);
+        if (choisis.length > 0) {
+          setRelatedProducts(choisis.slice(0, 4));
+          return;
+        }
+
+        // Sinon, la sélection automatique d'origine : classer les autres
+        // produits par nombre de catégories partagées, pour qu'un savon suggère
+        // des savons et un hydrolat des hydrolats.
         const currentCols = foundProduct.collections || [];
         const scored = productsList
           .filter(p => p.id !== id)
