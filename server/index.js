@@ -62,6 +62,24 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// Ce que la page publique a le droit de connaître des réglages.
+//
+// Le catch-all injectait l'objet entier, qui s'est enrichi depuis : il contient
+// désormais l'adresse où la prévenir de ses ruptures de stock, ses coordonnées
+// de facturation, son numéro de TVA et le compteur de factures — c'est-à-dire
+// le nombre de commandes qu'elle a reçues. Rien de tout cela n'a sa place dans
+// le source d'une page publique.
+//
+// Liste blanche plutôt que liste noire : le prochain réglage ajouté sera privé
+// par défaut, ce qui est le bon sens de l'erreur.
+function reglagesPublics(shop) {
+  return {
+    hours: shop.hours,
+    absence: shop.absence,
+    shipping: shop.shipping,
+  };
+}
+
 function serialiseContent(content) {
   // The replacement is the six characters backslash-u-0-0-3-c, not the character
   // it denotes: writing the escape sequence itself here would substitute '<' for
@@ -113,7 +131,7 @@ app.get('*', (req, res, next) => {
     const html = fs.readFileSync(indexPath, 'utf8');
     const content = db.readContent();
     const tag = `<script>window.__CONTENT__=${serialiseContent(content)};` +
-                `window.__SHOP__=${serialiseContent(shop)}</script>`;
+                `window.__SHOP__=${serialiseContent(reglagesPublics(shop))}</script>`;
     // If </head> is somehow absent, fall through to the untouched file rather
     // than guessing where to put the tag.
     if (!html.includes('</head>')) return res.sendFile(indexPath);
