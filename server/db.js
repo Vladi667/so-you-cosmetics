@@ -494,6 +494,44 @@ async function createProduct(input) {
   return product;
 }
 
+// Retire du stock ce qu'une commande payée a emporté, et rend compte de ce qui
+// est passé sous les seuils.
+//
+// Le décrément se fait au paiement confirmé, pas à la création de la commande :
+// un panier abandonné immobiliserait sinon du stock que personne n'a acheté.
+// Le revers est connu et accepté ici — deux clients peuvent payer le dernier
+// article à quelques secondes d'intervalle. À ce volume, une rupture rare et
+// visible vaut mieux qu'un stock fantôme permanent.
+//
+// Un produit dont le stock est `null` n'est pas suivi : on n'y touche pas.
+function decrementStock(items, seuilBas = 3) {
+  const data = readProductsFile();
+  const parId = new Map(data.products.map((p) => [String(p.id), p]));
+  const evenements = [];
+
+  for (const ligne of items || []) {
+    const produit = parId.get(String(ligne.id));
+    if (!produit) continue;
+    if (produit.stock === null || produit.stock === undefined) continue;
+
+    const avant = Number(produit.stock) || 0;
+    const qte = Math.max(1, parseInt(ligne.qty, 10) || 1);
+    // Jamais en dessous de zéro : un stock négatif ne veut rien dire dans une
+    // liste d'inventaire et masquerait l'ampleur du problème.
+    const apres = Math.max(0, avant - qte);
+    if (apres === avant) continue;
+
+    produit.stock = apres;
+    if (apres === 0) produit.inStock = false;
+
+    if (apres === 0) evenements.push({ nom: produit.name, restant: 0, type: 'rupture' });
+    else if (apres <= seuilBas) evenements.push({ nom: produit.name, restant: apres, type: 'bas' });
+  }
+
+  writeProductsFile(data);
+  return evenements;
+}
+
 async function updateProduct(id, input) {
   if (pool) {
     try {
@@ -1134,6 +1172,9 @@ const SHOP_DEFAULTS = {
   // le seuil de CHF 100'000 de chiffre d'affaires. Si elle est assujettie, il
   // suffit de renseigner le numéro et le taux ici : imprimer « TVA 0.00 » en
   // étant assujettie serait faux, ne rien imprimer ne l'est pas.
+  // Où l'avertir, et à partir de quel niveau. Sans adresse renseignée, aucune
+  // alerte n'est envoyée : mieux vaut ne rien envoyer que d'écrire dans le vide.
+  alerts: { email: '', lowStockThreshold: 3, onLowStock: true, onNewOrder: true },
   invoice: {
     enabled: true,
     company: 'So You Cosmetics — Boutique Soap Opera',
@@ -1168,6 +1209,7 @@ function getShopSettings() {
     hours: Array.isArray(saved.hours) && saved.hours.length ? saved.hours : SHOP_DEFAULTS.hours,
     absence: { ...SHOP_DEFAULTS.absence, ...(saved.absence || {}) },
     maintenance: { ...SHOP_DEFAULTS.maintenance, ...(saved.maintenance || {}) },
+    alerts: { ...SHOP_DEFAULTS.alerts, ...(saved.alerts || {}) },
     invoice: { ...SHOP_DEFAULTS.invoice, ...(saved.invoice || {}) },
     shipping: {
       freeFrom: saved.shipping && saved.shipping.freeFrom !== undefined
@@ -1184,6 +1226,7 @@ function updateShopSettings(patch) {
     hours: Array.isArray(patch.hours) ? patch.hours : current.hours,
     absence: { ...current.absence, ...(patch.absence || {}) },
     maintenance: { ...current.maintenance, ...(patch.maintenance || {}) },
+    alerts: { ...current.alerts, ...(patch.alerts || {}) },
     invoice: { ...current.invoice, ...(patch.invoice || {}) },
     shipping: { ...current.shipping, ...(patch.shipping || {}) },
   };
@@ -1307,6 +1350,7 @@ module.exports = {
   getProducts,
   getProductById,
   createProduct,
+  decrementStock,
   updateProduct,
   deleteProduct,
   getSetting,

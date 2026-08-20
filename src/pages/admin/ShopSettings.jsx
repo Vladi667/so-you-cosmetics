@@ -134,6 +134,40 @@ const ShopSettings = ({ fetchHeaders }) => {
         </div>
       </div>
 
+      {/* Alertes */}
+      <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 sm:p-8 shadow-sm mb-6">
+        <h2 className="font-serif text-xl text-slate-stone mb-1">Vos alertes</h2>
+        <p className="text-xs text-stone-gray mb-5">
+          Le stock est retiré automatiquement à chaque paiement confirmé, et un produit épuisé est
+          retiré de la vente. Indiquez ci-dessous où vous prévenir. <strong className="text-slate-stone">
+          Sans adresse, aucune alerte n'est envoyée.</strong>
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          <div>
+            <label className="block text-[11px] uppercase tracking-widest text-stone-gray mb-1">Votre adresse e-mail</label>
+            <input type="email" placeholder="contact@soyoucosmetics.com" value={settings.alerts?.email || ''}
+              onChange={(e) => maj({ alerts: { ...settings.alerts, email: e.target.value } })} className={champ} />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-widest text-stone-gray mb-1">Seuil de stock bas</label>
+            <input type="number" min="0" step="1" value={settings.alerts?.lowStockThreshold ?? 3}
+              onChange={(e) => maj({ alerts: { ...settings.alerts, lowStockThreshold: Number(e.target.value) } })} className={champ} />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-5">
+          <label className="flex items-center gap-2 text-sm text-slate-stone">
+            <input type="checkbox" checked={Boolean(settings.alerts?.onNewOrder)}
+              onChange={(e) => maj({ alerts: { ...settings.alerts, onNewOrder: e.target.checked } })} />
+            M'avertir à chaque commande payée
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-stone">
+            <input type="checkbox" checked={Boolean(settings.alerts?.onLowStock)}
+              onChange={(e) => maj({ alerts: { ...settings.alerts, onLowStock: e.target.checked } })} />
+            M'avertir en cas de rupture ou de stock bas
+          </label>
+        </div>
+      </div>
+
       {/* Facturation */}
       <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 sm:p-8 shadow-sm mb-6">
         <div className="flex items-baseline justify-between gap-4 mb-1">

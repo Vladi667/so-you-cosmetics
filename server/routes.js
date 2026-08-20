@@ -485,11 +485,102 @@ async function confirmOrderPaid(orderId, source) {
       html: buildPaymentConfirmedEmail({ name, orderId: order.id, total: order.total })
     });
     await sendInvoiceIfEnabled(order, email);
+    await avertirNouvelleCommande(order);
+    await appliquerStockEtAlerter(order);
   } catch (mailErr) {
     // The payment is real either way — never fail the confirmation over email.
     console.error(`SumUp confirmation (${source}): order ${order.id} confirmed but the email failed:`, mailErr);
   }
   return { confirmed: true, status: 'Paid' };
+}
+
+// L'avertit qu'une commande est payée. « M'avertir automatiquement lorsqu'une
+// nouvelle commande est passée et lorsqu'un paiement est reçu ? » — jusqu'ici
+// tous les messages partaient au client, aucun à elle.
+//
+// Envoyé au paiement confirmé plutôt qu'à la création : une commande non payée
+// n'est pas encore une commande, et la prévenir de paniers abandonnés lui
+// apprendrait vite à ignorer ces messages.
+async function avertirNouvelleCommande(order) {
+  const { alerts } = db.getShopSettings();
+  if (!alerts.onNewOrder || !alerts.email) return;
+
+  const lignes = (order.items || []).map((it) => {
+    const qte = Math.max(1, parseInt(it.qty, 10) || 1);
+    return `<li>${qte} × ${escapeForEmail(it.name || it.id || '')}</li>`;
+  }).join('');
+
+  const livraison = order.shipping
+    ? `<p><strong>Expédition :</strong> ${escapeForEmail(order.shipping.label || '')}${
+        Number(order.shipping.cost) > 0 ? ` (CHF ${Number(order.shipping.cost).toFixed(2)})` : ' — offerte'}</p>`
+    : '';
+
+  try {
+    await emailService.sendMail({
+      to: alerts.email,
+      subject: `Nouvelle commande payée — CHF ${Number(order.total).toFixed(2)}`,
+      html: `
+        <div style="font-family:sans-serif;color:#3A332B;max-width:600px;margin:0 auto;padding:24px;">
+          <h2 style="font-family:serif;font-weight:400;">Commande ${escapeForEmail(order.id)}</h2>
+          <p><strong>${escapeForEmail(order.customer_name || '')}</strong> — ${escapeForEmail(order.customer_email || '')}</p>
+          <ul>${lignes}</ul>
+          ${livraison}
+          <p style="font-size:17px;"><strong>Total encaissé : CHF ${Number(order.total).toFixed(2)}</strong></p>
+        </div>`,
+    });
+  } catch (err) {
+    console.error(`New-order alert for ${order.id} could not be sent:`, err.message);
+  }
+}
+
+// Retire le stock vendu et l'avertit de ce qui manque.
+//
+// Elle posait trois questions dans son document : le stock est-il décrémenté
+// automatiquement, est-elle prévenue d'une rupture, peut-on définir un seuil.
+// Les trois tiennent ici.
+//
+// L'alerte part vers l'adresse qu'elle a renseignée dans l'administration. Sans
+// adresse, rien n'est envoyé — écrire dans le vide donnerait l'illusion d'être
+// prévenue.
+async function appliquerStockEtAlerter(order) {
+  const { alerts } = db.getShopSettings();
+  const seuil = Number(alerts.lowStockThreshold) || 3;
+
+  let evenements = [];
+  try {
+    evenements = db.decrementStock(order.items || [], seuil);
+  } catch (err) {
+    // Un stock qu'on n'a pas pu mettre à jour ne doit pas annuler un paiement
+    // encaissé : on le signale et on continue.
+    console.error(`Stock could not be updated for order ${order.id}:`, err.message);
+    return;
+  }
+
+  if (evenements.length === 0) return;
+  if (!alerts.onLowStock || !alerts.email) return;
+
+  const ruptures = evenements.filter((e) => e.type === 'rupture');
+  const bas = evenements.filter((e) => e.type === 'bas');
+  const ligne = (e) => `<li><strong>${escapeForEmail(e.nom)}</strong> — ${e.restant === 0 ? 'épuisé' : `${e.restant} restant(s)`}</li>`;
+
+  try {
+    await emailService.sendMail({
+      to: alerts.email,
+      subject: ruptures.length
+        ? `Rupture de stock — ${ruptures.length} produit(s)`
+        : `Stock bas — ${bas.length} produit(s)`,
+      html: `
+        <div style="font-family:sans-serif;color:#3A332B;max-width:600px;margin:0 auto;padding:24px;">
+          <h2 style="font-family:serif;font-weight:400;">Après la commande ${escapeForEmail(order.id)}</h2>
+          ${ruptures.length ? `<p><strong>Épuisé :</strong></p><ul>${ruptures.map(ligne).join('')}</ul>` : ''}
+          ${bas.length ? `<p><strong>Il en reste peu (seuil : ${seuil}) :</strong></p><ul>${bas.map(ligne).join('')}</ul>` : ''}
+          <p style="color:#6A6157;font-size:13px;">Les quantités ont déjà été mises à jour dans votre administration.
+          Un produit épuisé est automatiquement retiré de la vente.</p>
+        </div>`,
+    });
+  } catch (err) {
+    console.error(`Stock alert for order ${order.id} could not be sent:`, err.message);
+  }
 }
 
 // Émet la facture une seule fois par commande. Le numéro est réservé au moment
