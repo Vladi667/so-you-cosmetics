@@ -252,14 +252,14 @@ function buildPaymentConfirmedEmail({ name, orderId, total }) {
       <div style="font-family: sans-serif; color: #444; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
         <h2 style="color: #2c3e50; font-family: serif; border-bottom: 1px solid #eee; padding-bottom: 10px;">Merci pour votre achat !</h2>
         <p>Bonjour <strong>${name}</strong>,</p>
-        <p>Nous avons bien reçu votre paiement. Votre commande chez SoYou Cosmetics Geneva est confirmée et nous préparons vos produits artisanaux.</p>
+        <p>Nous avons bien reçu votre paiement. Votre commande chez So You Cosmetics Geneva est confirmée et nous préparons vos produits artisanaux.</p>
         <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
           <p style="margin: 0 0 10px 0;"><strong>Référence de commande :</strong> ${orderId}</p>
           <p style="margin: 0 0 10px 0;"><strong>Statut :</strong> Paiement reçu</p>
           <p style="margin: 0;"><strong>Total :</strong> CHF ${parseFloat(total).toFixed(2)}</p>
         </div>
         <p>Vous recevrez un nouveau message dès l'expédition.</p>
-        <p style="font-style: italic; color: #888;">SoYou Cosmetics Geneva - Faits main en Suisse</p>
+        <p style="font-style: italic; color: #888;">So You Cosmetics Geneva - Faits main en Suisse</p>
       </div>
     `;
 }
@@ -273,11 +273,11 @@ function buildPickupReadyEmail({ name, orderId }) {
         <p>Bonne nouvelle : votre commande <strong>${orderId}</strong> est prête à être retirée en boutique.</p>
         <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
           <p style="margin: 0 0 6px 0;"><strong>Adresse de retrait :</strong></p>
-          <p style="margin: 0 0 6px 0;">Boutique Soap Opera by SoYou Cosmetics<br />3 ave. Pictet-De-Rochemont, 1207 Genève</p>
+          <p style="margin: 0 0 6px 0;">Boutique Soap Opera by So You Cosmetics<br />3 av. Pictet-De-Rochemont, 1207 Genève</p>
           <p style="margin: 6px 0 0 0;"><strong>Téléphone :</strong> 022 556 69 92</p>
         </div>
         <p>Nous nous réjouissons de vous accueillir prochainement.</p>
-        <p style="font-style: italic; color: #888;">L'équipe SoYou Cosmetics Geneva</p>
+        <p style="font-style: italic; color: #888;">L'équipe So You Cosmetics Geneva</p>
       </div>
     `;
 }
@@ -309,7 +309,7 @@ function buildShippedEmail({ name, orderId, carrier, trackingNumber }) {
         </div>
         ${trackUrl ? `<p><a href="${trackUrl}" style="display:inline-block;padding:10px 20px;background:#2c3e50;color:#fff;text-decoration:none;border-radius:6px;">Suivre mon colis →</a></p>` : ''}
         <p>Merci pour votre confiance.</p>
-        <p style="font-style: italic; color: #888;">L'équipe SoYou Cosmetics Geneva</p>
+        <p style="font-style: italic; color: #888;">L'équipe So You Cosmetics Geneva</p>
       </div>
     `;
 }
@@ -385,7 +385,7 @@ router.post('/orders', async (req, res) => {
           amount: parseFloat(total),
           currency: "CHF",
           pay_to_email: sumup.merchantEmail,
-          description: `Commande ${newOrder.id} - SoYou Cosmetics`,
+          description: `Commande ${newOrder.id} - So You Cosmetics`,
           // Without this, SumUp has nowhere to notify: the payment succeeds on
           // their side and the shop never learns of it, so the order sits at
           // "Pending" for ever and no confirmation email is ever sent.
@@ -414,7 +414,7 @@ router.post('/orders', async (req, res) => {
         await db.updateOrderStatus(newOrder.id, 'Paid');
         await emailService.sendMail({
           to: email,
-          subject: `Merci pour votre achat ${newOrder.id} - SoYou Cosmetics`,
+          subject: `Merci pour votre achat ${newOrder.id} - So You Cosmetics`,
           html: buildPaymentConfirmedEmail({ name, orderId: newOrder.id, total })
         });
       } catch (mailErr) {
@@ -481,7 +481,7 @@ async function confirmOrderPaid(orderId, source) {
   try {
     await emailService.sendMail({
       to: email,
-      subject: `Merci pour votre achat ${order.id} - SoYou Cosmetics`,
+      subject: `Merci pour votre achat ${order.id} - So You Cosmetics`,
       html: buildPaymentConfirmedEmail({ name, orderId: order.id, total: order.total })
     });
     await sendInvoiceIfEnabled(order, email);
@@ -723,16 +723,16 @@ router.post('/workshops/book', async (req, res) => {
         <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
           <p style="margin: 0 0 10px 0;"><strong>Date de l'atelier :</strong> ${date}</p>
           <p style="margin: 0 0 10px 0;"><strong>Places réservées :</strong> ${seats || 1}</p>
-          <p style="margin: 0;"><strong>Lieu :</strong> Boutique Soap Opera, 3 ave. Pictet-De-Rochemont, 1207 Genève</p>
+          <p style="margin: 0;"><strong>Lieu :</strong> Boutique Soap Opera, 3 av. Pictet-De-Rochemont, 1207 Genève</p>
         </div>
         <p>Vous repartirez avec votre propre création cosmétique naturelle faite main !</p>
         <p>À très bientôt,</p>
-        <p style="font-style: italic; color: #888;">L'équipe SoYou Cosmetics Geneva</p>
+        <p style="font-style: italic; color: #888;">L'équipe So You Cosmetics Geneva</p>
       </div>
     `;
     await emailService.sendMail({
       to: email,
-      subject: `Votre réservation d'atelier SoYou Cosmetics est confirmée !`,
+      subject: `Votre réservation d'atelier So You Cosmetics est confirmée !`,
       html: emailHtml
     });
 
@@ -762,12 +762,12 @@ router.post('/contact', async (req, res) => {
         <p>Merci pour votre message. Nous avons bien reçu votre demande concernant <strong>"${subject || 'Inquiry'}"</strong>.</p>
         <p>Notre équipe vous répondra dans les plus brefs délais.</p>
         <p>Meilleures salutations,</p>
-        <p style="font-style: italic; color: #888;">L'équipe SoYou Cosmetics Geneva</p>
+        <p style="font-style: italic; color: #888;">L'équipe So You Cosmetics Geneva</p>
       </div>
     `;
     await emailService.sendMail({
       to: email,
-      subject: `Nous avons bien reçu votre message - SoYou Cosmetics`,
+      subject: `Nous avons bien reçu votre message - So You Cosmetics`,
       html: emailHtml
     });
 
@@ -915,14 +915,14 @@ router.post('/admin/send-email', requireAdmin, async (req, res) => {
     // Generate full-page styled email for the client
     const emailHtml = `
       <div style="font-family: sans-serif; color: #444; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
-        <h2 style="color: #2c3e50; font-family: serif; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; margin-top: 0;">SoYou Cosmetics Geneva</h2>
+        <h2 style="color: #2c3e50; font-family: serif; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; margin-top: 0;">So You Cosmetics Geneva</h2>
         <div style="font-size: 15px; line-height: 1.6; margin: 20px 0; color: #333;">
           ${message.replace(/\n/g, '<br />')}
         </div>
         <div style="border-top: 1px solid #eee; padding-top: 15px; margin-top: 30px; font-size: 12px; color: #888;">
-          <p style="margin: 0 0 5px 0;"><strong>Boutique Soap Opera by SoYou Cosmetics</strong></p>
-          <p style="margin: 0 0 5px 0;">3 ave. Pictet-De-Rochemont, 1207 Genève</p>
-          <p style="margin: 0;">Téléphone : <a href="tel:+41225566992" style="color: #888; text-decoration: none;">022 556 69 92</a> | Email : <a href="mailto:contact@soyou.ch" style="color: #888; text-decoration: none;">contact@soyou.ch</a></p>
+          <p style="margin: 0 0 5px 0;"><strong>Boutique Soap Opera by So You Cosmetics</strong></p>
+          <p style="margin: 0 0 5px 0;">3 av. Pictet-De-Rochemont, 1207 Genève</p>
+          <p style="margin: 0;">Téléphone : <a href="tel:+41225566992" style="color: #888; text-decoration: none;">022 556 69 92</a> | Email : <a href="mailto:contact@soyoucosmetics.com" style="color: #888; text-decoration: none;">contact@soyoucosmetics.com</a></p>
         </div>
       </div>
     `;
