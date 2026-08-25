@@ -51,3 +51,14 @@ export function shippingCostFor(option, goodsTotal) {
   if (option.economy && freeFrom > 0 && goodsTotal >= freeFrom) return 0;
   return Number(option.price) || 0;
 }
+
+// Les modes d'expédition qui ne demandent pas d'adresse.
+//
+// Même règle que côté serveur, et pour la même raison : on n'exempte QUE le
+// retrait en boutique. Écrire la condition dans l'autre sens — « exiger une
+// adresse pour les modes postaux connus » — laisserait passer sans adresse tout
+// mode ajouté plus tard, et le serveur refuserait alors une commande que le
+// formulaire aurait acceptée.
+const MODES_SANS_ADRESSE = new Set(['pickup']);
+
+export const exigeAdresse = (shippingId) => !MODES_SANS_ADRESSE.has(String(shippingId || ''));

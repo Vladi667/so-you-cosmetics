@@ -36,9 +36,31 @@ function hashPassword(password, salt) {
   return hash.digest('hex');
 }
 
+// Écrire un fichier de données sans jamais le laisser à moitié écrit.
+//
+// Tout ici passait par `fs.writeFileSync` nu : le fichier est tronqué à zéro,
+// puis rempli. Une coupure de courant, un disque plein ou un redémarrage entre
+// les deux laisse un fichier vide ou coupé au milieu d'un objet — et sur
+// orders.json, cela veut dire toutes les commandes perdues, sans sauvegarde.
+//
+// On écrit à côté, puis on renomme. Sur un même système de fichiers, le
+// renommage est atomique : à tout instant, le fichier visible est soit
+// l'ancien complet, soit le nouveau complet, jamais un entre-deux.
+function ecrireJson(cheminFichier, donnees) {
+  const temporaire = `${cheminFichier}.tmp-${process.pid}-${Date.now()}`;
+  try {
+    fs.writeFileSync(temporaire, JSON.stringify(donnees, null, 2), 'utf8');
+    fs.renameSync(temporaire, cheminFichier);
+  } catch (err) {
+    // Le fichier d'origine est intact : on n'y a pas touché.
+    try { fs.unlinkSync(temporaire); } catch { /* deja disparu */ }
+    throw err;
+  }
+}
+
 const initJsonFile = (filePath, defaultData = []) => {
   if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify(defaultData, null, 2), 'utf8');
+    ecrireJson(filePath, defaultData);
   }
 };
 
@@ -56,7 +78,7 @@ function readSessions() {
 }
 
 function writeSessions(list) {
-  fs.writeFileSync(SESSIONS_FILE, JSON.stringify(list, null, 2), 'utf8');
+  ecrireJson(SESSIONS_FILE, list);
 }
 
 function createSession(username) {
@@ -99,7 +121,7 @@ if (!fs.existsSync(ADMIN_FILE)) {
     password_hash: hash,
     salt: salt
   };
-  fs.writeFileSync(ADMIN_FILE, JSON.stringify(defaultAdmin, null, 2), 'utf8');
+  ecrireJson(ADMIN_FILE, defaultAdmin);
 }
 
 // Check if MySQL is configured (env variables)
@@ -397,7 +419,7 @@ function readProductsFile() {
 }
 
 function writeProductsFile(data) {
-  fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  ecrireJson(PRODUCTS_FILE, data);
   // keep the cached require() object in sync
   productsData.products = data.products;
   if (data.categories) productsData.categories = data.categories;
@@ -592,6 +614,18 @@ async function deleteProduct(id) {
 }
 
 // 3. Create Order
+// Les modes d'expédition qui ne demandent pas d'adresse.
+//
+// Huit des neuf modes sont postaux ; seul le retrait en boutique ne l'est pas.
+// On raisonne sur l'identifiant, et non sur un drapeau ajouté aux options :
+// ses réglages sont déjà enregistrés sur le serveur et ne le porteraient pas,
+// si bien qu'un retrait en boutique se mettrait soudain à réclamer une adresse.
+const MODES_SANS_ADRESSE = new Set(['pickup']);
+
+function exigeAdresse(shippingId) {
+  return !MODES_SANS_ADRESSE.has(String(shippingId || ''));
+}
+
 async function createOrder(order) {
   const orderId = 'order_' + Math.random().toString(36).substr(2, 9);
   const newOrder = {
@@ -604,6 +638,21 @@ async function createOrder(order) {
     // champ, une commande à retirer en boutique et un envoi Priority se
     // ressemblent dans la liste.
     shipping: order.shipping || null,
+    // L'adresse de livraison. Elle manquait : le site proposait neuf modes
+    // d'expédition, dont huit postaux, sans jamais demander où envoyer le colis.
+    // Elle devait écrire à chaque cliente pour la lui réclamer.
+    //
+    // Normalisée ici plutôt qu'au vol : la fiche de commande, l'e-mail
+    // d'expédition et l'export CSV lisent tous les mêmes clés.
+    address: order.address
+      ? {
+          line1: String(order.address.line1 || '').trim(),
+          line2: String(order.address.line2 || '').trim(),
+          zip: String(order.address.zip || '').trim(),
+          city: String(order.address.city || '').trim(),
+          country: String(order.address.country || 'CH').trim(),
+        }
+      : null,
     status: 'Pending',
     created_at: new Date().toISOString()
   };
@@ -630,7 +679,7 @@ async function createOrder(order) {
   // Local JSON write
   const data = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
   data.push(newOrder);
-  fs.writeFileSync(ORDERS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  ecrireJson(ORDERS_FILE, data);
   return newOrder;
 }
 
@@ -670,7 +719,7 @@ async function createBooking(booking) {
 
   const data = JSON.parse(fs.readFileSync(BOOKINGS_FILE, 'utf8'));
   data.push(newBooking);
-  fs.writeFileSync(BOOKINGS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  ecrireJson(BOOKINGS_FILE, data);
   return newBooking;
 }
 
@@ -703,7 +752,7 @@ async function createContact(contact) {
 
   const data = JSON.parse(fs.readFileSync(CONTACTS_FILE, 'utf8'));
   data.push(newContact);
-  fs.writeFileSync(CONTACTS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  ecrireJson(CONTACTS_FILE, data);
   return newContact;
 }
 
@@ -724,7 +773,7 @@ async function createNewsletterSubscriber(email) {
   const data = JSON.parse(fs.readFileSync(NEWSLETTER_FILE, 'utf8'));
   if (!data.some(s => s.email === normalized)) {
     data.push(entry);
-    fs.writeFileSync(NEWSLETTER_FILE, JSON.stringify(data, null, 2), 'utf8');
+    ecrireJson(NEWSLETTER_FILE, data);
   }
   return entry;
 }
@@ -771,7 +820,7 @@ async function createWorkshop(workshopData) {
 
   const workshops = JSON.parse(fs.readFileSync(WORKSHOPS_FILE, 'utf8'));
   workshops.push(workshop);
-  fs.writeFileSync(WORKSHOPS_FILE, JSON.stringify(workshops, null, 2), 'utf8');
+  ecrireJson(WORKSHOPS_FILE, workshops);
   return workshop;
 }
 
@@ -792,7 +841,7 @@ async function updateWorkshop(id, workshopData) {
   const idx = workshops.findIndex(w => w.id === id);
   if (idx !== -1) {
     workshops[idx] = { ...workshops[idx], ...workshopData };
-    fs.writeFileSync(WORKSHOPS_FILE, JSON.stringify(workshops, null, 2), 'utf8');
+    ecrireJson(WORKSHOPS_FILE, workshops);
     return workshops[idx];
   }
   throw new Error('Workshop not found');
@@ -810,7 +859,7 @@ async function deleteWorkshop(id) {
 
   let workshops = JSON.parse(fs.readFileSync(WORKSHOPS_FILE, 'utf8'));
   workshops = workshops.filter(w => w.id !== id);
-  fs.writeFileSync(WORKSHOPS_FILE, JSON.stringify(workshops, null, 2), 'utf8');
+  ecrireJson(WORKSHOPS_FILE, workshops);
   return true;
 }
 
@@ -849,7 +898,7 @@ async function updateAdminPassword(username, newPassword) {
   }
 
   const adminData = { username, password_hash: hash, salt };
-  fs.writeFileSync(ADMIN_FILE, JSON.stringify(adminData, null, 2), 'utf8');
+  ecrireJson(ADMIN_FILE, adminData);
   return true;
 }
 
@@ -923,7 +972,7 @@ async function updateOrderFields(orderId, fields) {
   const order = data.find((o) => o.id === orderId);
   if (!order) return false;
   Object.assign(order, fields);
-  fs.writeFileSync(ORDERS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  ecrireJson(ORDERS_FILE, data);
   return true;
 }
 
@@ -942,7 +991,7 @@ async function updateOrderStatus(orderId, status) {
   const order = data.find(o => o.id === orderId);
   if (order) {
     order.status = status;
-    fs.writeFileSync(ORDERS_FILE, JSON.stringify(data, null, 2), 'utf8');
+    ecrireJson(ORDERS_FILE, data);
     return true;
   }
   return false;
@@ -1081,7 +1130,7 @@ function readArticles() {
 }
 
 function writeArticles(list) {
-  fs.writeFileSync(ARTICLES_FILE, JSON.stringify(list, null, 2), 'utf8');
+  ecrireJson(ARTICLES_FILE, list);
 }
 
 // A readable, stable URL. Built from the title once, at creation: regenerating
@@ -1258,7 +1307,7 @@ function readContent() {
 }
 
 function writeContent(next) {
-  fs.writeFileSync(CONTENT_FILE, JSON.stringify(next, null, 2), 'utf8');
+  ecrireJson(CONTENT_FILE, next);
 }
 
 // Applies a patch of { language: { path: value } }. A value of null or '' drops
@@ -1289,7 +1338,7 @@ function readSettings() {
 }
 
 function writeSettings(next) {
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(next, null, 2), 'utf8');
+  ecrireJson(SETTINGS_FILE, next);
 }
 
 function getSetting(key) {
@@ -1356,7 +1405,7 @@ async function updateOrderFulfillment(orderId, patch) {
   if (!order) return null;
   order.fulfillment = { ...(order.fulfillment || {}), ...patch };
   if (patch.status) order.status = patch.status;
-  fs.writeFileSync(ORDERS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  ecrireJson(ORDERS_FILE, data);
   return order;
 }
 
@@ -1384,6 +1433,7 @@ module.exports = {
   getInboxConfig,
   updateOrderFulfillment,
   createOrder,
+  exigeAdresse,
   createBooking,
   createContact,
   createNewsletterSubscriber,

@@ -1451,6 +1451,36 @@ const AdminDashboard = ({ onLogout }) => {
                 <p className="text-xs text-stone-gray mt-2">
                   Commandée le : {new Date(selectedOrder.created_at).toLocaleString('fr-CH', { dateStyle: 'long', timeStyle: 'short' })}
                 </p>
+
+                {/* Le mode d'expédition et, s'il y a lieu, l'adresse. Sans eux,
+                    un retrait en boutique et un envoi Priority se ressemblaient
+                    dans la fiche, et il fallait écrire à la cliente après
+                    paiement pour savoir où livrer. */}
+                {selectedOrder.shipping && (
+                  <p className="text-xs text-stone-gray mt-2">
+                    Expédition : <span className="text-slate-stone">{selectedOrder.shipping.label || '—'}</span>
+                    {Number(selectedOrder.shipping.cost) > 0
+                      ? ` — CHF ${Number(selectedOrder.shipping.cost).toFixed(2)}`
+                      : ' — offerte'}
+                  </p>
+                )}
+
+                {selectedOrder.address && selectedOrder.address.line1 ? (
+                  <div className="mt-3 rounded-xl bg-mist-white px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-widest text-stone-gray/60 mb-1">Adresse de livraison</p>
+                    <p className="text-sm leading-snug">
+                      {selectedOrder.customer_name}<br />
+                      {selectedOrder.address.line1}<br />
+                      {selectedOrder.address.line2 ? <>{selectedOrder.address.line2}<br /></> : null}
+                      {selectedOrder.address.zip} {selectedOrder.address.city}
+                      {selectedOrder.address.country && selectedOrder.address.country !== 'CH'
+                        ? <><br />{selectedOrder.address.country}</>
+                        : null}
+                    </p>
+                  </div>
+                ) : selectedOrder.shipping && selectedOrder.shipping.id === 'pickup' ? (
+                  <p className="mt-3 text-xs text-stone-gray">À retirer à la boutique — pas d'adresse à saisir.</p>
+                ) : null}
               </div>
 
               <div>

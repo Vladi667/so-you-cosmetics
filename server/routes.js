@@ -367,7 +367,7 @@ async function computeOrderTotal(items, shippingId) {
 }
 
 router.post('/orders', async (req, res) => {
-  const { name, email, items, shippingId } = req.body;
+  const { name, email, items, shippingId, address } = req.body;
   if (!name || !email || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Missing required order details' });
   }
@@ -385,10 +385,27 @@ router.post('/orders', async (req, res) => {
     if (!(calcul.total > 0)) {
       return res.status(400).json({ error: 'Panier vide ou produits introuvables' });
     }
+
+    // Une commande postale sans adresse ne peut pas être expédiée. La condition
+    // est écrite à l'envers de ce qu'on lirait spontanément — on n'exempte QUE
+    // le retrait en boutique — parce qu'une condition trop large refuserait
+    // toutes les commandes, y compris celles qu'on peut honorer.
+    if (db.exigeAdresse(shippingId)) {
+      const a = address || {};
+      const manquants = ['line1', 'zip', 'city'].filter((c) => !String(a[c] || '').trim());
+      if (manquants.length > 0) {
+        return res.status(400).json({
+          error: "Merci d'indiquer l'adresse de livraison : rue, code postal et localité.",
+          champs: manquants,
+        });
+      }
+    }
     const total = calcul.total;
     const newOrder = await db.createOrder({
       name, email, items, total,
       shipping: { id: shippingId || '', label: calcul.shippingLabel, cost: calcul.shippingCost },
+      // Nulle pour un retrait en boutique : il n'y a rien à expédier.
+      address: db.exigeAdresse(shippingId) ? address : null,
     });
 
     let checkoutId = `mock_session_${newOrder.id}`;
@@ -521,6 +538,26 @@ async function confirmOrderPaid(orderId, source) {
 // Envoyé au paiement confirmé plutôt qu'à la création : une commande non payée
 // n'est pas encore une commande, et la prévenir de paniers abandonnés lui
 // apprendrait vite à ignorer ces messages.
+// L'adresse de livraison, mise en forme pour un e-mail.
+//
+// C'est le renseignement dont elle a besoin pour préparer le colis : il doit
+// figurer dans l'avis de commande, pas seulement dans l'administration. Sans
+// lui, elle devait écrire à la cliente pour le réclamer, après paiement.
+function blocAdresseEmail(order) {
+  const a = order && order.address;
+  if (!a || !a.line1) return '';
+  const lignes = [
+    escapeForEmail(order.customer_name || ''),
+    escapeForEmail(a.line1),
+    a.line2 ? escapeForEmail(a.line2) : '',
+    `${escapeForEmail(a.zip || '')} ${escapeForEmail(a.city || '')}`.trim(),
+    a.country && a.country !== 'CH' ? escapeForEmail(a.country) : '',
+  ].filter(Boolean);
+  return `
+    <p style="margin:16px 0 4px;"><strong>Adresse de livraison</strong></p>
+    <p style="margin:0;line-height:1.5;">${lignes.join('<br>')}</p>`;
+}
+
 async function avertirNouvelleCommande(order) {
   const { alerts } = db.getShopSettings();
   if (!alerts.onNewOrder || !alerts.email) return;
@@ -545,6 +582,7 @@ async function avertirNouvelleCommande(order) {
           <p><strong>${escapeForEmail(order.customer_name || '')}</strong> — ${escapeForEmail(order.customer_email || '')}</p>
           <ul>${lignes}</ul>
           ${livraison}
+          ${blocAdresseEmail(order)}
           <p style="font-size:17px;"><strong>Total encaissé : CHF ${Number(order.total).toFixed(2)}</strong></p>
         </div>`,
     });

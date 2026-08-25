@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
-import { getShipping, shippingCostFor } from '../services/shop';
+import { getShipping, shippingCostFor, exigeAdresse } from '../services/shop';
 import useVerrouDefilement from '../hooks/useVerrouDefilement';
 
 const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
@@ -15,6 +15,16 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
   const [checkoutError, setCheckoutError] = useState(null);
   const shipping = getShipping();
   const [shippingId, setShippingId] = useState('');
+  // L'adresse de livraison n'etait demandee nulle part, alors que huit des neuf
+  // modes d'expedition sont postaux : elle devait ecrire a chaque cliente apres
+  // paiement pour savoir ou envoyer le colis.
+  const [adresse, setAdresse] = useState({ line1: '', line2: '', zip: '', city: '', country: 'CH' });
+  // Decochee par defaut, et bloquante : une acceptation pre-cochee n'en est pas
+  // une, et c'est le seul bouton du site qui declenche un paiement.
+  const [cgvAcceptees, setCgvAcceptees] = useState(false);
+  // Ne s'affiche qu'apres une tentative : reprocher a quelqu'un de ne pas avoir
+  // coche une case qu'il n'a pas encore vue est un reproche gratuit.
+  const [tentativeSansCgv, setTentativeSansCgv] = useState(false);
 
   // La page ne doit pas defiler derriere le tiroir. Voir le compteur du hook :
   // le menu mobile peut etre ouvert en meme temps.
@@ -74,6 +84,9 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
       setSumupCheckoutId(null);
       setOrderId(null);
       setCheckoutForm({ name: '', email: '' });
+      setAdresse({ line1: '', line2: '', zip: '', city: '', country: 'CH' });
+      setCgvAcceptees(false);
+      setTentativeSansCgv(false);
     }, 500); // le temps de la transition de fermeture
     return () => clearTimeout(id);
   }, [isOpen]);
@@ -130,6 +143,15 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
 
   const handleCheckoutSubmit = (e) => {
     e.preventDefault();
+
+    // Rien ne part tant que les conditions ne sont pas acceptees. Le message
+    // est celui du site, dans la langue du site : la validation native du
+    // navigateur parle la sienne, qui n'est pas forcement la meme.
+    if (!cgvAcceptees) {
+      setTentativeSansCgv(true);
+      return;
+    }
+
     setIsSubmitting(true);
     setCheckoutError(null);
 
@@ -140,6 +162,9 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
       name: checkoutForm.name,
       email: checkoutForm.email,
       shippingId,
+      // Nulle pour un retrait : il n'y a rien a expedier. Le serveur refait le
+      // meme controle — le navigateur ne decide pas de ce qui est exigible.
+      address: exigeAdresse(shippingId) ? adresse : null,
       items: items.map(item => ({
         id: item.id,
         name: getName(item),
@@ -155,10 +180,13 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
       },
       body: JSON.stringify(orderPayload)
     })
-      .then(res => {
+      .then(async (res) => {
         if (!res.ok) {
           const e = new Error('Order creation failed');
-          e.panier = res.status === 400;   // panier vide ou produits introuvables
+          e.panier = res.status === 400;
+          // Le serveur explique ce qui manque — adresse incomplete, mode
+          // d'expedition disparu. Le taire obligerait a deviner.
+          e.message400 = await res.json().then((d) => d && d.error).catch(() => null);
           throw e;
         }
         return res.json();
@@ -179,7 +207,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
         // « nous vous avons envoyé un récapitulatif » alors qu'aucune commande
         // n'existait et qu'aucun e-mail ne partait : la cliente attendait un
         // colis qui n'arriverait jamais, et personne n'était au courant.
-        setCheckoutError(err && err.panier ? 'panier' : 'technique');
+        setCheckoutError(err && err.message400 ? err.message400 : (err && err.panier ? 'panier' : 'technique'));
       });
   };
 
@@ -278,7 +306,14 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
             {checkoutError && (
               <div className="mb-5 p-4 bg-[#F5EDE0] border border-[#E0CFB0] rounded-2xl">
                 <p className="font-sans text-sm font-medium text-[#8A6A3B] mb-1">{t('drawer.orderFailedTitle')}</p>
-                <p className="font-sans text-xs text-stone-gray mb-3">{t('drawer.orderFailedText')}</p>
+                {/* Quand le serveur dit ce qui manque — une adresse incomplete,
+                    un mode d'expedition qui n'existe plus — on le rapporte tel
+                    quel. « Une erreur est survenue » n'aide personne a corriger. */}
+                <p className="font-sans text-xs text-stone-gray mb-3">
+                  {checkoutError !== 'panier' && checkoutError !== 'technique'
+                    ? checkoutError
+                    : t('drawer.orderFailedText')}
+                </p>
                 <p className="font-sans text-xs text-stone-gray">
                   <a href="tel:+41225566992" className="underline underline-offset-2">022 556 69 92</a>
                   {' · '}
@@ -349,6 +384,59 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
                 />
               </div>
 
+              {/* L'adresse n'apparait que si le colis part. Pour un retrait en
+                  boutique, la demander serait reclamer une donnee dont on n'a
+                  aucun usage. */}
+              {exigeAdresse(shippingId) ? (
+                <div>
+                  <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">
+                    {t('drawer.addressTitle')}
+                  </label>
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      required
+                      autoComplete="address-line1"
+                      value={adresse.line1}
+                      onChange={(e) => setAdresse({ ...adresse, line1: e.target.value })}
+                      placeholder={t('drawer.addressLine1')}
+                      className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40 transition-all"
+                    />
+                    <input
+                      type="text"
+                      autoComplete="address-line2"
+                      value={adresse.line2}
+                      onChange={(e) => setAdresse({ ...adresse, line2: e.target.value })}
+                      placeholder={t('drawer.addressLine2')}
+                      className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40 transition-all"
+                    />
+                    <div className="flex gap-3">
+                      <input
+                        type="text"
+                        required
+                        inputMode="numeric"
+                        autoComplete="postal-code"
+                        value={adresse.zip}
+                        onChange={(e) => setAdresse({ ...adresse, zip: e.target.value })}
+                        placeholder={t('drawer.addressZip')}
+                        className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40 transition-all w-1/3"
+                      />
+                      <input
+                        type="text"
+                        required
+                        autoComplete="address-level2"
+                        value={adresse.city}
+                        onChange={(e) => setAdresse({ ...adresse, city: e.target.value })}
+                        placeholder={t('drawer.addressCity')}
+                        className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40 transition-all w-2/3"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="font-sans text-xs text-stone-gray">{t('drawer.addressPickup')}</p>
+              )}
+
               <div className="bg-mist-white rounded-2xl p-4 border border-slate-stone/5">
                 <h4 className="font-sans text-xs font-bold text-slate-stone uppercase tracking-wider mb-2">{t('drawer.orderDetails')}</h4>
                 <div className="space-y-1 max-h-36 overflow-y-auto">
@@ -381,6 +469,32 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
                 </div>
               </div>
 
+              {/* Le lien s'ouvre dans un onglet neuf : le lire ne doit pas
+                  couter la saisie deja faite. */}
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={cgvAcceptees}
+                  onChange={(e) => setCgvAcceptees(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-slate-stone"
+                />
+                <span className="font-sans text-xs leading-relaxed text-stone-gray">
+                  {t('drawer.acceptTerms')}{' '}
+                  <a
+                    href="/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-slate-stone underline underline-offset-2 hover:text-stone-gray"
+                  >
+                    {t('drawer.acceptTermsLink')}
+                  </a>.
+                </span>
+              </label>
+
+              {!cgvAcceptees && tentativeSansCgv && (
+                <p role="alert" className="font-sans text-xs text-red-600">{t('drawer.termsRequired')}</p>
+              )}
+
               <div className="pt-4 flex flex-col gap-3">
                 <button 
                   type="submit"
@@ -396,6 +510,16 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
                 >
                   {t('drawer.backToCart')}
                 </button>
+
+                {/* Trois lignes qui repondent aux questions qu'on se pose juste
+                    avant de payer : qui prend ma carte, quand j'aurai le colis,
+                    a qui je m'adresse si ca tourne mal. Elles ne disent que ce
+                    que le site affirme deja ailleurs. */}
+                <ul className="mt-2 space-y-1.5 font-sans text-[11px] leading-relaxed text-stone-gray/80">
+                  <li>{t('drawer.trustPayment')}</li>
+                  <li>{t('drawer.trustMade')}</li>
+                  <li>{t('drawer.trustContact')}</li>
+                </ul>
               </div>
             </form>
             </>
