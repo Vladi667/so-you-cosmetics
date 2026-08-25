@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import SectionHeader from './SectionHeader';
 import { getProducts, imageUrl } from '../services/products';
@@ -24,7 +24,10 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
   const { t, tCategory } = useLanguage();
   const [productsList, setProductsList] = useState([]);
   const [activeCategory, setActiveCategory] = useState(globalActiveCategory);
-  const [displayedProducts, setDisplayedProducts] = useState([]);
+  // Distinguer « le catalogue n'est pas encore arrive » de « la rubrique est
+  // vide ». Sans ce drapeau, la page affichait « Aucun produit dans cette
+  // categorie » pendant tout le chargement, sur toutes les rubriques.
+  const [charge, setCharge] = useState(false);
   // « Dans la rubrique Cadeaux, j'aimerais également intégrer les ateliers. »
   // Un atelier est un cadeau qu'on offre comme un produit ; il n'a simplement
   // pas de panier. Chargés séparément puisqu'ils ne vivent pas au catalogue.
@@ -38,7 +41,6 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
     return () => { actif = false; };
   }, []);
   const [visibleCount, setVisibleCount] = useState(12);
-  const [isAnimating, setIsAnimating] = useState(false);
   const scrollRef = useRef(null);
   const isSearching = searchQuery.trim().length > 0;
 
@@ -50,7 +52,12 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
 
   useEffect(() => {
     let active = true;
-    getProducts().then(data => { if (active) setProductsList(data); });
+    getProducts()
+      .then(data => { if (active) setProductsList(Array.isArray(data) ? data : []); })
+      .catch(() => {})
+      // Egalement en cas d'echec : sinon les squelettes tournent indefiniment
+      // au lieu de dire que le catalogue n'a pas pu etre lu.
+      .finally(() => { if (active) setCharge(true); });
     return () => { active = false; };
   }, []);
 
@@ -58,85 +65,118 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
     setActiveCategory(globalActiveCategory);
   }, [globalActiveCategory]);
 
-  useEffect(() => {
-    setIsAnimating(true);
-    
-    const timer = setTimeout(() => {
-      let filtered = productsList;
-      const terms = normalizeText(searchQuery).split(/\s+/).filter(Boolean);
-      if (terms.length) {
-        // A product matches when every search word appears (accent-insensitive)
-        // somewhere in its name, description or categories — in any order.
-        filtered = productsList.filter(p => {
-          const haystack = normalizeText(
-            `${p.name || ''} ${stripHtml(p.description || '')} ${(p.collections || []).join(' ')}`
-          );
-          return terms.every(t => haystack.includes(t));
-        });
-      } else if (activeCategory !== 'All') {
-        filtered = productsList.filter(p => p.collections && p.collections.includes(activeCategory));
-      }
+  // Le filtrage est un calcul, pas un effet.
+  //
+  // Il vivait dans un setTimeout de 150 ms suivi d'un second de 50 ms : changer
+  // de rubrique faisait disparaitre la grille, attendre, puis reapparaitre.
+  // Deux dixiemes de seconde de vide pour un tri qui prend moins d'une
+  // milliseconde sur 178 produits — la minuterie ne masquait aucun travail,
+  // elle en fabriquait l'apparence. Ici le resultat est pret au rendu suivant.
+  const displayedProducts = useMemo(() => {
+    let filtered = productsList;
+    const terms = normalizeText(searchQuery).split(/\s+/).filter(Boolean);
+    if (terms.length) {
+      // A product matches when every search word appears (accent-insensitive)
+      // somewhere in its name, description or categories — in any order.
+      filtered = productsList.filter(p => {
+        const haystack = normalizeText(
+          `${p.name || ''} ${stripHtml(p.description || '')} ${(p.collections || []).join(' ')}`
+        );
+        return terms.every(t => haystack.includes(t));
+      });
+    } else if (activeCategory !== 'All') {
+      filtered = productsList.filter(p => p.collections && p.collections.includes(activeCategory));
+    }
 
-      // Les ateliers rejoignent les Cadeaux, présentés comme les produits mais
-      // menant à leur page dédiée : ils se réservent, ils ne s'ajoutent pas au
-      // panier.
-      if (activeCategory === 'Cadeaux' && workshops.length > 0) {
-        filtered = [
-          ...workshops.map((w) => ({
-            id: w.id,
-            name: w.title || '',
-            price: Number(w.price) || 0,
-            images: w.image_url ? [w.image_url] : [],
-            collections: ['Cadeaux'],
-            ribbon: null,
-            estAtelier: true,
-          })),
-          ...filtered,
-        ];
-      }
+    // Les ateliers rejoignent les Cadeaux, presentes comme les produits mais
+    // menant a leur page dediee : ils se reservent, ils ne s'ajoutent pas au
+    // panier.
+    if (activeCategory === 'Cadeaux' && workshops.length > 0) {
+      filtered = [
+        ...workshops.map((w) => ({
+          id: w.id,
+          name: w.title || '',
+          price: Number(w.price) || 0,
+          images: w.image_url ? [w.image_url] : [],
+          collections: ['Cadeaux'],
+          ribbon: null,
+          estAtelier: true,
+        })),
+        ...filtered,
+      ];
+    }
 
-      setDisplayedProducts(filtered);
-      setVisibleCount(12); // Reset visible count on category/search change
+    return filtered;
+  }, [productsList, workshops, activeCategory, searchQuery]);
 
-      // Allow enter animation to play
-      setTimeout(() => setIsAnimating(false), 50);
-      // 150ms, matched to the grid's fade-out (duration-250, already well past
-      // visible by then) rather than 300ms. Waiting longer only delays the
-      // results the shopper just asked for.
-    }, 150);
+  // « Voir plus » repart de douze des que la rubrique ou la recherche change.
+  //
+  // C'etait fait au milieu du filtrage, donc a chaque rendu : le compteur
+  // retombait a douze des qu'autre chose bougeait sur la page. Passer par un
+  // effet marcherait, mais peindrait la grille deux fois — une fois avec
+  // l'ancien compteur, une fois avec le bon. L'ajustement pendant le rendu est
+  // ce que React recommande pour un etat qui derive d'un changement de selection.
+  const selection = `${activeCategory}|${searchQuery}`;
+  const [selectionPeinte, setSelectionPeinte] = useState(selection);
+  if (selectionPeinte !== selection) {
+    setSelectionPeinte(selection);
+    setVisibleCount(12);
+  }
 
-    return () => clearTimeout(timer);
-  }, [activeCategory, productsList, searchQuery, workshops]);
 
   const loadMore = () => {
     setVisibleCount(prev => prev + 12);
   };
 
-  // Drag to scroll for categories
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
+  // Le ruban de rubriques, tire a la souris.
+  //
+  // Deux defauts : le deplacement etait multiplie par 2, donc le point saisi
+  // filait deux fois plus vite que la main et glissait sous le curseur ; et
+  // relacher apres avoir fait defiler declenchait le clic du bouton survole,
+  // changeant de rubrique alors qu'on voulait seulement faire defiler.
+  //
+  // Le tactile est laisse au navigateur : `overflow-x-auto` lui donne deja
+  // l'inertie et le rebond en fin de course, que rien d'ecrit ici n'egalerait.
+  const glisse = useRef(null);
+  const glissementRecent = useRef(false);
+  const SEUIL_GLISSE = 6; // en deca, c'est le tremblement d'un clic, pas un geste
 
-  const onMouseDown = (e) => {
-    setIsDragging(true);
-    setStartX(e.pageX - scrollRef.current.offsetLeft);
-    setScrollLeft(scrollRef.current.scrollLeft);
+  const onPointerDown = (e) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    // Un nouveau geste efface le precedent : sinon un glissement relache dans
+    // le vide laisserait le drapeau leve et avalerait le clic suivant.
+    glissementRecent.current = false;
+    glisse.current = { id: e.pointerId, departX: e.clientX, departScroll: el.scrollLeft, bouge: false };
   };
 
-  const onMouseLeave = () => {
-    setIsDragging(false);
-  };
-
-  const onMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const onMouseMove = (e) => {
-    if (!isDragging) return;
+  const onPointerMove = (e) => {
+    const g = glisse.current;
+    const el = scrollRef.current;
+    if (!g || !el || e.pointerId !== g.id) return;
+    const ecart = e.clientX - g.departX;
+    if (!g.bouge) {
+      if (Math.abs(ecart) < SEUIL_GLISSE) return;
+      g.bouge = true;
+      // Capture prise seulement une fois le seuil franchi : avant, le clic doit
+      // continuer d'atteindre normalement le bouton vise.
+      try { el.setPointerCapture(g.id); } catch { /* pointeur deja parti */ }
+    }
     e.preventDefault();
-    const x = e.pageX - scrollRef.current.offsetLeft;
-    const walk = (x - startX) * 2;
-    scrollRef.current.scrollLeft = scrollLeft - walk;
+    // Facteur 1 : le point saisi reste sous le curseur.
+    el.scrollLeft = g.departScroll - ecart;
+  };
+
+  const onPointerUp = (e) => {
+    const g = glisse.current;
+    const el = scrollRef.current;
+    if (!g || e.pointerId !== g.id) return;
+    if (g.bouge && el) {
+      try { el.releasePointerCapture(g.id); } catch { /* deja relachee */ }
+    }
+    glissementRecent.current = g.bouge;
+    glisse.current = null;
   };
 
   return (
@@ -155,15 +195,21 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
           <div 
             ref={scrollRef}
             className="flex space-x-4 overflow-x-auto pb-4 hide-scrollbar cursor-grab active:cursor-grabbing"
-            onMouseDown={onMouseDown}
-            onMouseLeave={onMouseLeave}
-            onMouseUp={onMouseUp}
-            onMouseMove={onMouseMove}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
           >
             {categories.map((category) => (
               <button
                 key={category}
                 onClick={() => {
+                  // On vient de faire defiler le ruban : ce relachement n'est
+                  // pas un choix de rubrique.
+                  if (glissementRecent.current) {
+                    glissementRecent.current = false;
+                    return;
+                  }
                   setActiveCategory(category);
                   if (setGlobalCategory) setGlobalCategory(category);
                 }}
@@ -183,17 +229,53 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
         </div>
         )}
 
-        {/* Products Grid */}
-        <div className={`grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8 transition-all duration-250 ease-in-out ${isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
-          {displayedProducts.slice(0, visibleCount).map((product, index) => {
+        {/* Douze squelettes a la geometrie exacte des cartes : la page garde sa
+            hauteur et sa forme, et le catalogue s'y substitue sans que rien ne
+            saute. Un simple « Chargement... » aurait fait bondir toute la page
+            au moment de l'arrivee des produits. */}
+        {!charge && (
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8" aria-hidden="true">
+            {Array.from({ length: 12 }, (_, i) => (
+              <div key={i} className="flex flex-col bg-ivory rounded-xl sm:rounded-2xl overflow-hidden shadow-sm">
+                <div className="aspect-[4/5] w-full bg-lake-mist animate-pulse" />
+                <div className="p-3 sm:p-6 flex flex-col flex-grow">
+                  <div className="mb-2">
+                    <p className="text-[9px] sm:text-xs uppercase tracking-widest mb-0.5 sm:mb-1">
+                      <span className="inline-block w-1/3 rounded bg-lake-mist animate-pulse">&nbsp;</span>
+                    </p>
+                    <h3 className="text-sm sm:text-lg font-serif leading-tight">
+                      <span className="inline-block w-4/5 rounded bg-lake-mist animate-pulse">&nbsp;</span>
+                      <span className="inline-block w-3/5 rounded bg-lake-mist animate-pulse mt-0.5">&nbsp;</span>
+                    </h3>
+                  </div>
+                  <div className="mt-auto pt-2 sm:pt-4 flex items-center justify-between border-t border-slate-stone/10">
+                    <p className="text-xs sm:text-base">
+                      <span className="inline-block w-16 rounded bg-lake-mist animate-pulse">&nbsp;</span>
+                    </p>
+                    <span className="inline-block h-4 w-12 rounded bg-lake-mist animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Products Grid — la cle force une entree neuve a chaque rubrique et a
+            chaque recherche, ce qui remplace l'ancienne cascade de retards. */}
+        {charge && (
+        <div key={selection} className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
+          {displayedProducts.slice(0, visibleCount).map((product) => {
             const sansPhoto = !product.images || product.images.length === 0;
             // Un atelier mène à sa page de réservation, pas à une fiche produit.
             const lien = product.estAtelier ? `/workshops/${product.id}` : `/product/${product.id}`;
             return (
-              <div 
-                key={product.id} 
-                className="group relative flex flex-col bg-ivory rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-250 reveal"
-                style={{ transitionDelay: `${(index % 12) * 100}ms` }}
+              // `carte-entre` remplace `reveal` : l'observateur d'intersection
+              // n'a rien a observer ici, la grille est deja sous les yeux quand
+              // on change de rubrique. Et la cascade de 100 ms par carte faisait
+              // attendre 1,1 s la troisieme rangee — un retard, pas une elegance.
+              <div
+                key={product.id}
+                className="group relative flex flex-col bg-ivory rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-shadow duration-250 carte-entre"
               >
                 <div className="aspect-[4/5] w-full overflow-hidden bg-lake-mist relative">
                   {sansPhoto ? <ProductPlaceholder /> : (
@@ -274,9 +356,11 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
             );
           })}
         </div>
+        )}
 
-        {/* Empty State */}
-        {displayedProducts.length === 0 && (
+        {/* Etat vide — seulement une fois le catalogue arrive. Avant, ce message
+            s'affichait pendant tout le chargement, sur toutes les rubriques. */}
+        {charge && displayedProducts.length === 0 && (
           <div className="text-center py-24">
             <p className="text-slate-stone/60 text-lg">
               {isSearching ? t('catalog.emptySearch', { q: searchQuery.trim() }) : t('catalog.emptyCategory')}
