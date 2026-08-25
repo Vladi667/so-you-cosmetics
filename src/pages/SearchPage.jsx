@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Catalog from '../components/Catalog';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -7,10 +7,6 @@ const SearchPage = ({ addToCart, toggleFavorite, favorites }) => {
   const { t } = useLanguage();
   const { query } = useParams();
   const decoded = decodeURIComponent(query || '');
-
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [decoded]);
 
   return (
     <div className="pt-24 min-h-screen bg-mist-white flex flex-col">

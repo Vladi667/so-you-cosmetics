@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from './components/Navbar';
-import { lirePanier, lireFavoris, ecrirePanier, ecrireFavoris, resoudre, ajouter, fixerQuantite, nombreArticles } from './services/panier';
+import { lirePanier, lireFavoris, ecrirePanier, ecrireFavoris, resoudre, ajouter, fixerQuantite, nombreArticles, sursautPanier, EVT_OUVRIR_PANIER } from './services/panier';
 import { getProducts } from './services/products';
 import AbsenceNotice from './components/AbsenceNotice';
 import Hero from './components/Hero';
@@ -14,6 +14,7 @@ import Footer from './components/Footer';
 import PageLoader from './components/PageLoader';
 import SideDrawer from './components/SideDrawer';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import ScrollToTop from './components/ScrollToTop';
 import Home from './pages/Home';
 import CategoryPage from './pages/CategoryPage';
 import AboutPage from './pages/AboutPage';
@@ -102,11 +103,7 @@ function App() {
   const addToCart = (product, quantite = 1) => {
     // Fusionne les quantités : six savons font une ligne « ×6 », pas six lignes.
     setCart(prev => ajouter(prev, product, quantite));
-    const cartIcon = document.getElementById('cart-icon');
-    if (cartIcon) {
-      cartIcon.style.animation = 'none';
-      setTimeout(() => cartIcon.style.animation = 'cartBounce 0.5s ease', 10);
-    }
+    sursautPanier(document.getElementById('cart-icon'));
   };
 
   const removeFromCart = (product) => {
@@ -121,16 +118,18 @@ function App() {
       if (prev.find(p => p.id === product.id)) return prev.filter(p => p.id !== product.id);
       return [...prev, product];
     });
-    const favIcon = document.getElementById('fav-icon');
-    if (favIcon) {
-      favIcon.style.animation = 'none';
-      setTimeout(() => favIcon.style.animation = 'cartBounce 0.5s ease', 10);
-    }
+    sursautPanier(document.getElementById('fav-icon'));
   };
 
   const removeFavorite = (product) => {
     setFavorites(prev => prev.filter(p => p.id !== product.id));
   };
+
+  useEffect(() => {
+    const ouvrir = () => setCartOpen(true);
+    window.addEventListener(EVT_OUVRIR_PANIER, ouvrir);
+    return () => window.removeEventListener(EVT_OUVRIR_PANIER, ouvrir);
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
@@ -167,6 +166,7 @@ function App() {
 
   return (
     <div className="font-sans antialiased text-stone-gray bg-mist-white min-h-screen flex flex-col overflow-x-hidden">
+      <ScrollToTop />
       {!isAdminPage && <PageLoader isVisible={isLoading} />}
       {!isAdminPage && <AbsenceNotice />}
       {!isAdminPage && (

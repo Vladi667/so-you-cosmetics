@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Catalog from '../components/Catalog';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -9,10 +9,6 @@ const CategoryPage = ({ addToCart, toggleFavorite, favorites }) => {
   
   // Decode the URL parameter just in case
   const decodedCategory = decodeURIComponent(categoryName || 'All');
-
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [decodedCategory]);
 
   return (
     <div className="pt-24 min-h-screen bg-mist-white flex flex-col">

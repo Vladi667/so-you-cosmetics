@@ -1,12 +1,8 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 
 const LegalLayout = ({ title, intro, sections = [], lastUpdated }) => {
   const { t } = useLanguage();
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
-
   return (
     <div className="min-h-screen bg-mist-white">
       {/* Hero */}

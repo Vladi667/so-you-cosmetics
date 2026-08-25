@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { getHours } from '../services/shop';
 import useEnvoiFormulaire from '../hooks/useEnvoiFormulaire';
@@ -7,10 +7,6 @@ const ContactPage = () => {
   const { t } = useLanguage();
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const { etat, enCours, message, messageVisible, envoyer } = useEnvoiFormulaire();
-
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
 
   // Le succès était affiché dans le `catch`, sous le commentaire « show success
   // anyway » : une panne côté serveur donnait « ✓ Envoyé ! » à quelqu'un dont le

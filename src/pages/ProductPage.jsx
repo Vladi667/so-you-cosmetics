@@ -5,8 +5,64 @@ import { useLanguage } from '../i18n/LanguageContext';
 import ProductPlaceholder from '../components/ProductPlaceholder';
 import ProductBadge from '../components/ProductBadge';
 import { descriptionToHtml } from '../utils/description';
+import { ouvrirPanier } from '../services/panier';
 
 
+
+// Ce qu'on montre pendant que la fiche arrive.
+//
+// La page renvoyait `null` : un ecran blanc, sans en-tete, sans fil d'Ariane,
+// pendant tout l'aller-retour reseau. Le visiteur venait de cliquer un produit
+// et n'avait aucun signe que quelque chose se passait — sur une connexion lente,
+// cela se lit comme un lien mort.
+const SqueletteFiche = () => (
+  <div className="pt-24 min-h-screen bg-mist-white flex flex-col" aria-busy="true">
+    <div className="flex-grow pb-24">
+      <div className="container mx-auto px-6 pt-12 pb-8">
+        <div className="h-3 w-64 rounded bg-lake-mist animate-pulse" />
+      </div>
+      <div className="container mx-auto px-6 lg:px-12">
+        <div className="flex flex-col lg:flex-row gap-12 lg:gap-20">
+          <div className="w-full lg:w-1/2">
+            <div className="aspect-[4/5] w-full rounded-3xl bg-lake-mist animate-pulse mb-6" />
+            <div className="flex gap-4">
+              {Array.from({ length: 4 }, (_, i) => (
+                <div key={i} className="w-20 h-24 flex-shrink-0 rounded-xl bg-lake-mist animate-pulse" />
+              ))}
+            </div>
+          </div>
+          <div className="w-full lg:w-1/2 lg:py-10">
+            <div className="mb-8">
+              <div className="flex gap-2 mb-4">
+                <div className="h-6 w-24 rounded-full bg-lake-mist animate-pulse" />
+                <div className="h-6 w-20 rounded-full bg-lake-mist animate-pulse" />
+              </div>
+              {/* Meme balise et memes classes que le vrai titre : la hauteur de
+                  ligne est celle du texte reel, pas une hauteur devinee. */}
+              <h1 className="leading-[1.06] font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4 md:mb-6">
+                <span className="inline-block w-4/5 rounded bg-lake-mist animate-pulse">&nbsp;</span>
+              </h1>
+              <p className="font-sans text-2xl font-light">
+                <span className="inline-block w-32 rounded bg-lake-mist animate-pulse">&nbsp;</span>
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 mb-8">
+              <div className="h-14 sm:w-1/3 rounded-full bg-lake-mist animate-pulse" />
+              <div className="h-14 flex-grow rounded-full bg-lake-mist animate-pulse" />
+              <div className="h-14 w-14 rounded-full bg-lake-mist animate-pulse flex-shrink-0" />
+            </div>
+            <div className="h-px w-full bg-slate-stone/10 my-8" />
+            <div className="space-y-3">
+              {['w-full', 'w-11/12', 'w-full', 'w-2/3'].map((l, i) => (
+                <div key={i} className={`h-4 rounded bg-lake-mist animate-pulse ${l}`} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   const { t, tCategory } = useLanguage();
@@ -16,10 +72,12 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [relatedProducts, setRelatedProducts] = useState([]);
+  // La seule confirmation d'un ajout etait un chiffre qui changeait dans
+  // l'en-tete — souvent hors du champ de vision sur mobile, ou l'on regarde le
+  // bouton qu'on vient de toucher.
+  const [ajoute, setAjoute] = useState(false);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-    
     getProducts().then(data => handleProductsLoaded(data));
 
     function handleProductsLoaded(productsList) {
@@ -76,7 +134,15 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
     }
   }, [id, navigate]);
 
-  if (!product) return null;
+  // Le message s'efface seul. La minuterie est nettoyée au démontage : quitter
+  // la fiche entre-temps ferait écrire dans un composant parti.
+  useEffect(() => {
+    if (!ajoute) return undefined;
+    const minuterie = setTimeout(() => setAjoute(false), 5000);
+    return () => clearTimeout(minuterie);
+  }, [ajoute]);
+
+  if (!product) return <SqueletteFiche />;
 
   const isFavorite = favorites.some(p => p.id === product.id);
   
@@ -90,7 +156,9 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
     // Un seul appel avec la quantité : la boucle créait autant de lignes
     // identiques que d'unités, et chacune relançait l'animation du panier.
     addToCart(product, quantity);
+    setAjoute(true);
   };
+
 
   return (
     <div className="pt-24 min-h-screen bg-mist-white flex flex-col">
@@ -124,7 +192,14 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                     <img
                       src={imageUrl(images[activeImage], 1600)}
                       alt={product.name}
-                      loading="lazy"
+                      /* La grande image de la fiche est ce qu'on vient voir, et
+                         le plus gros element de la page. En « lazy », le
+                         navigateur attendait d'avoir fini sa mise en page pour
+                         la demander : le produit apparaissait apres son propre
+                         cadre. Les vignettes, elles, restent differees. */
+                      loading="eager"
+                      fetchPriority="high"
+                      decoding="async"
                       className="w-full h-full object-cover object-center transition-opacity duration-500"
                     />
                   )}
@@ -174,26 +249,8 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 </div>
               </div>
 
-              <div className="h-px w-full bg-slate-stone/10 my-8"></div>
-
-              {/* HTML Description */}
-              {product.description ? (
-                <div
-                  className="prose prose-sm prose-slate max-w-none font-sans font-light text-stone-gray leading-relaxed mb-10
-                             prose-headings:font-serif prose-headings:text-slate-stone prose-headings:font-normal
-                             prose-h2:text-xl prose-h3:text-lg prose-h4:text-base
-                             prose-strong:text-slate-stone prose-strong:font-medium
-                             prose-p:mb-4 prose-ul:my-4 prose-li:marker:text-stone-gray/50"
-                  dangerouslySetInnerHTML={{ __html: descriptionToHtml(product.description) }}
-                />
-              ) : (
-                <p className="font-sans font-light text-stone-gray leading-relaxed mb-10">
-                  {t('product.defaultDesc')}
-                </p>
-              )}
-
               {/* Add to Cart Actions */}
-              <div className="flex flex-col sm:flex-row gap-4 mt-12">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex items-center justify-between border border-slate-stone/20 rounded-full px-6 py-4 sm:w-1/3 bg-ivory">
                   <button 
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -232,6 +289,41 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 </button>
               </div>
               
+
+              {ajoute && (
+                <p
+                  role="status"
+                  className={`mt-4 font-sans text-sm text-stone-gray transition-opacity duration-300 ${ajoute ? 'opacity-100' : 'opacity-0'}`}
+                >
+                  {t('product.addedToCart')}{' '}
+                  <button
+                    type="button"
+                    onClick={ouvrirPanier}
+                    className="underline underline-offset-4 text-slate-stone hover:text-stone-gray transition-colors"
+                  >
+                    {t('product.seeCart')}
+                  </button>
+                </p>
+              )}
+
+              <div className="h-px w-full bg-slate-stone/10 my-8"></div>
+
+              {/* HTML Description */}
+              {product.description ? (
+                <div
+                  className="prose prose-sm prose-slate max-w-none font-sans font-light text-stone-gray leading-relaxed mb-10
+                             prose-headings:font-serif prose-headings:text-slate-stone prose-headings:font-normal
+                             prose-h2:text-xl prose-h3:text-lg prose-h4:text-base
+                             prose-strong:text-slate-stone prose-strong:font-medium
+                             prose-p:mb-4 prose-ul:my-4 prose-li:marker:text-stone-gray/50"
+                  dangerouslySetInnerHTML={{ __html: descriptionToHtml(product.description) }}
+                />
+              ) : (
+                <p className="font-sans font-light text-stone-gray leading-relaxed mb-10">
+                  {t('product.defaultDesc')}
+                </p>
+              )}
+
               {/* Shipping info */}
               <div className="mt-10 p-6 bg-ivory rounded-2xl border border-slate-stone/5 flex items-start gap-4">
                 <span className="text-2xl">📦</span>

@@ -1,13 +1,9 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import AutoPlayVideo from '../components/AutoPlayVideo';
 
 const AboutPage = () => {
   const { t } = useLanguage();
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
-
   const values = t('about.values');
 
   return (

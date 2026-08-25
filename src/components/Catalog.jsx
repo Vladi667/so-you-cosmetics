@@ -4,6 +4,7 @@ import SectionHeader from './SectionHeader';
 import { getProducts, imageUrl } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
 import { visibleCategories } from '../data/categories';
+import { ouvrirPanier, sursautPanier } from '../services/panier';
 import ProductBadge from './ProductBadge';
 import ProductPlaceholder from './ProductPlaceholder';
 
@@ -28,6 +29,10 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
   // vide ». Sans ce drapeau, la page affichait « Aucun produit dans cette
   // categorie » pendant tout le chargement, sur toutes les rubriques.
   const [charge, setCharge] = useState(false);
+  // Quelle carte vient de recevoir un ajout. Le seul retour etait un chiffre
+  // qui changeait dans l'en-tete, hors du champ de vision sur mobile : on
+  // touchait le bouton, et rien ne se passait la ou on regardait.
+  const [ajouteId, setAjouteId] = useState(null);
   // « Dans la rubrique Cadeaux, j'aimerais également intégrer les ateliers. »
   // Un atelier est un cadeau qu'on offre comme un produit ; il n'a simplement
   // pas de panier. Chargés séparément puisqu'ils ne vivent pas au catalogue.
@@ -108,6 +113,12 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
 
     return filtered;
   }, [productsList, workshops, activeCategory, searchQuery]);
+
+  useEffect(() => {
+    if (!ajouteId) return undefined;
+    const minuterie = setTimeout(() => setAjouteId(null), 4000);
+    return () => clearTimeout(minuterie);
+  }, [ajouteId]);
 
   // « Voir plus » repart de douze des que la rubrique ou la recherche change.
   //
@@ -336,10 +347,9 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                       <button
                         onClick={(e) => {
                           if (product.inStock === false) return;
-                          const btn = e.currentTarget;
-                          btn.classList.add('scale-110');
-                          setTimeout(() => btn.classList.remove('scale-110'), 200);
+                          sursautPanier(e.currentTarget);
                           addToCart(product);
+                          setAjouteId(product.id);
                         }}
                         disabled={product.inStock === false}
                         className={`transition-all duration-300 ${product.inStock === false ? 'text-slate-stone/20 cursor-not-allowed' : 'text-slate-stone/60 hover:text-slate-stone'}`}
@@ -352,6 +362,24 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                     </div>
                   </div>
                 </div>
+
+                {/* Ce qui vient de se passer, la ou l'on regarde : sur le bouton
+                    qu'on vient de toucher, et non dans l'en-tete. */}
+                {ajouteId === product.id && (
+                  <div
+                    role="status"
+                    className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between gap-2 bg-slate-stone/95 px-3 py-2 text-[10px] sm:text-xs text-white carte-entre"
+                  >
+                    <span className="truncate">{t('product.addedToCart')}</span>
+                    <button
+                      type="button"
+                      onClick={ouvrirPanier}
+                      className="press whitespace-nowrap underline underline-offset-2 hover:text-white/80 transition-colors"
+                    >
+                      {t('product.seeCart')}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}

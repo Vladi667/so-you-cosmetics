@@ -31,7 +31,7 @@ function lire(cle) {
     return data.lignes
       .filter((l) => l && typeof l.id === 'string')
       .map((l) => ({ id: l.id, qty: Math.max(1, parseInt(l.qty, 10) || 1) }));
-  } catch (_) {
+  } catch {
     return [];
   }
 }
@@ -39,7 +39,7 @@ function lire(cle) {
 function ecrire(cle, lignes) {
   try {
     localStorage.setItem(cle, JSON.stringify({ date: Date.now(), lignes }));
-  } catch (_) {
+  } catch {
     /* stockage indisponible : le panier reste en mémoire pour cette visite */
   }
 }
@@ -94,3 +94,31 @@ export const totalPanier = (items) =>
 
 export const nombreArticles = (items) =>
   items.reduce((s, p) => s + (p.qty || 1), 0);
+
+// Ouvrir le tiroir du panier depuis n'importe où.
+//
+// Le tiroir appartient à App ; la fiche produit et les cartes du catalogue en
+// sont séparées par trois composants intermédiaires. Faire descendre un rappel
+// jusqu'à elles obligerait Home, CategoryPage et SearchPage à transporter une
+// prop qui ne les concerne pas. Un évènement laisse chacun l'ignorer.
+export const EVT_OUVRIR_PANIER = 'soyou:ouvrir-panier';
+export const ouvrirPanier = () => window.dispatchEvent(new CustomEvent(EVT_OUVRIR_PANIER));
+
+// Le petit sursaut de l'icône du panier, à chaque ajout.
+//
+// C'était `style.animation = 'none'` puis un setTimeout de 10 ms pour forcer un
+// recalcul et relancer la même animation CSS. Deux ajouts rapprochés se
+// marchaient dessus. L'API d'animations relance proprement, sans minuterie.
+export function sursautPanier(element) {
+  if (!element || typeof element.animate !== 'function') return;
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+  element.animate(
+    [
+      { transform: 'scale(1)' },
+      { transform: 'scale(1.28)', offset: 0.35 },
+      { transform: 'scale(0.94)', offset: 0.7 },
+      { transform: 'scale(1)' },
+    ],
+    { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+  );
+}
