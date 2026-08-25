@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import SectionHeader from './SectionHeader';
-import { getProducts } from '../services/products';
+import { getProducts, imageUrl } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
 import { visibleCategories } from '../data/categories';
 import ProductBadge from './ProductBadge';
@@ -198,7 +198,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                 <div className="aspect-[4/5] w-full overflow-hidden bg-lake-mist relative">
                   {sansPhoto ? <ProductPlaceholder /> : (
                   <img
-                    src={product.images[0]}
+                    src={imageUrl(product.images[0], 800)}
                     alt={product.name}
                     loading="lazy"
                     className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-in-out"

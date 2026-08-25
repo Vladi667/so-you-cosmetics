@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getProducts } from '../services/products';
+import { getProducts, imageUrl } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
 import ProductPlaceholder from '../components/ProductPlaceholder';
 import ProductBadge from '../components/ProductBadge';
@@ -87,9 +87,9 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
 
   const handleAddToCart = () => {
     // In a real app we'd pass quantity, but for now we'll just add it multiple times or rely on the cart logic
-    for (let i = 0; i < quantity; i++) {
-      addToCart(product);
-    }
+    // Un seul appel avec la quantité : la boucle créait autant de lignes
+    // identiques que d'unités, et chacune relançait l'animation du panier.
+    addToCart(product, quantity);
   };
 
   return (
@@ -122,7 +122,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   )}
                   {images.length === 0 ? <ProductPlaceholder /> : (
                     <img
-                      src={images[activeImage]}
+                      src={imageUrl(images[activeImage], 1600)}
                       alt={product.name}
                       loading="lazy"
                       className="w-full h-full object-cover object-center transition-opacity duration-500"
@@ -139,7 +139,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                         onClick={() => setActiveImage(idx)}
                         className={`w-20 h-24 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all duration-300 ${activeImage === idx ? 'border-slate-stone opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
                       >
-                        <img src={img} alt={`${product.name} ${idx+1}`} className="w-full h-full object-cover" />
+                        <img src={imageUrl(img, 400)} alt={`${product.name} ${idx+1}`} loading="lazy" className="w-full h-full object-cover" />
                       </button>
                     ))}
                   </div>
@@ -256,7 +256,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   <div key={p.id} className="group relative flex flex-col bg-ivory rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-250">
                     <Link to={`/product/${p.id}`} className="aspect-[4/5] w-full overflow-hidden bg-lake-mist relative block">
                       {img ? (
-                        <img src={img} alt={p.name} loading="lazy" className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-in-out" />
+                        <img src={imageUrl(img, 800)} alt={p.name} loading="lazy" className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-in-out" />
                       ) : <ProductPlaceholder />}
                       {p.ribbon && (
                         <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10">

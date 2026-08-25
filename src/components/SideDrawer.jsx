@@ -71,7 +71,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
     return product.name || product['Product Name'] || product['Name'] || t('drawer.productFallback');
   };
 
-  const total = items.reduce((sum, item) => sum + parseFloat(getPrice(item)), 0);
+  const total = items.reduce((sum, item) => sum + parseFloat(getPrice(item)) * (item.qty || 1), 0);
 
   // Ce qui sera réellement débité. Le serveur facture marchandise + expédition
   // (server/routes.js, computeOrderTotal) ; le récapitulatif n'affichait que la
@@ -97,7 +97,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
       items: items.map(item => ({
         id: item.id,
         name: getName(item),
-        qty: 1,
+        qty: item.qty || 1,
         price: getPrice(item)
       }))
     };
@@ -279,8 +279,10 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
                 <div className="space-y-1 max-h-36 overflow-y-auto">
                   {items.map((item, idx) => (
                     <div key={idx} className="flex justify-between text-xs text-stone-gray font-light">
-                      <span>{getName(item)}</span>
-                      <span>CHF {parseFloat(getPrice(item)).toFixed(2)}</span>
+                      <span className="truncate pr-3">
+                        {getName(item)}{(item.qty || 1) > 1 && <span className="text-slate-stone"> × {item.qty}</span>}
+                      </span>
+                      <span className="tabular-nums whitespace-nowrap">CHF {(parseFloat(getPrice(item)) * (item.qty || 1)).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
@@ -362,7 +364,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
                     <p className="font-sans text-xs text-stone-gray/60 mt-1">CHF {parseFloat(getPrice(item)).toFixed(2)}</p>
                   </div>
                   <button 
-                    onClick={() => onRemove(item, index)}
+                    onClick={() => onRemove(item)}
                     className="w-8 h-8 rounded-full flex items-center justify-center text-stone-gray/40 hover:bg-red-50 hover:text-red-500 transition-all duration-300 flex-shrink-0 self-center"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -430,6 +430,17 @@ function normalizeProductInput(input, base = {}) {
     if (typeof v === 'string') return v.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
     return [];
   };
+
+  // Les URL ne se decoupent QUE sur les retours a la ligne. Une adresse Wix
+  // contient des virgules : .../v1/fill/w_800,h_1000,al_c,q_90,usm_0.66/file.jpg
+  // et toArray la debitait en cinq morceaux. C est arrive a « Hydrolat de menthe
+  // poivree bio », dont la galerie affiche aujourd hui une URL tronquee suivie
+  // de quatre fragments.
+  const toUrls = (v) => {
+    if (Array.isArray(v)) return v.map(s => String(s).trim()).filter(Boolean);
+    if (typeof v === 'string') return v.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    return [];
+  };
   const out = { ...base };
   if (input.name !== undefined) out.name = input.name;
   if (input.description !== undefined) out.description = input.description;
@@ -440,7 +451,7 @@ function normalizeProductInput(input, base = {}) {
   // comme identifiants : un nom changé ne doit pas rompre l'association.
   if (input.related !== undefined) out.related = toArray(input.related);
   if (input.images !== undefined) {
-    const next = toArray(input.images).map(normalizeImageUrl);
+    const next = toUrls(input.images).map(normalizeImageUrl);
     const had = Array.isArray(base.images) && base.images.length > 0;
     // Refuse to silently wipe a product's images. A client bug (or a stale form
     // that never loaded them) must not destroy them; clearing is only honoured

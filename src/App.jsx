@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from './components/Navbar';
+import { lirePanier, lireFavoris, ecrirePanier, ecrireFavoris, resoudre, ajouter, fixerQuantite, nombreArticles } from './services/panier';
+import { getProducts } from './services/products';
 import AbsenceNotice from './components/AbsenceNotice';
 import Hero from './components/Hero';
 import BrandEssence from './components/BrandEssence';
@@ -30,6 +32,31 @@ function App() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('adminToken'));
   const [cart, setCart] = useState([]);
   const [favorites, setFavorites] = useState([]);
+  // Ce qui a été conservé du dernier passage, lu tout de suite : les lignes
+  // {id, qty} seules, sans prix ni nom, qu'on résout ensuite contre le catalogue.
+  const [lignesSauvees] = useState(() => ({ panier: lirePanier(), favoris: lireFavoris() }));
+  const [panierHydrate, setPanierHydrate] = useState(false);
+
+  // Redonne aux lignes conservées leur produit complet, au prix du catalogue du
+  // jour. Un produit disparu est retiré : mieux vaut un panier plus court qu'une
+  // ligne qui échouera à la commande.
+  useEffect(() => {
+    let actif = true;
+    getProducts()
+      .then((catalogue) => {
+        if (!actif) return;
+        if (lignesSauvees.panier.length) setCart(resoudre(lignesSauvees.panier, catalogue));
+        if (lignesSauvees.favoris.length) setFavorites(resoudre(lignesSauvees.favoris, catalogue));
+      })
+      .catch(() => { /* catalogue indisponible : on démarre à vide */ })
+      .finally(() => { if (actif) setPanierHydrate(true); });
+    return () => { actif = false; };
+  }, [lignesSauvees]);
+
+  // On n'écrit qu'une fois l'hydratation terminée, sinon le premier rendu — où
+  // le panier est encore vide — effacerait ce qu'on vient de lire.
+  useEffect(() => { if (panierHydrate) ecrirePanier(cart); }, [cart, panierHydrate]);
+  useEffect(() => { if (panierHydrate) ecrireFavoris(favorites); }, [favorites, panierHydrate]);
   // The loader now only covers the first paint. It used to be held open by a
   // 2s timer ("load simulation") and re-triggered for 1.2s on every navigation,
   // which meant ~3.2s of deliberate waiting on a site whose routing is entirely
@@ -72,8 +99,9 @@ function App() {
     }
   };
 
-  const addToCart = (product) => {
-    setCart(prev => [...prev, product]);
+  const addToCart = (product, quantite = 1) => {
+    // Fusionne les quantités : six savons font une ligne « ×6 », pas six lignes.
+    setCart(prev => ajouter(prev, product, quantite));
     const cartIcon = document.getElementById('cart-icon');
     if (cartIcon) {
       cartIcon.style.animation = 'none';
@@ -81,8 +109,11 @@ function App() {
     }
   };
 
-  const removeFromCart = (product, index) => {
-    setCart(prev => prev.filter((_, i) => i !== index));
+  const removeFromCart = (product) => {
+    // Par identifiant, plus par position : une ligne porte maintenant une
+    // quantité, et l'index d'une liste qui fusionne ne désigne plus rien de
+    // stable.
+    setCart(prev => fixerQuantite(prev, product.id, 0));
   };
 
   const toggleFavorite = (product) => {
@@ -140,7 +171,7 @@ function App() {
       {!isAdminPage && <AbsenceNotice />}
       {!isAdminPage && (
         <Navbar 
-          cartCount={cart.length} 
+          cartCount={nombreArticles(cart)} 
           favCount={favorites.length} 
           onCategorySelect={handleCategorySelect}
           onCartClick={() => setCartOpen(true)}
