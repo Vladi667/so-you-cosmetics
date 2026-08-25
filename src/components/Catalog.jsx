@@ -280,13 +280,13 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
             // Un atelier mène à sa page de réservation, pas à une fiche produit.
             const lien = product.estAtelier ? `/workshops/${product.id}` : `/product/${product.id}`;
             return (
-              // `carte-entre` remplace `reveal` : l'observateur d'intersection
+              // `apparait` remplace `reveal` : l'observateur d'intersection
               // n'a rien a observer ici, la grille est deja sous les yeux quand
               // on change de rubrique. Et la cascade de 100 ms par carte faisait
               // attendre 1,1 s la troisieme rangee — un retard, pas une elegance.
               <div
                 key={product.id}
-                className="group relative flex flex-col bg-ivory rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-shadow duration-250 carte-entre"
+                className="group relative flex flex-col bg-ivory rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-shadow duration-250 apparait"
               >
                 <div className="aspect-[4/5] w-full overflow-hidden bg-lake-mist relative">
                   {sansPhoto ? <ProductPlaceholder /> : (
@@ -368,7 +368,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                 {ajouteId === product.id && (
                   <div
                     role="status"
-                    className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between gap-2 bg-slate-stone/95 px-3 py-2 text-[10px] sm:text-xs text-white carte-entre"
+                    className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between gap-2 bg-slate-stone/95 px-3 py-2 text-[10px] sm:text-xs text-white apparait"
                   >
                     <span className="truncate">{t('product.addedToCart')}</span>
                     <button

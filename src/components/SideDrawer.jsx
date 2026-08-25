@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { getShipping, shippingCostFor } from '../services/shop';
+import useVerrouDefilement from '../hooks/useVerrouDefilement';
 
 const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
   const { t } = useLanguage();
@@ -14,6 +15,51 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
   const [checkoutError, setCheckoutError] = useState(null);
   const shipping = getShipping();
   const [shippingId, setShippingId] = useState('');
+
+  // La page ne doit pas defiler derriere le tiroir. Voir le compteur du hook :
+  // le menu mobile peut etre ouvert en meme temps.
+  useVerrouDefilement(isOpen);
+
+  const titreId = useId();
+  const panneauRef = useRef(null);
+  const declencheurRef = useRef(null);
+
+  // Ouverture et fermeture au clavier.
+  //
+  // Le tiroir n'etait qu'une boite qui glisse : rien ne disait aux technologies
+  // d'assistance que le reste de la page passait derriere, Echap ne le fermait
+  // pas, et le focus restait ou il etait — sur un element devenu invisible mais
+  // toujours atteignable a la tabulation.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    // A qui rendre le focus a la fermeture : ce qu'on a quitte en ouvrant.
+    declencheurRef.current = document.activeElement;
+
+    const auClavier = (e) => {
+      if (e.key === 'Escape') {
+        e.stopImmediatePropagation();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', auClavier);
+
+    // Apres la transition d'entree : deplacer le focus vers un panneau encore
+    // hors de l'ecran ferait sauter la page a sa poursuite.
+    const arrivee = setTimeout(() => {
+      panneauRef.current?.querySelector('[data-titre-tiroir]')?.focus();
+    }, 120);
+
+    return () => {
+      document.removeEventListener('keydown', auClavier);
+      clearTimeout(arrivee);
+      // Rendu a son point de depart, si cet element existe encore.
+      const cible = declencheurRef.current;
+      if (cible && document.contains(cible) && typeof cible.focus === 'function') {
+        cible.focus();
+      }
+    };
+  }, [isOpen, onClose]);
 
   // Reset checkout states when drawer opens/closes
   useEffect(() => {
@@ -146,16 +192,45 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
       ></div>
 
       {/* Drawer */}
-      <div className={`fixed top-0 right-0 z-[70] h-full w-full max-w-md bg-ivory shadow-2xl transform transition-transform duration-500 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      {/* Le panneau n'etait pas une colonne flexible : le `flex-1` de son corps
+          ne produisait donc rien, et la hauteur du corps etait ecrite en dur —
+          `calc(100vh - 200px)`, soit l'estimation d'un en-tete et d'un pied qui
+          ont depuis change de taille. Des que le pied depassait, la derniere
+          ligne du panier passait dessous.
+          `100dvh` plutot que `100vh` : sur mobile, `100vh` compte la barre
+          d'adresse comme si elle n'existait pas, et le bouton « Commander » se
+          retrouvait sous le bord de l'ecran. */}
+      {/* `inert` retire tout le sous-arbre du parcours de tabulation et du
+          calque d'accessibilite quand le tiroir est ferme. Sans lui, le panneau
+          reste hors de l'ecran mais atteignable : on tabulait dans un formulaire
+          de paiement invisible. `|| undefined` parce que React n'ecrit
+          l'attribut que s'il n'est pas false. */}
+      <div
+        ref={panneauRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titreId}
+        inert={!isOpen || undefined}
+        className={`fixed top-0 right-0 z-[70] flex h-[100dvh] w-full max-w-md flex-col bg-ivory shadow-2xl transform transition-transform duration-500 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+      >
         
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-stone/10">
-          <h2 className="font-serif text-2xl text-slate-stone">
+        <div className="flex shrink-0 items-center justify-between px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-stone/10">
+          {/* `tabIndex={-1}` : le titre n'entre pas dans le parcours de
+              tabulation, mais peut recevoir le focus par programme. C'est le
+              point d'arrivee : on annonce ou l'on vient d'entrer avant de lire
+              le contenu. */}
+          <h2
+            id={titreId}
+            data-titre-tiroir
+            tabIndex={-1}
+            className="font-serif text-2xl text-slate-stone outline-none"
+          >
             {checkoutSuccess ? t('drawer.thanks') : isCheckoutMode ? t('drawer.finalize') : title}
           </h2>
           <button 
             onClick={onClose} 
-            className="w-10 h-10 rounded-full bg-mist-white flex items-center justify-center hover:bg-slate-stone hover:text-white transition-all duration-300 active:scale-[0.97]"
+            className="press w-10 h-10 rounded-full bg-mist-white flex items-center justify-center hover:bg-slate-stone hover:text-white"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6 18L18 6M6 6l12 12" />
@@ -164,7 +239,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6">
           {checkoutSuccess ? (
             /* Checkout Success State */
             <div className="flex flex-col items-center justify-center h-96 text-center">
@@ -179,7 +254,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
               </p>
               <button
                 onClick={onClose}
-                className="mt-8 px-8 py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-slate-stone/90 transition-all duration-300 active:scale-[0.97]"
+                className="mt-8 px-8 py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-slate-stone/90 press"
               >
                 {t('drawer.close')}
               </button>
@@ -310,7 +385,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
                 <button 
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-4 bg-slate-stone text-white font-sans uppercase tracking-[0.3em] text-xs rounded-full hover:bg-slate-stone/90 transition-all duration-300 shadow-lg active:scale-[0.97]"
+                  className="w-full py-4 bg-slate-stone text-white font-sans uppercase tracking-[0.3em] text-xs rounded-full hover:bg-slate-stone/90 shadow-lg press"
                 >
                   {isSubmitting ? t('drawer.processing') : t('drawer.validateOrder')}
                 </button>
@@ -379,7 +454,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
 
         {/* Footer */}
         {type === 'cart' && items.length > 0 && !isCheckoutMode && !checkoutSuccess && (
-          <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-8 py-4 sm:py-6 border-t border-slate-stone/10 bg-ivory">
+          <div className="shrink-0 px-4 sm:px-8 py-4 sm:py-6 border-t border-slate-stone/10 bg-ivory">
             <div className="flex justify-between items-center mb-6">
               <span className="font-sans text-sm text-stone-gray">{t('drawer.subtotal')}</span>
               <span className="font-serif text-2xl text-slate-stone tabular-nums">
@@ -388,7 +463,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
             </div>
             <button 
               onClick={() => setIsCheckoutMode(true)}
-              className="w-full py-4 bg-slate-stone text-white font-sans uppercase tracking-[0.3em] text-xs rounded-full hover:bg-slate-stone/90 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+              className="press w-full py-4 bg-slate-stone text-white font-sans uppercase tracking-[0.3em] text-xs rounded-full hover:bg-slate-stone/90 shadow-lg hover:shadow-xl"
             >
               {t('drawer.order')}
             </button>

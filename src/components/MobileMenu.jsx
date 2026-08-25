@@ -80,7 +80,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
             <Logo className="h-5 w-auto text-white" />
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300 active:scale-[0.97]"
+              className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 press"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6 18L18 6M6 6l12 12" />
@@ -119,7 +119,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
               >
                 <button
                   onClick={() => handleNav('Home')}
-                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase transition-all duration-300 flex items-center justify-between active:scale-[0.98] border-l-2 pl-4 -ml-4 transform-gpu ${
+                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase flex items-center justify-between press border-l-2 pl-4 -ml-4 transform-gpu ${
                     isLinkActive('Home') 
                       ? 'text-white border-white font-medium' 
                       : 'text-white/60 hover:text-white border-transparent'
@@ -138,7 +138,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
               >
                 <button
                   onClick={() => setShopExpanded(!shopExpanded)}
-                  className={`w-full flex items-center justify-between py-4 font-sans text-lg tracking-[0.15em] uppercase transition-all duration-300 active:scale-[0.98] border-l-2 pl-4 -ml-4 transform-gpu ${
+                  className={`w-full flex items-center justify-between py-4 font-sans text-lg tracking-[0.15em] uppercase press border-l-2 pl-4 -ml-4 transform-gpu ${
                     isLinkActive('Shop') 
                       ? 'text-white border-white font-medium' 
                       : 'text-white/60 hover:text-white border-transparent'
@@ -156,28 +156,32 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                 </button>
 
                 {/* Category Grid */}
-                <div
-                  className={`overflow-hidden transition-all duration-250 ease-out ${
-                    shopExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
-                  }`}
-                >
-                  <div className="grid grid-cols-2 gap-2 pb-4 pt-2">
-                    {categories.map((cat, idx) => (
+                {/* La hauteur ouverte etait ecrite en dur : `max-h-[500px]`.
+                    Treize rubriques sur deux colonnes y tiennent en francais ;
+                    en allemand « Bad & Wohlbefinden » passe sur deux lignes, et
+                    les dernieres rubriques etaient coupees sans rien pour
+                    l'indiquer.
+                    La liste n'est simplement plus rendue quand elle est repliee,
+                    et parait en fondu quand elle s'ouvre : il n'y a plus de
+                    hauteur a maintenir, donc plus rien qui puisse deborder. Le
+                    panneau du menu defile deja de lui-meme. */}
+                {shopExpanded && (
+                  <div className="grid grid-cols-2 gap-2 pb-4 pt-2 apparait">
+                    {categories.map((cat) => (
                       <button
                         key={cat}
                         onClick={() => handleNav(cat)}
-                        className={`text-left px-4 py-3 font-sans text-xs tracking-[0.15em] uppercase rounded-xl transition-all duration-300 active:scale-[0.97] border transform-gpu ${
+                        className={`text-left px-4 py-3 font-sans text-xs tracking-[0.15em] uppercase rounded-xl press border transform-gpu ${
                           isCategoryActive(cat)
                             ? 'text-white bg-white/20 border-white/20 font-medium'
                             : 'text-white/60 bg-transparent border-transparent hover:text-white hover:bg-white/10'
                         }`}
-                        style={{ transitionDelay: shopExpanded ? `${idx * 30}ms` : '0ms' }}
                       >
                         {tCategory(cat)}
                       </button>
                     ))}
                   </div>
-                </div>
+                )}
               </li>
 
               {/* About Us */}
@@ -189,7 +193,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
               >
                 <button
                   onClick={() => handleNav('About Us')}
-                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase transition-all duration-300 flex items-center justify-between active:scale-[0.98] border-l-2 pl-4 -ml-4 transform-gpu ${
+                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase flex items-center justify-between press border-l-2 pl-4 -ml-4 transform-gpu ${
                     isLinkActive('About Us') 
                       ? 'text-white border-white font-medium' 
                       : 'text-white/60 hover:text-white border-transparent'
@@ -208,7 +212,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
               >
                 <button
                   onClick={() => handleNav('Workshops')}
-                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase transition-all duration-300 flex items-center justify-between active:scale-[0.98] border-l-2 pl-4 -ml-4 transform-gpu ${
+                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase flex items-center justify-between press border-l-2 pl-4 -ml-4 transform-gpu ${
                     isLinkActive('Workshops') 
                       ? 'text-white border-white font-medium' 
                       : 'text-white/60 hover:text-white border-transparent'
@@ -227,7 +231,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
               >
                 <button
                   onClick={() => handleNav('Journal')}
-                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase transition-all duration-300 flex items-center justify-between active:scale-[0.98] border-l-2 pl-4 -ml-4 transform-gpu ${
+                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase flex items-center justify-between press border-l-2 pl-4 -ml-4 transform-gpu ${
                     isLinkActive('Journal')
                       ? 'text-white border-white font-medium'
                       : 'text-white/60 hover:text-white border-transparent'
@@ -246,7 +250,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
               >
                 <button
                   onClick={() => handleNav('Contact')}
-                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase transition-all duration-300 flex items-center justify-between active:scale-[0.98] border-l-2 pl-4 -ml-4 transform-gpu ${
+                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase flex items-center justify-between press border-l-2 pl-4 -ml-4 transform-gpu ${
                     isLinkActive('Contact') 
                       ? 'text-white border-white font-medium' 
                       : 'text-white/60 hover:text-white border-transparent'

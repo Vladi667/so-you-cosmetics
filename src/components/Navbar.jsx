@@ -6,6 +6,7 @@ import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '../i18n/LanguageContext';
 import { visibleCategories } from '../data/categories';
 import { getProducts } from '../services/products';
+import useVerrouDefilement from '../hooks/useVerrouDefilement';
 
 // Maps the routing keys used by onCategorySelect/isLinkActive to translation keys.
 const NAV_LABELS = { 'About Us': 'nav.about', Workshops: 'nav.workshops', Journal: 'nav.journal', Contact: 'nav.contact' };
@@ -72,27 +73,38 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
     return active ? 'text-white opacity-100 font-medium text-shadow' : 'text-white/80 text-shadow hover:text-white hover:opacity-100';
   };
 
+  // Deux seuils, pas un.
+  //
+  // Avec un seul seuil a 50 px, s'arreter juste dessus faisait basculer la barre
+  // a chaque pixel — et comme le changement d'etat modifie sa propre hauteur, il
+  // deplace le contenu, ce qui redeclenche l'evenement. La barre passait a
+  // l'etat compact a 64 px et n'en revient qu'a 24 px : entre les deux, elle ne
+  // change pas d'avis.
+  //
+  // Le calcul est reporte a la prochaine image : l'evenement de defilement tire
+  // beaucoup plus souvent que l'ecran ne se rafraichit.
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
+    let planifie = false;
+    const auDefilement = () => {
+      if (planifie) return;
+      planifie = true;
+      requestAnimationFrame(() => {
+        planifie = false;
+        const y = window.scrollY;
+        setScrolled((avant) => (avant ? y > 24 : y > 64));
+      });
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    auDefilement();
+    window.addEventListener('scroll', auDefilement, { passive: true });
+    return () => window.removeEventListener('scroll', auDefilement);
   }, []);
 
-  // Lock body scroll when mobile menu is open
-  useEffect(() => {
-    if (mobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [mobileMenuOpen]);
+  // Le verrou est partage avec les deux tiroirs : voir le compteur du hook.
+  useVerrouDefilement(mobileMenuOpen);
 
   return (
     <>
-      <nav className={`fixed w-full z-50 transition-all duration-700 ease-out ${
+      <nav className={`fixed w-full z-50 transition-[background-color,backdrop-filter,padding,box-shadow] duration-[240ms] ease-out ${
         scrolled 
           ? 'glass-dark py-3 lg:py-4' 
           : isContentPage 
@@ -100,7 +112,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
             : 'bg-transparent py-5 lg:py-8'
       }`}>
         <div className="container mx-auto px-4 sm:px-6 md:px-12 flex items-center">
-          <button onClick={() => onCategorySelect('All')} className="transition-all duration-200 hover:opacity-85 active:scale-95 py-1 flex items-center transform-gpu">
+          <button onClick={() => onCategorySelect('All')} className=" hover:opacity-85 press py-1 flex items-center transform-gpu">
             {/* The white logo sits over the hero video, so it disappears on a
                 light frame or before the video paints. A soft shadow keeps it
                 readable on any background — the client reported it as
@@ -120,7 +132,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
           <div className="hidden lg:flex ml-auto space-x-10 items-center mr-10">
             <div className="relative group py-4">
               <button 
-                className={`font-sans text-[11px] tracking-[0.2em] uppercase py-1 cursor-pointer transition-all duration-300 active:scale-95 relative flex items-center gap-1.5 transform-gpu
+                className={`font-sans text-[11px] tracking-[0.2em] uppercase py-1 cursor-pointer press relative flex items-center gap-1.5 transform-gpu
                   after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1.5px] after:bg-current after:transition-transform after:duration-300 after:origin-left
                   ${isLinkActive('Shop') ? 'after:scale-x-100' : 'after:scale-x-0 hover:after:scale-x-100'} ${getLinkColor('Shop')}`}
               >
@@ -137,7 +149,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
                     <button 
                       key={item} 
                       onClick={() => onCategorySelect(item)}
-                      className={`text-left pl-4 pr-3 py-2 text-xs font-sans tracking-widest uppercase rounded-lg transition-all duration-300 flex items-center justify-between active:scale-[0.98] border-l-2 transform-gpu ${
+                      className={`text-left pl-4 pr-3 py-2 text-xs font-sans tracking-widest uppercase rounded-lg flex items-center justify-between press border-l-2 transform-gpu ${
                         isCategoryActive(item) 
                           ? 'text-slate-stone bg-slate-stone/5 border-slate-stone font-medium' 
                           : 'text-slate-stone/70 hover:text-slate-stone hover:bg-mist-white border-transparent hover:border-slate-stone/20'
@@ -154,7 +166,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
               <button 
                 key={item} 
                 onClick={() => onCategorySelect(item)}
-                className={`font-sans text-[11px] tracking-[0.2em] uppercase py-1 cursor-pointer transition-all duration-300 active:scale-95 relative transform-gpu
+                className={`font-sans text-[11px] tracking-[0.2em] uppercase py-1 cursor-pointer press relative transform-gpu
                   after:absolute after:bottom-0 after:left-0 after:w-full after:h-[1.5px] after:bg-current after:transition-transform after:duration-300 after:origin-left
                   ${isLinkActive(item) ? 'after:scale-x-100' : 'after:scale-x-0 hover:after:scale-x-100'} ${getLinkColor(item)}`}
               >

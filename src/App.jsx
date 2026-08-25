@@ -189,13 +189,17 @@ function App() {
       <ScrollToTop />
       {!isAdminPage && <PageLoader isVisible={isLoading} />}
       {!isAdminPage && <AbsenceNotice />}
+      {/* Les deux tiroirs occupent exactement la meme place, sur le bord droit.
+          Ouvrir les favoris par-dessus le panier posait un panneau sur l'autre :
+          on fermait celui du dessus et le premier reapparaissait sans qu'on
+          l'ait demande. Un seul a la fois. */}
       {!isAdminPage && (
         <Navbar 
           cartCount={nombreArticles(cart)} 
           favCount={favorites.length} 
           onCategorySelect={handleCategorySelect}
-          onCartClick={() => setCartOpen(true)}
-          onFavClick={() => setFavOpen(true)}
+          onCartClick={() => { setFavOpen(false); setCartOpen(true); }}
+          onFavClick={() => { setCartOpen(false); setFavOpen(true); }}
         />
       )}
       
