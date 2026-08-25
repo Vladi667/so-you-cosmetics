@@ -68,7 +68,7 @@ const JournalPage = () => {
           <p className="font-sans text-[10px] tracking-[0.42em] uppercase text-stone-gray/70 mb-4">
             {formatDate(article.date, language)}
           </p>
-          <h1 className="font-serif font-light text-slate-stone text-3xl sm:text-4xl md:text-5xl leading-[1.1] mb-8">
+          <h1 className="font-serif font-light text-slate-stone text-3xl sm:text-4xl md:text-5xl mb-8">
             {article.title}
           </h1>
 
@@ -86,7 +86,7 @@ const JournalPage = () => {
           )}
 
           <div
-            className="prose prose-sm sm:prose max-w-none font-sans font-light text-stone-gray leading-relaxed
+            className="prose prose-sm sm:prose max-w-[65ch] mx-auto font-sans font-light text-stone-gray leading-relaxed
                        prose-headings:font-serif prose-headings:text-slate-stone prose-headings:font-normal
                        prose-strong:text-slate-stone prose-strong:font-medium"
             dangerouslySetInnerHTML={{ __html: article.body || '' }}
@@ -103,7 +103,7 @@ const JournalPage = () => {
         <p className="font-sans text-[10px] tracking-[0.42em] uppercase text-stone-gray/70 mb-4 text-center">
           {t('journal.eyebrow')}
         </p>
-        <h1 className="font-serif font-light text-slate-stone text-4xl sm:text-5xl leading-[1.06] mb-4 text-center">
+        <h1 className="font-serif font-light text-slate-stone text-4xl sm:text-5xl mb-4 text-center">
           {t('journal.title')}
         </h1>
         <p className="font-sans font-light text-stone-gray text-center max-w-xl mx-auto mb-14">

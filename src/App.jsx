@@ -132,28 +132,48 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
           entry.target.classList.add('active');
-        }
-      });
-    }, { threshold: 0.1 });
+          // Une apparition n'a lieu qu'une fois. Sans ce retrait, chaque bloc
+          // deja apparu restait observe pour toute la visite et rappelait
+          // l'observateur a chaque passage devant lui.
+          observer.unobserve(entry.target);
+        });
+      },
+      {
+        // Le seuil de 0,1 demandait que 10 % de l'element soit visible. Sur un
+        // bloc plus haut que l'ecran, cela n'arrive qu'apres l'avoir largement
+        // depasse : le contenu apparaissait sous les yeux du lecteur, en retard
+        // sur son propre defilement. On declenche des que le haut de l'element
+        // franchit le dernier dixieme de la fenetre.
+        threshold: 0,
+        rootMargin: '0px 0px -10% 0px',
+      }
+    );
 
-    const observeReveals = () => {
-      document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+    // `:not(.active)` : les blocs deja apparus n'ont plus rien a apprendre, et
+    // la page en contient vite des dizaines.
+    const observerLesApparitions = () => {
+      document.querySelectorAll('.reveal:not(.active)').forEach((el) => observer.observe(el));
     };
 
-    observeReveals();
+    observerLesApparitions();
 
+    // Le catalogue, les tiroirs et les messages d'ajout modifient le DOM en
+    // permanence. Un seul passage par image suffit : sans cela, ajouter un
+    // article relancait une recherche sur tout le document a chaque mutation.
+    let planifie = false;
     const mutationObserver = new MutationObserver((mutations) => {
-      let shouldObserve = false;
-      mutations.forEach(mutation => {
-        if (mutation.addedNodes.length > 0) shouldObserve = true;
+      if (planifie) return;
+      if (!mutations.some((m) => m.addedNodes.length > 0)) return;
+      planifie = true;
+      requestAnimationFrame(() => {
+        planifie = false;
+        observerLesApparitions();
       });
-      if (shouldObserve) {
-        observeReveals();
-      }
     });
 
     mutationObserver.observe(document.body, { childList: true, subtree: true });

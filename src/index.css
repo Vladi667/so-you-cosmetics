@@ -40,53 +40,52 @@
   --font-sans: 'Outfit', sans-serif;
   --font-serif: 'Cormorant Garamond', serif;
   
-  --animate-fadeIn: fadeIn 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  --animate-fadeInUp: fadeInUp 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  /* `--animate-fadeIn` et `--animate-fadeInUp` engendraient `animate-fade-in`
+     et `animate-fade-in-up` a 2 s. Le premier n'etait demande nulle part ; le
+     second ne servait qu'a l'ouverture d'une fenetre d'atelier, ou deux
+     secondes sont une eternite. Un seul jeton subsiste, nomme d'apres son
+     unique emploi. */
+  /* Interlignage et approche par TAILLE, non par niveau de titre.
+     Un meme titre traverse la rampe `text-2xl sm:text-5xl lg:text-7xl`, et il
+     portait un unique `leading-[1.1]` pour toute cette course : beaucoup trop
+     serre a 24 px, ou deux lignes se touchent, et juste a 72 px. Vingt-quatre
+     titres du site etaient dans ce cas.
+     Ecrit ici, chaque palier porte le sien, et la valeur suit la taille reelle
+     a chaque point de rupture sans qu'on ait rien a poser sur l'element.
+     Meme raisonnement pour l'approche : plus la lettre grandit, plus l'espace
+     entre elles se lit comme un trou. */
+  --text-2xl--line-height: 1.25;
+  --text-3xl--line-height: 1.18;
+  --text-4xl--line-height: 1.14;
+  --text-5xl--line-height: 1.10;
+  --text-6xl--line-height: 1.07;
+  --text-7xl--line-height: 1.05;
+  --text-8xl--line-height: 1.03;
+
+  --text-4xl--letter-spacing: -0.006em;
+  --text-5xl--letter-spacing: -0.012em;
+  --text-6xl--letter-spacing: -0.018em;
+  --text-7xl--letter-spacing: -0.022em;
+  --text-8xl--letter-spacing: -0.026em;
+
+  --animate-modal-in: fadeInUp 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-marquee: marquee 60s linear infinite;
 }
 
+/* Les deux entrees du hero.
+   Elles animaient `filter: blur(10px)` — la seule propriete de la page qui
+   force une nouvelle peinture a chaque image, et sur le premier ecran, celui
+   qui doit s'afficher le plus vite. Le `scale(0.98)` obligeait en plus a
+   re-rasteriser le texte pendant tout le trajet. Il ne reste que l'opacite et
+   la translation, qui vont toutes deux au compositeur. */
 @keyframes fadeIn {
-  0% { opacity: 0; filter: blur(10px); }
-  100% { opacity: 1; filter: blur(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes fadeInUp {
-  0% { opacity: 0; filter: blur(10px); transform: translateY(30px) scale(0.98); }
-  100% { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); }
-}
-
-@keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-@keyframes draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes dash {
-  0% {
-    stroke-dashoffset: 100;
-  }
-  50% {
-    stroke-dashoffset: 0;
-  }
-  100% {
-    stroke-dashoffset: -100;
-  }
-}
-
-@keyframes flyToCart {
-  0% { 
-    transform: translate(0, 0) scale(1); 
-    opacity: 1;
-  }
-  100% { 
-    transform: translate(calc(var(--fly-x) * 1px), calc(var(--fly-y) * 1px)) scale(0.1); 
-    opacity: 0;
-  }
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* Hero footage drift — a very slow, very small ken-burns. 1.5% of scale over
@@ -114,18 +113,6 @@
   100% { transform: scale(1.03) translate3d(0, 0, 0); }
 }
 
-@keyframes float {
-  0% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(-15px) rotate(1deg); }
-  100% { transform: translateY(0px) rotate(0deg); }
-}
-
-@keyframes float-slow {
-  0% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(15px) rotate(-1deg); }
-  100% { transform: translateY(0px) rotate(0deg); }
-}
-
 @keyframes marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
@@ -150,17 +137,17 @@
   body {
     @apply bg-mist-white text-stone-gray font-sans selection:bg-slate-stone selection:text-ivory;
   }
-  /* Tracking and leading are size-specific, never one value for every heading.
-     As type grows, letters read too far apart and lines too loose — so display
-     sizes tighten on both axes, while small headings keep slight positive
-     tracking for legibility. The previous single `tracking-wide` on h1–h6 put
-     +0.025em on 72px display type, which is the wrong direction. */
+  /* Repli pour un titre qui ne porterait aucune classe de taille. Des qu'un
+     `text-*` est present — c'est le cas de presque tous les titres du site —
+     ce sont les valeurs par palier de l'echelle ci-dessus qui s'appliquent,
+     l'utilitaire l'emportant sur cette couche. Ces regles restent pour qu'un
+     titre nu ne retombe pas sur l'interligne du texte courant. */
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif text-slate-stone font-light;
     text-wrap: balance;
   }
-  h1 { letter-spacing: -0.022em; line-height: 1.05; }
-  h2 { letter-spacing: -0.018em; line-height: 1.10; }
+  h1 { letter-spacing: -0.012em; line-height: 1.12; }
+  h2 { letter-spacing: -0.010em; line-height: 1.16; }
   h3 { letter-spacing: -0.012em; line-height: 1.20; }
   h4 { letter-spacing: -0.006em; line-height: 1.30; }
   h5, h6 { letter-spacing: 0.010em; line-height: 1.40; }
@@ -204,11 +191,35 @@
      Ici : descente immediate et courte, remontee plus longue et amortie. On
      s'enfonce vite, on remonte doucement — c'est ce que fait un vrai bouton. */
   .press {
-    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+    /* La liste est explicite plutot que `all` : `transition-all` anime aussi
+       les proprietes de mise en page qui changent par accident, chacune coutant
+       un reflux. Les couleurs y figurent parce que ces memes boutons ont un
+       survol : si l'element gardait `transition-colors` a cote, cet utilitaire
+       ecraserait la propriete de transition entiere et la pression ne
+       s'animerait plus du tout. */
+    transition-property: transform, color, background-color, border-color, box-shadow, opacity;
+    transition-duration: 260ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   }
   .press:active {
     transform: scale(0.97);
     transition-duration: 80ms;
+  }
+
+  /* Les libelles en petites capitales tres espacees.
+     `letter-spacing` ajoute son espace APRES la derniere lettre aussi. Sur un
+     libelle centre, cette colonne de vide fantome de 0,5 em fait partie de la
+     ligne : le navigateur centre le tout, et le texte visible se retrouve
+     decale d'un quart de cadratin vers la gauche. Ce n'est jamais enorme, mais
+     c'est visible des qu'un libelle surmonte un titre centre — et c'est le cas
+     de six d'entre eux.
+     La marge negative rend au bloc la largeur de ce vide, ce qui replace le
+     centre optique au bon endroit. Sur un libelle aligne a gauche, elle ne
+     change rien : le texte part toujours du meme bord. */
+  .caps-label {
+    text-transform: uppercase;
+    letter-spacing: 0.5em;
+    margin-right: -0.5em;
   }
 
   /* L'entree d'une carte de catalogue.
@@ -221,31 +232,40 @@
   .carte-entre {
     animation: carteEntre 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
+
+  /* L'apparition au defilement.
+     Ces deux regles etaient ecrites HORS de toute couche. En CSS, ce qui est
+     hors couche l'emporte sur tout ce qui est en couche : `.reveal` battait donc
+     les utilitaires Tailwind poses sur le meme element. Toute carte portant
+     `.reveal` voyait son `transition` et son `transform` de survol ecrases par
+     ceux de l'apparition — c'est ce qui rendait le survol inerte sur les quatre
+     familles de cartes. Ici, dans `components`, l'utilitaire ecrit sur
+     l'element gagne, ce qui est l'ordre attendu.
+
+     600 ms et 24 px deviennent 420 ms et 14 px : un contenu qui arrive encore
+     apres que l'oeil s'est pose se lit comme un retard, pas comme une elegance.
+     Seuls `opacity` et `transform` sont animes — tous deux vont au compositeur,
+     contrairement au `filter: blur()` d'origine qui coutait une peinture. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 420ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform, opacity;
+  }
+
+  .reveal.active {
+    opacity: 1;
+    transform: translateY(0);
+    /* Rendu au navigateur une fois l'apparition faite : `will-change` maintenu
+       garde une couche de composition par element, pour rien. */
+    will-change: auto;
+  }
 }
 
 @keyframes carteEntre {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-
-/* Scroll reveal.
-   Was `transition: all 1.5s` with an animated `filter: blur()`. `all` transitions
-   every property that happens to change, and `filter` is not compositor-friendly,
-   so each reveal cost a paint. Now only transform and opacity animate — both run
-   on the compositor — and 1.5s is down to 600ms, because content that is still
-   arriving after the reader's eye has landed reads as lag, not elegance. */
-.reveal {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 600ms cubic-bezier(0.16, 1, 0.3, 1),
-              transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform, opacity;
-}
-
-.reveal.active {
-  opacity: 1;
-  transform: translateY(0);
-  will-change: auto;
 }
 
 /* Touch devices: pause carousel on touch */

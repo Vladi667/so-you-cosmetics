@@ -39,7 +39,7 @@ const SqueletteFiche = () => (
               </div>
               {/* Meme balise et memes classes que le vrai titre : la hauteur de
                   ligne est celle du texte reel, pas une hauteur devinee. */}
-              <h1 className="leading-[1.06] font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4 md:mb-6">
+              <h1 className=" font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4 md:mb-6">
                 <span className="inline-block w-4/5 rounded bg-lake-mist animate-pulse">&nbsp;</span>
               </h1>
               <p className="font-sans text-2xl font-light">
@@ -236,7 +236,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                     </Link>
                   ))}
                 </div>
-                <h1 className="leading-[1.06] font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-slate-stone mb-4 md:mb-6">
+                <h1 className=" font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-slate-stone mb-4 md:mb-6">
                   {product.name}
                 </h1>
                 <div className="flex items-center gap-3 flex-wrap">

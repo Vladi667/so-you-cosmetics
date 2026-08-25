@@ -401,7 +401,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
           <div className="mt-16 text-center">
             <button 
               onClick={loadMore}
-              className="inline-block border-b border-slate-stone text-slate-stone tracking-widest uppercase text-sm pb-1 hover:text-slate-stone/70 hover:border-slate-stone/70 transition-colors active:scale-[0.97]"
+              className="inline-block border-b border-slate-stone text-slate-stone tracking-widest uppercase text-sm pb-1 hover:text-slate-stone/70 hover:border-slate-stone/70 press"
             >
               {t('catalog.loadMore')}
             </button>

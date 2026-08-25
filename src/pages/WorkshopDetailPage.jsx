@@ -81,7 +81,7 @@ const WorkshopDetailPage = () => {
             <p className="font-sans text-[10px] tracking-[0.42em] uppercase text-stone-gray/70 mb-4">
               {t('workshopsPage.eyebrow')}
             </p>
-            <h1 className="font-serif font-light text-slate-stone text-3xl sm:text-4xl leading-[1.12] mb-6">
+            <h1 className="font-serif font-light text-slate-stone text-3xl sm:text-4xl mb-6">
               {workshop.title}
             </h1>
 
@@ -117,7 +117,7 @@ const WorkshopDetailPage = () => {
               onClick={() => navigate('/contact', {
                 state: { subject: t('workshopsPage.reservationSubject', { title: workshop.title }) },
               })}
-              className="px-8 py-3.5 bg-slate-stone text-white rounded-full font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-slate-stone/90 transition-colors active:scale-[0.97]"
+              className="px-8 py-3.5 bg-slate-stone text-white rounded-full font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-slate-stone/90 press"
             >
               {t('workshopsPage.reserveThis')}
             </button>

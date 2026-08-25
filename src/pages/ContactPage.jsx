@@ -51,8 +51,8 @@ const ContactPage = () => {
           <div className="absolute inset-0 bg-gradient-to-b from-slate-stone/55 via-transparent to-slate-stone/45"></div>
         </div>
         <div className="relative z-10 container mx-auto px-6 text-center reveal mt-20">
-          <p className="text-white/80 uppercase tracking-[0.5em] text-[10px] md:text-xs mb-8 font-sans font-bold">{t('contact.eyebrow')}</p>
-          <h1 className="leading-[1.06] font-serif text-4xl sm:text-6xl md:text-8xl text-white max-w-5xl mx-auto" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
+          <p className="text-white/80 caps-label text-[10px] md:text-xs mb-8 font-sans font-bold">{t('contact.eyebrow')}</p>
+          <h1 className=" font-serif text-4xl sm:text-6xl md:text-8xl text-white max-w-5xl mx-auto" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
             {t('contact.title')}
           </h1>
           <p className="text-white/90 font-serif italic text-lg sm:text-2xl md:text-3xl mt-8 max-w-3xl mx-auto opacity-80" style={{ textShadow: '0 1px 12px rgba(0,0,0,0.4)' }}>
@@ -68,7 +68,7 @@ const ContactPage = () => {
 
             {/* Left — Address & Phone */}
             <div className="reveal">
-              <h2 className="leading-[1.1] font-serif text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-slate-stone mb-3 sm:mb-6">
+              <h2 className=" font-serif text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-slate-stone mb-3 sm:mb-6">
                 {t('contact.boutiqueTitleLine1')}<br/><span className="italic text-slate-stone/40">{t('contact.boutiqueTitleLine2')}</span>
               </h2>
               <p className="font-sans text-stone-gray font-light text-xs sm:text-lg lg:text-xl mb-6 sm:mb-12">
@@ -95,7 +95,7 @@ const ContactPage = () => {
                   </div>
                   <div>
                     <h3 className="font-sans tracking-[0.1em] sm:tracking-[0.2em] text-[9px] sm:text-xs font-bold text-slate-stone mb-1 sm:mb-2 uppercase">{t('contact.phoneLabel')}</h3>
-                    <a href="tel:+41225566992" className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80 hover:text-slate-stone transition-colors duration-200 active:scale-[0.97]">022 556 69 92</a>
+                    <a href="tel:+41225566992" className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80 hover:text-slate-stone press">022 556 69 92</a>
                   </div>
                 </div>
 
@@ -106,7 +106,7 @@ const ContactPage = () => {
                   </div>
                   <div>
                     <h3 className="font-sans tracking-[0.1em] sm:tracking-[0.2em] text-[9px] sm:text-xs font-bold text-slate-stone mb-1 sm:mb-2 uppercase">{t('contact.emailLabel')}</h3>
-                    <a href="mailto:contact@soyoucosmetics.com" className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80 hover:text-slate-stone transition-colors duration-200 active:scale-[0.97]">contact@soyoucosmetics.com</a>
+                    <a href="mailto:contact@soyoucosmetics.com" className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80 hover:text-slate-stone press">contact@soyoucosmetics.com</a>
                   </div>
                 </div>
               </div>
@@ -151,7 +151,7 @@ const ContactPage = () => {
 
         <div className="container mx-auto px-6 md:px-12 max-w-4xl relative z-10">
           <div className="text-center mb-10 sm:mb-20 reveal">
-            <h2 className="leading-[1.1] font-serif text-3xl sm:text-5xl md:text-7xl text-slate-stone mb-3 sm:mb-6">{t('contact.formTitle')}</h2>
+            <h2 className=" font-serif text-3xl sm:text-5xl md:text-7xl text-slate-stone mb-3 sm:mb-6">{t('contact.formTitle')}</h2>
             <p className="font-sans font-light text-stone-gray text-sm sm:text-xl">
               {t('contact.formSubtitle')}
             </p>
@@ -205,7 +205,7 @@ const ContactPage = () => {
             </div>
             <div className="flex items-center justify-between">
               <p className="font-sans text-stone-gray/50 text-xs sm:text-sm hidden md:block">
-                {t('contact.orCallPrefix')}<a href="tel:+41225566992" className="text-slate-stone hover:underline active:scale-[0.97]">022 556 69 92</a>
+                {t('contact.orCallPrefix')}<a href="tel:+41225566992" className="text-slate-stone hover:underline press">022 556 69 92</a>
               </p>
               <button
                 type="submit"

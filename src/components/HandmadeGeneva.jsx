@@ -38,7 +38,7 @@ const HandmadeGeneva = () => {
           <p className="font-sans text-[10px] tracking-[0.42em] uppercase text-stone-gray/70 mb-6">
             {t('handmade.eyebrow')}
           </p>
-          <h2 className="leading-[1.14] font-serif font-light text-slate-stone text-2xl sm:text-4xl md:text-[2.9rem]">
+          <h2 className=" font-serif font-light text-slate-stone text-2xl sm:text-4xl md:text-[2.9rem]/[1.11]">
             {t('handmade.titleLine1')}<br className="hidden sm:block" /> {t('handmade.titleLine2')}
           </h2>
           <p className="font-sans font-light text-stone-gray/85 text-sm sm:text-base leading-relaxed mt-6 max-w-2xl mx-auto">
@@ -73,8 +73,7 @@ const HandmadeGeneva = () => {
             {pillars.map((pillar, index) => (
               <div
                 key={index}
-                className="group bg-ivory rounded-[24px] md:rounded-[30px] p-6 md:p-10 shadow-[0_20px_60px_rgba(58,51,43,0.10)] hover:shadow-[0_30px_80px_rgba(58,51,43,0.15)] hover:-translate-y-2 transition-all duration-250 reveal border border-slate-stone/5 text-center"
-                style={{ transitionDelay: `${index * 90}ms` }}
+                className="group bg-ivory rounded-[24px] md:rounded-[30px] p-6 md:p-10 shadow-[0_20px_60px_rgba(58,51,43,0.10)] hover:shadow-[0_30px_80px_rgba(58,51,43,0.15)] hover:-translate-y-2 transition-[opacity,transform,box-shadow] duration-300 reveal border border-slate-stone/5 text-center"
               >
                 <div className="w-14 h-14 md:w-16 md:h-16 bg-mist-white rounded-2xl flex items-center justify-center mx-auto mb-4 md:mb-6 group-hover:scale-105 transition-transform duration-250">
                   {pillar.icon}

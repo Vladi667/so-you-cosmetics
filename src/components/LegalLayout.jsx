@@ -8,8 +8,8 @@ const LegalLayout = ({ title, intro, sections = [], lastUpdated }) => {
       {/* Hero */}
       <section className="relative pt-40 pb-16 sm:pt-48 sm:pb-24 bg-slate-stone text-white">
         <div className="container mx-auto px-6 md:px-12 max-w-4xl text-center">
-          <p className="text-white/60 uppercase tracking-[0.5em] text-[10px] md:text-xs mb-6 font-sans font-bold">{t('legal.brand')}</p>
-          <h1 className="leading-[1.06] font-serif text-4xl sm:text-5xl md:text-6xl text-white">{title}</h1>
+          <p className="text-white/60 caps-label text-[10px] md:text-xs mb-6 font-sans font-bold">{t('legal.brand')}</p>
+          <h1 className=" font-serif text-4xl sm:text-5xl md:text-6xl text-white">{title}</h1>
           {lastUpdated && (
             <p className="font-sans text-white/50 text-xs sm:text-sm mt-6">{t('legal.lastUpdatedLabel')} {lastUpdated}</p>
           )}
@@ -18,7 +18,7 @@ const LegalLayout = ({ title, intro, sections = [], lastUpdated }) => {
 
       {/* Content */}
       <section className="py-16 sm:py-24">
-        <div className="container mx-auto px-6 md:px-12 max-w-3xl">
+        <div className="container mx-auto px-6 md:px-12 max-w-[65ch]">
           {intro && (
             <p className="font-sans font-light text-stone-gray text-base sm:text-lg leading-relaxed mb-12">{intro}</p>
           )}
@@ -45,7 +45,7 @@ const LegalLayout = ({ title, intro, sections = [], lastUpdated }) => {
           <div className="mt-16 pt-8 border-t border-slate-stone/10">
             <p className="font-sans text-stone-gray/60 text-sm">
               {t('legal.contactQuestionPrefix')}
-              <a href="mailto:contact@soyoucosmetics.com" className="text-slate-stone hover:underline active:scale-[0.97]">contact@soyoucosmetics.com</a>{t('legal.contactQuestionSuffix')}
+              <a href="mailto:contact@soyoucosmetics.com" className="text-slate-stone hover:underline press">contact@soyoucosmetics.com</a>{t('legal.contactQuestionSuffix')}
             </p>
           </div>
         </div>

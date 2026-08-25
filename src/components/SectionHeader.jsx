@@ -3,7 +3,7 @@ import React from 'react';
 const SectionHeader = ({ title, subtitle, align = 'center' }) => {
   return (
     <div className={`mb-16 reveal ${align === 'center' ? 'text-center mx-auto' : 'text-left'} max-w-3xl`}>
-      <h2 className="leading-[1.1] font-serif text-4xl md:text-5xl text-slate-stone mb-6">
+      <h2 className=" font-serif text-4xl md:text-5xl text-slate-stone mb-6">
         {title}
       </h2>
       {subtitle && (

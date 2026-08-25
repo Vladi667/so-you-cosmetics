@@ -186,7 +186,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
               className="hidden md:flex absolute left-4 top-[38%] z-30 w-11 h-11 items-center justify-center rounded-full
                          bg-ivory/90 backdrop-blur-sm text-slate-stone shadow-md border border-slate-stone/10
                          opacity-0 group-hover/band:opacity-100 focus-visible:opacity-100
-                         hover:bg-ivory transition-all duration-250 active:scale-95"
+                         hover:bg-ivory press"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -199,7 +199,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
               className="hidden md:flex absolute right-4 top-[38%] z-30 w-11 h-11 items-center justify-center rounded-full
                          bg-ivory/90 backdrop-blur-sm text-slate-stone shadow-md border border-slate-stone/10
                          opacity-0 group-hover/band:opacity-100 focus-visible:opacity-100
-                         hover:bg-ivory transition-all duration-250 active:scale-95"
+                         hover:bg-ivory press"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -286,7 +286,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                       onClick={() => addToCart(product)}
                       tabIndex={isDuplicate ? -1 : undefined}
                       className="px-6 py-2 bg-white/90 backdrop-blur-sm text-slate-stone text-xs uppercase tracking-widest
-                                 rounded-full font-medium hover:bg-slate-stone hover:text-white transition-colors active:scale-95"
+                                 rounded-full font-medium hover:bg-slate-stone hover:text-white press"
                     >
                       {t('signature.add')}
                     </button>
@@ -296,7 +296,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                       tabIndex={isDuplicate ? -1 : undefined}
                       aria-label={t('signature.favorite')}
                       className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center
-                                 hover:bg-slate-stone hover:text-white transition-colors active:scale-95"
+                                 hover:bg-slate-stone hover:text-white press"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" aria-hidden="true"
                            fill={favorites.find(f => f.id === product.id) ? 'currentColor' : 'none'}

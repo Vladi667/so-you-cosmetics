@@ -32,7 +32,7 @@ const Hero = () => {
         {/* Wordmark */}
         <p
           className="font-serif text-ivory text-5xl sm:text-6xl md:text-7xl mb-5 sm:mb-7
-                     opacity-0 animate-[fadeIn_1.1s_cubic-bezier(0.16,1,0.3,1)_forwards]"
+                     opacity-0 animate-[fadeIn_0.55s_cubic-bezier(0.16,1,0.3,1)_forwards]"
           style={{ letterSpacing: '-0.02em', textShadow: '0 2px 24px rgba(0,0,0,0.45), 0 1px 6px rgba(0,0,0,0.28)' }}
         >
           {t('hero.brand')}
@@ -40,8 +40,8 @@ const Hero = () => {
 
         {/* The promise */}
         <h1
-          className="font-serif font-light text-ivory text-[1.375rem] sm:text-3xl md:text-[2.6rem] leading-[1.18] max-w-2xl
-                     opacity-0 animate-[fadeInUp_1.1s_cubic-bezier(0.16,1,0.3,1)_0.18s_forwards]"
+          className="font-serif font-light text-ivory text-[1.375rem]/[1.24] sm:text-3xl md:text-[2.6rem]/[1.12] max-w-2xl
+                     opacity-0 animate-[fadeInUp_0.55s_cubic-bezier(0.16,1,0.3,1)_0.08s_forwards]"
           style={{ textShadow: '0 2px 20px rgba(0,0,0,0.45), 0 1px 6px rgba(0,0,0,0.25)' }}
         >
           {t('hero.titleLine1')}<br className="hidden sm:block" /> {t('hero.titleLine2')}
@@ -50,24 +50,24 @@ const Hero = () => {
         {/* Hairline — the divider she drew between the two thoughts */}
         <span
           className="block h-px w-14 sm:w-20 bg-ivory/45 my-6 sm:my-8 origin-center
-                     opacity-0 animate-[fadeIn_0.9s_ease-out_0.5s_forwards]"
+                     opacity-0 animate-[fadeIn_0.55s_ease-out_0.16s_forwards]"
         />
 
         {/* Nature / science couplet */}
         <p
           className="font-sans font-light text-ivory/85 text-[0.8125rem] sm:text-base leading-relaxed
-                     opacity-0 animate-[fadeInUp_1.1s_cubic-bezier(0.16,1,0.3,1)_0.62s_forwards]"
+                     opacity-0 animate-[fadeInUp_0.55s_cubic-bezier(0.16,1,0.3,1)_0.24s_forwards]"
           style={{ textShadow: '0 1px 12px rgba(0,0,0,0.38)' }}
         >
           {t('hero.subtitleLine1')}<br />{t('hero.subtitleLine2')}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-9 sm:mt-11 w-full sm:w-auto px-2 sm:px-0
-                        opacity-0 animate-[fadeInUp_1.1s_cubic-bezier(0.16,1,0.3,1)_0.9s_forwards]">
+                        opacity-0 animate-[fadeInUp_0.55s_cubic-bezier(0.16,1,0.3,1)_0.32s_forwards]">
           <a
             href="#products"
             className="px-8 sm:px-10 py-3.5 sm:py-4 bg-ivory text-slate-stone font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs
-                       hover:bg-ivory/90 transition-all duration-250 shadow-lg rounded-full text-center active:scale-[0.97]"
+                       hover:bg-ivory/90 shadow-lg rounded-full text-center press"
           >
             {t('hero.cta1')}
           </a>
@@ -77,7 +77,7 @@ const Hero = () => {
               target="_blank"
               rel="noopener noreferrer"
               className="px-8 sm:px-10 py-3.5 sm:py-4 border border-ivory/45 text-ivory font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs
-                         hover:bg-ivory/10 hover:border-ivory/70 transition-all duration-250 backdrop-blur-sm rounded-full text-center active:scale-[0.97]"
+                         hover:bg-ivory/10 hover:border-ivory/70 backdrop-blur-sm rounded-full text-center press"
             >
               {t('hero.marieClaire')}
             </a>

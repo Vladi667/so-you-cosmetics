@@ -57,7 +57,7 @@ const Footer = () => {
                 href={SOCIAL.instagram}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full border border-mist-white/20 flex items-center justify-center hover:bg-ivory hover:text-slate-stone hover:border-white transition-all duration-250 active:scale-[0.97]"
+                className="w-10 h-10 rounded-full border border-mist-white/20 flex items-center justify-center hover:bg-ivory hover:text-slate-stone hover:border-white press"
                 aria-label="Instagram"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
@@ -70,7 +70,7 @@ const Footer = () => {
                 href={SOCIAL.facebook}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full border border-mist-white/20 flex items-center justify-center hover:bg-ivory hover:text-slate-stone hover:border-white transition-all duration-250 active:scale-[0.97]"
+                className="w-10 h-10 rounded-full border border-mist-white/20 flex items-center justify-center hover:bg-ivory hover:text-slate-stone hover:border-white press"
                 aria-label="Facebook"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
@@ -80,7 +80,7 @@ const Footer = () => {
             </div>
             <div className="space-y-2 text-sm text-mist-white/60 font-light">
               <p>{t('footer.address')}</p>
-              <p><a href="tel:+41225566992" className="hover:text-white transition-colors duration-200 active:scale-[0.97]">022 556 69 92</a></p>
+              <p><a href="tel:+41225566992" className="hover:text-white press">022 556 69 92</a></p>
             </div>
           </div>
 

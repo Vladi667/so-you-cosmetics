@@ -88,7 +88,7 @@ const AdminLogin = ({ onLoginSuccess }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-4 bg-slate-stone text-white font-sans uppercase tracking-[0.3em] text-xs rounded-full hover:bg-slate-stone/90 transition-all duration-250 shadow-lg hover:shadow-xl transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none"
+            className="w-full py-4 bg-slate-stone text-white font-sans uppercase tracking-[0.3em] text-xs rounded-full hover:bg-slate-stone/90 shadow-lg hover:shadow-xl transform hover:scale-[1.01] press disabled:opacity-50 disabled:pointer-events-none"
           >
             {isLoading ? 'Connexion...' : 'Se connecter'}
           </button>

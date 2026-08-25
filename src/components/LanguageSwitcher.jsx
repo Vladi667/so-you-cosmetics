@@ -47,7 +47,7 @@ const LanguageSwitcher = ({ className = '', variant = 'inherit', inline = false 
                 onClick={() => setLanguage(lng.code)}
                 aria-pressed={active}
                 title={lng.name}
-                className={`font-sans text-[11px] tracking-[0.15em] uppercase px-1.5 py-1 rounded transition-all duration-300 active:scale-95 ${
+                className={`font-sans text-[11px] tracking-[0.15em] uppercase px-1.5 py-1 rounded press ${
                   active ? `font-semibold opacity-100 ${isDark ? 'text-white' : ''}` : 'opacity-50 hover:opacity-90'
                 }`}
               >
@@ -71,7 +71,7 @@ const LanguageSwitcher = ({ className = '', variant = 'inherit', inline = false 
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={t('nav.language')}
-        className="flex items-center gap-0.5 font-sans text-[11px] tracking-[0.15em] uppercase px-1 py-1 transition-opacity duration-300 opacity-80 hover:opacity-100 active:scale-95"
+        className="flex items-center gap-0.5 font-sans text-[11px] tracking-[0.15em] uppercase px-1 py-1 opacity-80 hover:opacity-100 press"
       >
         {current.label}
         <svg
