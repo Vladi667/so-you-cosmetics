@@ -1,42 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { getHours } from '../services/shop';
+import useEnvoiFormulaire from '../hooks/useEnvoiFormulaire';
 
 const ContactPage = () => {
   const { t } = useLanguage();
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
-  const [sent, setSent] = useState(false);
+  const { etat, enCours, message, messageVisible, envoyer } = useEnvoiFormulaire();
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
+  // Le succès était affiché dans le `catch`, sous le commentaire « show success
+  // anyway » : une panne côté serveur donnait « ✓ Envoyé ! » à quelqu'un dont le
+  // message n'arrivait jamais, et qui n'avait donc aucune raison de réessayer.
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-    fetch('/api/contact', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(formData)
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to send message');
-        return res.json();
-      })
-      .then(() => {
-        setSent(true);
-        setTimeout(() => setSent(false), 4000);
-        setFormData({ name: '', email: '', subject: '', message: '' });
-      })
-      .catch(err => {
-        console.error('Failed to submit contact query:', err);
-        // Fallback: show success anyway to keep UX working if offline
-        setSent(true);
-        setTimeout(() => setSent(false), 4000);
-        setFormData({ name: '', email: '', subject: '', message: '' });
-      });
+    if (enCours) return;
+
+    envoyer(
+      fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      }),
+      { surSucces: () => setFormData({ name: '', email: '', subject: '', message: '' }) }
+    );
   };
 
   // The day names stay translated; the times come from what she saved in the
@@ -223,11 +213,22 @@ const ContactPage = () => {
               </p>
               <button
                 type="submit"
-                className={`px-6 sm:px-12 py-3 sm:py-5 font-sans uppercase tracking-[0.3em] text-xs sm:text-sm rounded-full shadow-xl transition-all duration-250 transform hover:scale-105 ${sent ? 'bg-green-600 text-white' : 'bg-slate-stone text-white hover:bg-slate-stone/90'}`}
+                disabled={enCours}
+                className={`press px-6 sm:px-12 py-3 sm:py-5 font-sans uppercase tracking-[0.3em] text-xs sm:text-sm rounded-full shadow-xl transition-colors duration-250 disabled:opacity-60 ${etat === 'ok' ? 'bg-green-600 text-white' : 'bg-slate-stone text-white hover:bg-slate-stone/90'}`}
               >
-                {sent ? t('contact.sent') : t('contact.send')}
+                {enCours ? t('contact.sending') : etat === 'ok' ? t('contact.sent') : t('contact.send')}
               </button>
             </div>
+
+            {message && (
+              <p
+                role={message === 'erreur' ? 'alert' : 'status'}
+                aria-hidden={!messageVisible}
+                className={`mt-5 text-sm font-light transition-opacity duration-500 ${messageVisible ? 'opacity-100' : 'opacity-0'} ${message === 'erreur' ? 'text-red-600' : 'text-green-700'}`}
+              >
+                {message === 'erreur' ? t('contact.sendError') : t('contact.sent')}
+              </p>
+            )}
           </form>
         </div>
       </section>

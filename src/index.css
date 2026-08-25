@@ -198,6 +198,42 @@
   }
 }
 
+/* Composants. Une couche a part, pour que ces regles perdent contre les
+   utilitaires Tailwind ecrits sur l'element — c'est l'ordre attendu, et une
+   regle posee hors couche l'emporterait au contraire sur tout le reste. */
+@layer components {
+  /* Le retour au doigt.
+     Le site posait `active:scale-[0.97]` sur une vingtaine de surfaces. Sur
+     mobile, `:active` n'arrive qu'apres le delai de decision du navigateur — le
+     doigt a deja quitte l'ecran quand l'echelle change, donc on ne voit rien.
+     Et la meme duree a l'aller qu'au retour donne un rebond mou.
+     Ici : descente immediate et courte, remontee plus longue et amortie. On
+     s'enfonce vite, on remonte doucement — c'est ce que fait un vrai bouton. */
+  .press {
+    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .press:active {
+    transform: scale(0.97);
+    transition-duration: 80ms;
+  }
+
+  /* L'entree d'une carte de catalogue.
+     La grille se contentait d'un `.reveal` pilote par l'observateur
+     d'intersection, plus un `transitionDelay` de 100 ms par carte : la
+     troisieme rangee arrivait 1,1 s apres la premiere, alors qu'on venait de
+     cliquer une rubrique et qu'on regardait deja l'endroit ou elle devait
+     apparaitre. Ici l'animation part au montage, sans observateur — la carte
+     est visible par defaut, et rien ne peut la laisser invisible. */
+  .carte-entre {
+    animation: carteEntre 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes carteEntre {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* Scroll reveal.
    Was `transition: all 1.5s` with an animated `filter: blur()`. `all` transitions
    every property that happens to change, and `filter` is not compositor-friendly,

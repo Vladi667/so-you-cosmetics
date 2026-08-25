@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Logo from './Logo';
 import { useLanguage } from '../i18n/LanguageContext';
+import useEnvoiFormulaire from '../hooks/useEnvoiFormulaire';
 
 const SOCIAL = {
   instagram: 'https://www.instagram.com/soyoucosmetics.ch?igsh=MTM4bWd2NTd2OHB1Mw==',
@@ -22,33 +23,24 @@ const EXPLORE_LINKS = [
 const Footer = () => {
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
-  const [subscribed, setSubscribed] = useState(false);
+  const { etat, enCours, message, messageVisible, envoyer } = useEnvoiFormulaire();
 
+  // La confirmation vivait dans le `catch`, sous le commentaire « optimistic
+  // confirmation » : une adresse perdue affichait « ✓ Inscrit ». Elle ne
+  // s'affiche plus que sur une réponse reçue.
   const handleSubscribe = (e) => {
     e.preventDefault();
     const value = email.trim();
-    if (!value) return;
+    if (!value || enCours) return;
 
-    const finish = () => {
-      setSubscribed(true);
-      setEmail('');
-      setTimeout(() => setSubscribed(false), 4000);
-    };
-
-    fetch('/api/newsletter', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: value })
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Subscription failed');
-        return res.json();
-      })
-      .then(finish)
-      .catch(err => {
-        console.warn('Newsletter signup failed, showing optimistic confirmation:', err);
-        finish();
-      });
+    envoyer(
+      fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: value })
+      }),
+      { surSucces: () => setEmail('') }
+    );
   };
 
   return (
@@ -118,14 +110,28 @@ const Footer = () => {
                 type="email"
                 required
                 value={email}
+                disabled={enCours}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t('footer.emailPlaceholder')}
-                className="bg-transparent border-none outline-none text-sm w-full placeholder-mist-white/30 text-white font-light"
+                className="bg-transparent border-none outline-none text-sm w-full placeholder-mist-white/30 text-white font-light disabled:opacity-50"
               />
-              <button type="submit" className="text-[10px] uppercase tracking-[0.2em] text-mist-white/50 group-hover:text-white transition-colors duration-200 whitespace-nowrap active:scale-[0.97]">
-                {subscribed ? t('footer.subscribed') : t('footer.subscribe')}
+              <button
+                type="submit"
+                disabled={enCours}
+                className="press text-[10px] uppercase tracking-[0.2em] text-mist-white/50 group-hover:text-white transition-colors duration-200 whitespace-nowrap disabled:opacity-50"
+              >
+                {enCours ? t('footer.subscribing') : etat === 'ok' ? t('footer.subscribed') : t('footer.subscribe')}
               </button>
             </form>
+            {message === 'erreur' && (
+              <p
+                role="alert"
+                aria-hidden={!messageVisible}
+                className={`mt-3 text-xs font-light text-red-300 transition-opacity duration-500 ${messageVisible ? 'opacity-100' : 'opacity-0'}`}
+              >
+                {t('footer.subscribeError')}
+              </p>
+            )}
           </div>
 
         </div>
