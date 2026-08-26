@@ -29,7 +29,7 @@ const AdminDashboard = ({ onLogout }) => {
   const [customBadge, setCustomBadge] = useState(false);
   const [workshopImageUploading, setWorkshopImageUploading] = useState(false);
   const PRODUCTS_PER_PAGE = 25;
-  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '', rechargePrix: '' };
+  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], poids: '', contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '', rechargePrix: '' };
   // Charger un produit dans le formulaire.
   //
   // Les deux entrées — « Modifier » et « Dupliquer » — construisaient chacune
@@ -50,6 +50,7 @@ const AdminDashboard = ({ onLogout }) => {
     inStock: p.inStock !== false,
     related: Array.isArray(p.related) ? [...p.related] : [],
     contenance: p.contenance || '',
+    poids: p.poids ?? '',
     ingredients: p.ingredients || '',
     inci: p.inci || '',
     // Les listes redeviennent du texte pour la saisie, et le serveur les
@@ -903,6 +904,7 @@ const AdminDashboard = ({ onLogout }) => {
                   // et s'évapore au rechargement sans qu'aucune erreur ne le
                   // dise.
                   contenance: productForm.contenance || '',
+                  poids: productForm.poids === '' ? null : productForm.poids,
                   ingredients: productForm.ingredients || '',
                   inci: productForm.inci || '',
                   typePeau: productForm.typePeauText || '',
@@ -1117,6 +1119,19 @@ const AdminDashboard = ({ onLogout }) => {
                       <input type="text" placeholder="ex : 100 ml, ou 50 g" value={productForm.contenance}
                         onChange={e => setProductForm({...productForm, contenance: e.target.value})}
                         className="px-4 py-2 border rounded w-full" />
+                    </div>
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Poids expédié (g)</label>
+                      <input type="number" min="1" step="1" placeholder="ex : 140" value={productForm.poids}
+                        onChange={e => setProductForm({...productForm, poids: e.target.value})}
+                        className="px-4 py-2 border rounded w-full" />
+                      {/* La contenance est ce qu'il y a dedans, le poids ce que
+                          la Poste pèse : emballage compris. Un savon de 90 g
+                          part souvent à 140 g une fois emballé. */}
+                      <p className="text-[11px] text-stone-gray mt-1 leading-snug">
+                        Emballage compris. Renseigné sur tous les produits d'une commande, il choisit
+                        le tarif postal au lieu du forfait. Laissé vide, rien ne change.
+                      </p>
                     </div>
                     <div>
                       <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Étiquettes libres</label>

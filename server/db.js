@@ -624,6 +624,13 @@ function normalizeProductInput(input, base = {}) {
   // montant d'un autre.
   if (input.bonCadeau !== undefined) out.bonCadeau = !!input.bonCadeau;
   if (input.contenance !== undefined) out.contenance = String(input.contenance || '').trim();
+  // Le poids expédié, en grammes. C'est le seul champ qui manquait pour que le
+  // tarif postal se choisisse d'après le panier réel plutôt qu'au forfait — et
+  // le seul des trois qu'elle ne pouvait pas saisir elle-même.
+  if (input.poids !== undefined) {
+    const g = Number(String(input.poids).replace(',', '.'));
+    out.poids = Number.isFinite(g) && g > 0 ? Math.round(g) : null;
+  }
   if (input.ingredients !== undefined) out.ingredients = String(input.ingredients || '').trim();
   if (input.inci !== undefined) out.inci = String(input.inci || '').trim();
   if (input.typePeau !== undefined) out.typePeau = toArray(input.typePeau);
