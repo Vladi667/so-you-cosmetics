@@ -1065,6 +1065,21 @@ router.get('/admin/newsletter', requireAdmin, async (req, res) => {
   }
 });
 
+// Retirer une inscription. C'est ce qui rend tenable le droit d'effacement que
+// la politique de confidentialité annonce.
+router.delete('/admin/newsletter', requireAdmin, async (req, res) => {
+  try {
+    const email = String((req.body && req.body.email) || req.query.email || '').trim();
+    if (!email) return res.status(400).json({ error: 'Adresse manquante.' });
+    const retire = await db.removeNewsletterSubscriber(email);
+    if (!retire) return res.status(404).json({ error: 'Cette adresse ne figure pas dans la liste.' });
+    res.json({ retire: true, email });
+  } catch (err) {
+    console.error('Retrait impossible :', err.message);
+    res.status(500).json({ error: "Le retrait n'a pas pu être effectué." });
+  }
+});
+
 // Le même fichier, dans la forme qui se colle dans un outil d'envoi.
 router.get('/admin/newsletter/export', requireAdmin, async (req, res) => {
   try {

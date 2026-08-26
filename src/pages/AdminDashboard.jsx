@@ -840,8 +840,31 @@ const AdminDashboard = ({ onLogout }) => {
                   {abonnees.map((a, i) => (
                     <div key={i} className="flex items-baseline justify-between gap-4 py-2 text-sm">
                       <span className="font-mono text-xs text-slate-stone truncate">{a.email}</span>
-                      <span className="text-[11px] text-stone-gray whitespace-nowrap">
-                        {a.created_at ? new Date(a.created_at).toLocaleDateString('fr-CH') : '—'}
+                      <span className="flex items-baseline gap-3 whitespace-nowrap">
+                        <span className="text-[11px] text-stone-gray">
+                          {a.created_at ? new Date(a.created_at).toLocaleDateString('fr-CH') : '—'}
+                        </span>
+                        {/* La politique de confidentialité promet un retrait sur
+                            simple demande. Sans ce bouton, l'honorer voulait dire
+                            ouvrir un fichier sur le serveur. */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!window.confirm(`Retirer ${a.email} de l'infolettre ?`)) return;
+                            fetch('/api/admin/newsletter', {
+                              method: 'DELETE',
+                              headers: fetchHeaders,
+                              body: JSON.stringify({ email: a.email }),
+                            })
+                              .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+                              .then(() => setAbonnees((prev) => prev.filter((x) => x.email !== a.email)))
+                              .catch(() => window.alert("Le retrait n'a pas pu être effectué."));
+                          }}
+                          className="text-[11px] text-stone-gray/60 hover:text-red-500 transition-colors"
+                          title="Retirer de la liste"
+                        >
+                          Retirer
+                        </button>
                       </span>
                     </div>
                   ))}

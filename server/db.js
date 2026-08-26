@@ -1019,6 +1019,41 @@ async function getNewsletterSubscribers() {
   }
 }
 
+// Retirer quelqu'un de l'infolettre.
+//
+// La politique de confidentialité promet un droit d'effacement et un retrait
+// sur simple demande. Sans cette fonction, honorer cette promesse voulait dire
+// ouvrir un fichier JSON sur le serveur — autant dire que la promesse ne
+// tenait pas.
+async function removeNewsletterSubscriber(email) {
+  const cible = String(email || '').trim().toLowerCase();
+  if (!cible) return false;
+
+  if (pool) {
+    try {
+      const [r] = await pool.query('DELETE FROM newsletter WHERE LOWER(email) = ?', [cible]);
+      return r.affectedRows > 0;
+    } catch (err) {
+      console.error('MySQL removeNewsletterSubscriber failed, falling back to JSON file', err);
+    }
+  }
+  try {
+    const data = JSON.parse(fs.readFileSync(NEWSLETTER_FILE, 'utf8'));
+    const liste = Array.isArray(data) ? data : [];
+    // Le fichier mêle d'anciennes entrées en simple chaîne et des objets.
+    const reste = liste.filter((n) => {
+      const e = typeof n === 'string' ? n : (n && n.email);
+      return String(e || '').trim().toLowerCase() !== cible;
+    });
+    if (reste.length === liste.length) return false;
+    ecrireJson(NEWSLETTER_FILE, reste);
+    return true;
+  } catch (err) {
+    console.error("Retrait de l'inscription impossible :", err.message);
+    return false;
+  }
+}
+
 // 5b. Create Newsletter Subscriber (idempotent — ignores duplicate emails)
 async function createNewsletterSubscriber(email) {
   const normalized = String(email).toLowerCase().trim();
@@ -1731,6 +1766,7 @@ module.exports = {
   createContact,
   createNewsletterSubscriber,
   getNewsletterSubscribers,
+  removeNewsletterSubscriber,
   // Admin DB functions
   getAdmin,
   updateAdminPassword,
