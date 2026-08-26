@@ -1048,7 +1048,7 @@ const translations = {
     hero: {
       brand: 'So You',
       titleLine1: 'Schönheit, mit Absicht geschaffen.',
-      titleLine2: 'Zum Genießen.',
+      titleLine2: 'Zum Geniessen.',
       subtitleLine1: 'Die Natur ist das Fundament.',
       subtitleLine2: 'Die Wissenschaft ist die Verfeinerung.',
       cta1: 'So You entdecken',
