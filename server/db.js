@@ -425,6 +425,118 @@ function writeProductsFile(data) {
   if (data.categories) productsData.categories = data.categories;
 }
 
+// Reprendre les trois champs que seule elle possède : composition, contenance,
+// poids.
+//
+// Les colonnes existent depuis la vague 10 ; elles sont vides sur les 178
+// produits. Ce qui manquait, c'était le chemin pour y verser son export sans
+// passer par 178 saisies à la main.
+//
+// SIMULE PAR DÉFAUT. La règle du plan est explicite pour ce genre d'écriture :
+// produire d'abord le tableau, le lui faire valider, appliquer ensuite. Rien
+// n'est écrit sans `appliquer: true`.
+function normaliserReference(texte) {
+  return String(texte || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+// Une liste d'ingrédients coupée est pire qu'absente : l'allergène disparaît de
+// la ligne que quelqu'un est en train de lire pour savoir s'il peut acheter.
+// On refuse ce qu'on soupçonne plutôt que de le publier.
+function inciSuspecte(texte) {
+  const t = String(texte || '');
+  const motifs = [];
+  if (/[a-z]-[a-z]{2,}/.test(t) && !/[a-z]-(free|\d)/i.test(t)) motifs.push('mot coupé par un tiret');
+  if (/,[A-Za-z]/.test(t)) motifs.push('virgule sans espace');
+  if (/\.{3}|…/.test(t)) motifs.push('liste tronquée');
+  if (t.length > 0 && t.length < 25) motifs.push('liste anormalement courte');
+  return motifs;
+}
+
+function importerMetadonnees(lignes, options = {}) {
+  const appliquer = options.appliquer === true;
+  const data = readProductsFile();
+  const produits = data.products || [];
+
+  const parId = new Map(produits.map((p) => [String(p.id), p]));
+  const parNom = new Map();
+  for (const p of produits) {
+    const cle = normaliserReference(p.name);
+    if (!cle) continue;
+    // Deux produits portant le même nom : on ne devine pas lequel elle visait.
+    parNom.set(cle, parNom.has(cle) ? null : p);
+  }
+
+  const rapport = {
+    traitees: 0, appliquees: 0,
+    introuvables: [], ambigues: [], refusees: [], avertissements: [],
+  };
+
+  for (const ligne of Array.isArray(lignes) ? lignes : []) {
+    rapport.traitees++;
+    const ref = String((ligne && ligne.reference) || '').trim();
+    if (!ref) { rapport.refusees.push({ ref: '(vide)', motif: 'référence absente' }); continue; }
+
+    let produit = parId.get(ref);
+    if (!produit) {
+      const cle = normaliserReference(ref);
+      if (parNom.has(cle) && parNom.get(cle) === null) { rapport.ambigues.push(ref); continue; }
+      produit = parNom.get(cle);
+    }
+    if (!produit) { rapport.introuvables.push(ref); continue; }
+
+    const champs = {};
+
+    if (ligne.inci !== undefined && String(ligne.inci).trim()) {
+      const inci = String(ligne.inci).trim();
+      const doutes = inciSuspecte(inci);
+      if (doutes.length) {
+        rapport.refusees.push({ ref, motif: 'composition suspecte — ' + doutes.join(', ') });
+      } else {
+        champs.inci = inci;
+      }
+    }
+
+    if (ligne.contenance !== undefined && String(ligne.contenance).trim()) {
+      champs.contenance = String(ligne.contenance).trim();
+    }
+
+    if (ligne.poids !== undefined && String(ligne.poids).trim()) {
+      const g = Number(String(ligne.poids).replace(',', '.'));
+      if (!Number.isFinite(g) || g <= 0) {
+        rapport.refusees.push({ ref, motif: 'poids illisible : ' + ligne.poids });
+      } else if (g > 20000) {
+        rapport.refusees.push({ ref, motif: 'poids invraisemblable : ' + g + ' g' });
+      } else {
+        // En grammes, entier : la Poste ne facture pas au milligramme.
+        champs.poids = Math.round(g);
+        if (g < 5) rapport.avertissements.push({ ref, motif: 'poids très faible : ' + g + ' g' });
+      }
+    }
+
+    if (Object.keys(champs).length === 0) continue;
+    rapport.appliquees++;
+    if (appliquer) Object.assign(produit, champs);
+  }
+
+  if (appliquer && rapport.appliquees > 0) {
+    // Une sauvegarde horodatée avant d'écrire : c'est le seul exemplaire de son
+    // catalogue, et un import raté ne se rattrape pas.
+    const horodatage = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const copie = PRODUCTS_FILE + '.bak-avant-import-' + horodatage;
+    fs.copyFileSync(PRODUCTS_FILE, copie);
+    rapport.sauvegarde = copie;
+    writeProductsFile(data);
+  }
+
+  rapport.simulation = !appliquer;
+  return rapport;
+}
+
 // Turn a Google Drive *share* link into a directly-embeddable image URL.
 // Accepts the common shapes the admin might paste:
 //   https://drive.google.com/file/d/FILEID/view?usp=sharing
@@ -669,6 +781,40 @@ async function deleteProduct(id) {
 // On raisonne sur l'identifiant, et non sur un drapeau ajouté aux options :
 // ses réglages sont déjà enregistrés sur le serveur et ne le porteraient pas,
 // si bien qu'un retrait en boutique se mettrait soudain à réclamer une adresse.
+// Le poids du panier, et la limite que la Poste impose vraiment.
+//
+// Ses quatre tarifs colis portent la mention « Jusqu'à 2 kg ». Comme pour
+// « Bon cadeau uniquement », la mention était affichée et jamais vérifiée : un
+// panier de trois kilos partait au tarif de deux, et le surcoût était pour elle.
+//
+// La règle ne mord que sur ce qu'on connaît. Tant qu'un seul article du panier
+// n'a pas de poids — et aujourd'hui aucun n'en a — le total est déclaré inconnu
+// et rien n'est bloqué : on ne refuse pas une commande sur une somme incomplète.
+// Le jour où son export remplit les 178 champs, la limite s'applique d'elle-même.
+const LIMITE_COLIS_G = 2000;
+const MODES_LIMITES_2KG = new Set(['economy', 'economysig', 'priority', 'prioritysig']);
+
+function poidsPanier(lignes) {
+  const articles = Array.isArray(lignes) ? lignes : [];
+  let grammes = 0;
+  let connu = articles.length > 0;
+  for (const a of articles) {
+    const g = Number(a && a.produit ? a.produit.poids : a && a.poids);
+    const qte = Math.max(1, parseInt((a && a.qty) || 1, 10) || 1);
+    if (!Number.isFinite(g) || g <= 0) { connu = false; continue; }
+    grammes += g * qte;
+  }
+  return { connu, grammes: connu ? grammes : null };
+}
+
+// Rend `true` quand on ne sait pas : l'ignorance n'est pas un motif de refus.
+function modeSupporteLePoids(shippingId, lignes) {
+  if (!MODES_LIMITES_2KG.has(String(shippingId || ''))) return true;
+  const { connu, grammes } = poidsPanier(lignes);
+  if (!connu) return true;
+  return grammes <= LIMITE_COLIS_G;
+}
+
 // Les modes d'expédition qu'elle réserve aux bons cadeaux.
 //
 // Ses quatre tarifs Courrier portent la mention « Bon cadeau uniquement » — un
@@ -1509,6 +1655,7 @@ async function updateOrderFulfillment(orderId, patch) {
 
 module.exports = {
   getProducts,
+  importerMetadonnees,
   getProductById,
   createProduct,
   decrementStock,
@@ -1534,6 +1681,8 @@ module.exports = {
   exigeAdresse,
   estBonCadeau,
   modeAutorise,
+  poidsPanier,
+  modeSupporteLePoids,
   createBooking,
   createContact,
   createNewsletterSubscriber,

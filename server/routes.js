@@ -338,7 +338,7 @@ async function computeOrderTotal(items, shippingId, options = {}) {
     // article à zéro franc. Quatre existent au catalogue, et sans cette garde
     // un panier n'en contenant qu'elles passait pour le seul prix du port.
     if (!(Number(product.price) > 0)) continue;
-    produitsCommandes.push(product);
+    produitsCommandes.push({ produit: product, qty: Math.max(1, parseInt(line.qty, 10) || 1) });
 
     // La variante de recharge. Le navigateur DEMANDE une recharge ; c'est le
     // catalogue qui en donne le prix, et seulement si la fiche en propose une.
@@ -368,9 +368,19 @@ async function computeOrderTotal(items, shippingId, options = {}) {
   // Ses quatre tarifs Courrier portent la mention « Bon cadeau uniquement ».
   // Elle était affichée, jamais appliquée : on pouvait expédier deux kilos de
   // savon pour un franc. La différence sortait de sa poche.
-  if (!db.modeAutorise(shippingId, produitsCommandes)) {
+  if (!db.modeAutorise(shippingId, produitsCommandes.map((l) => l.produit))) {
     const e = new Error('mode-reserve');
     e.code = 'SHIPPING_RESERVE';
+    throw e;
+  }
+
+  // « Jusqu'à 2 kg » figurait sur ses quatre tarifs colis sans être vérifié.
+  // La règle ne mord que sur un panier dont TOUS les poids sont connus : tant
+  // que son export n'est pas versé, rien ne change.
+  if (!db.modeSupporteLePoids(shippingId, produitsCommandes)) {
+    const e = new Error('poids-depasse');
+    e.code = 'SHIPPING_POIDS';
+    e.poids = db.poidsPanier(produitsCommandes).grammes;
     throw e;
   }
 
@@ -434,6 +444,10 @@ router.post('/orders', async (req, res) => {
     try {
       calcul = await computeOrderTotal(items, shippingId, { emballageCadeau: cadeau && cadeau.emballage });
     } catch (err) {
+      if (err && err.code === 'SHIPPING_POIDS') {
+        const kg = (Number(err.poids) / 1000).toFixed(1).replace('.', ',');
+        return res.status(400).json({ error: `Ce panier pèse ${kg} kg : au-delà de 2 kg, ce tarif ne s'applique plus. Écrivez-nous et nous organiserons l'envoi.` });
+      }
       if (err && err.code === 'SHIPPING_RESERVE') {
         return res.status(400).json({ error: "Ce tarif est réservé aux bons cadeaux. Choisissez un envoi colis ou le retrait à la boutique." });
       }
@@ -829,6 +843,77 @@ router.put('/content', requireAdmin, (req, res) => {
 // 3e. Shop settings — opening hours, absence notice, maintenance mode.
 // Read by the admin only; the public site receives them injected into the page
 // (server/index.js), like the content overrides.
+// Verser son export dans les trois champs vides.
+//
+// Elle envoie un CSV : c'est ce que Wix exporte et ce qui s'ouvre dans Excel.
+// On accepte le point-virgule comme la virgule — Excel en Suisse romande écrit
+// des points-virgules, et un fichier séparé par des virgules recollé à la main
+// est le cas le plus fréquent.
+//
+// SIMULE PAR DÉFAUT. Il faut `appliquer: true` pour écrire, et la réponse dit
+// toujours ce qui serait fait, dans les deux cas.
+function lireCsv(texte) {
+  const brut = String(texte || '').replace(/^﻿/, '').trim();
+  if (!brut) return [];
+  const lignes = brut.split(/\r?\n/).filter((l) => l.trim());
+  if (lignes.length < 2) return [];
+
+  // Le séparateur est celui qui apparaît le plus dans l'en-tête.
+  const entete = lignes[0];
+  const sep = (entete.split(';').length > entete.split(',').length) ? ';' : ',';
+
+  const decouper = (ligne) => {
+    const cases = [];
+    let courant = '', dansGuillemets = false;
+    for (let i = 0; i < ligne.length; i++) {
+      const c = ligne[i];
+      if (c === '"') {
+        if (dansGuillemets && ligne[i + 1] === '"') { courant += '"'; i++; }
+        else dansGuillemets = !dansGuillemets;
+      } else if (c === sep && !dansGuillemets) {
+        cases.push(courant); courant = '';
+      } else {
+        courant += c;
+      }
+    }
+    cases.push(courant);
+    return cases.map((v) => v.trim());
+  };
+
+  const clefs = decouper(entete).map((t) =>
+    t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, '')
+  );
+
+  return lignes.slice(1).map((l) => {
+    const cases = decouper(l);
+    const ligne = {};
+    clefs.forEach((k, i) => {
+      // On ne retient que les quatre colonnes attendues ; le reste de son
+      // export Wix passe sans être lu.
+      if (k === 'reference' || k === 'ref' || k === 'nom' || k === 'name') ligne.reference = cases[i];
+      else if (k === 'inci' || k === 'composition') ligne.inci = cases[i];
+      else if (k === 'contenance' || k === 'volume') ligne.contenance = cases[i];
+      else if (k === 'poids' || k === 'weight') ligne.poids = cases[i];
+    });
+    return ligne;
+  });
+}
+
+router.post('/admin/products/import-metadata', requireAdmin, (req, res) => {
+  try {
+    const { csv, lignes, appliquer } = req.body || {};
+    const rangs = Array.isArray(lignes) ? lignes : lireCsv(csv);
+    if (rangs.length === 0) {
+      return res.status(400).json({ error: 'Aucune ligne lisible. Attendu : un CSV avec une colonne « reference », plus « inci », « contenance » ou « poids ».' });
+    }
+    const rapport = db.importerMetadonnees(rangs, { appliquer: appliquer === true });
+    res.json(rapport);
+  } catch (err) {
+    console.error('Import des métadonnées produits :', err.message);
+    res.status(500).json({ error: "L'import n'a pas pu être traité." });
+  }
+});
+
 router.get('/admin/settings/shop', requireAdmin, (req, res) => {
   try {
     res.json(db.getShopSettings());
