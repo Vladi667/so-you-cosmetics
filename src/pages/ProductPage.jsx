@@ -5,6 +5,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import ProductPlaceholder from '../components/ProductPlaceholder';
 import ProductBadge from '../components/ProductBadge';
 import { descriptionToHtml } from '../utils/description';
+import { lireRecette } from '../data/recettes';
 import { ouvrirPanier } from '../services/panier';
 import ImageProduit from '../components/ImageProduit';
 import VisionneuseImage from '../components/VisionneuseImage';
@@ -79,6 +80,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   // bouton qu'on vient de toucher.
   const [ajoute, setAjoute] = useState(false);
   const [visionneuseOuverte, setVisionneuseOuverte] = useState(false);
+  const [senteurs, setSenteurs] = useState([]);
   // La barre d'achat collante ne paraît que lorsque le vrai bouton a quitté
   // l'écran. L'afficher en permanence doublerait un bouton déjà visible et
   // mangerait le bas de la fiche pour rien.
@@ -104,6 +106,23 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
         //
         // Les identifiants absents du catalogue sont ignorés : un produit
         // supprimé ne doit pas laisser un trou dans la rangée.
+        // Les autres senteurs de la même recette. Dérivées du nom, comme au
+        // catalogue : rien n'est écrit, et une fiche renommée suit d'elle-même.
+        const recette = lireRecette(foundProduct.name);
+        if (recette) {
+          const memeRecette = productsList
+            .filter((p) => {
+              const r = lireRecette(p.name);
+              return r && r.cle === recette.cle;
+            })
+            .sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+          // Une senteur seule n'est pas un choix : on n'affiche le sélecteur
+          // que s'il y a réellement de quoi choisir.
+          setSenteurs(memeRecette.length > 1 ? memeRecette.map((p) => ({ ...p, senteur: lireRecette(p.name).senteur })) : []);
+        } else {
+          setSenteurs([]);
+        }
+
         const choisis = (foundProduct.related || [])
           .map((rid) => productsList.find((p) => p.id === rid))
           .filter(Boolean);
@@ -290,6 +309,42 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   )}
                 </div>
               </div>
+
+              {/* L'orgue à parfums. Quinze senteurs d'un même savon occupaient
+                  quinze fiches sans jamais se citer l'une l'autre : on tombait
+                  sur « Vanilla Moon » sans savoir que « Lin Frais » existait.
+                  Chaque pastille porte son propre prix, parce qu'elles
+                  diffèrent — de CHF 5.20 à 11.60 — et qu'un prix unique
+                  promettrait un montant que la caisse ne confirmerait pas. */}
+              {senteurs.length > 1 && (
+                <div className="mb-8">
+                  <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-stone-gray/70 mb-3">
+                    {t('product.scentsTitle', { n: senteurs.length })}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {senteurs.map((v) => {
+                      const active = v.id === product.id;
+                      return (
+                        <Link
+                          key={v.id}
+                          to={`/product/${v.id}`}
+                          aria-current={active}
+                          className={`press rounded-full border px-4 py-2 font-sans text-xs ${
+                            active
+                              ? 'border-slate-stone bg-slate-stone text-white'
+                              : 'border-slate-stone/20 text-slate-stone hover:border-slate-stone/50'
+                          }`}
+                        >
+                          {v.senteur}
+                          <span className={`ml-2 tabular-nums ${active ? 'text-white/70' : 'text-stone-gray/60'}`}>
+                            {Number(v.price).toFixed(2)}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Sans prix fixe, il n'y a rien a mettre au panier : on
                   propose ce qui a du sens, une demande de devis. */}

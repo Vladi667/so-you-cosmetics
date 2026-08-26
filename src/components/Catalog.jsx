@@ -6,6 +6,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { visibleCategories } from '../data/categories';
 import { ouvrirPanier, sursautPanier } from '../services/panier';
 import { TRANCHES_PRIX, dansLaTranche, trier, TRIS } from '../data/tri';
+import { grouperParRecette } from '../data/recettes';
 import ProductBadge from './ProductBadge';
 import ProductPlaceholder from './ProductPlaceholder';
 
@@ -144,6 +145,13 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
         ...filtered,
       ];
     }
+
+    // L'orgue a parfums. Quinze savons « olive, coco, ricin, palme RSPO »
+    // occupaient quinze cartes identiques a la photo pres : ce n'est pas quinze
+    // savons, c'est un savon en quinze senteurs. Le regroupement vient AVANT
+    // les filtres et le tri, pour que le compte affiche porte sur les cartes
+    // reellement montrees.
+    filtered = grouperParRecette(filtered);
 
     // Les fourchettes de prix, puis le tri. Dans cet ordre : trier ce qu'on
     // s'apprete a jeter serait du travail perdu, et le compte affiche doit
@@ -455,6 +463,13 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                         {product.name}
                       </h3>
                     </Link>
+                    {/* Le nombre de senteurs, pas la liste : sur une carte de
+                        catalogue, quinze noms de parfums ne se lisent pas. */}
+                    {product.estRecette && (
+                      <p className="mt-1 font-sans text-[10px] sm:text-xs text-stone-gray/70">
+                        {t('catalog.scentCount', { n: product.membres.length })}
+                      </p>
+                    )}
                   </div>
                   <div className="mt-auto pt-2 sm:pt-4 flex items-center justify-between border-t border-slate-stone/10">
                     {/* Quatre fiches du catalogue sont a CHF 0 : les trois
@@ -464,7 +479,15 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                         « CHF 0.00 », on pouvait les commander pour le seul prix
                         du port. */}
                     <p className="text-slate-stone text-xs sm:text-base font-medium tracking-wide">
-                      {Number(product.price) > 0 ? `CHF ${product.price.toFixed(2)}` : t('catalog.onQuote')}
+                      {/* « des CHF X » quand les senteurs d'une meme recette
+                          n'ont pas le meme prix. Afficher un prix unique
+                          promettrait un montant que la caisse ne confirmerait
+                          pas : le serveur facture par identifiant. */}
+                      {Number(product.price) > 0
+                        ? (product.prixVariable
+                            ? t('catalog.fromPrice', { price: product.price.toFixed(2) })
+                            : `CHF ${product.price.toFixed(2)}`)
+                        : t('catalog.onQuote')}
                     </p>
                     <div className="flex space-x-2 sm:space-x-3">
                       <button 
@@ -477,7 +500,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                       </button>
                       {/* Un atelier se réserve, il ne s'ajoute pas au panier :
                           le bouton n'aurait mené qu'à une impasse. */}
-                      {!product.estAtelier && Number(product.price) > 0 && (
+                      {!product.estAtelier && !product.estRecette && Number(product.price) > 0 && (
                       <button
                         onClick={(e) => {
                           if (product.inStock === false) return;
