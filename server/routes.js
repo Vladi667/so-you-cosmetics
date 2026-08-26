@@ -963,6 +963,41 @@ router.put('/admin/settings/shop', requireAdmin, (req, res) => {
   if (patch.hours !== undefined && !Array.isArray(patch.hours)) {
     return res.status(400).json({ error: 'Les horaires doivent être une liste' });
   }
+
+  // Les tarifs postaux sont sur le chemin de l'argent : un prix illisible
+  // enregistré, et toute commande part au mauvais montant. On refuse plutôt que
+  // de laisser passer une valeur qu'on devrait ensuite interpréter.
+  //
+  // Les identifiants ne se modifient pas : trois règles s'y appuient — l'adresse
+  // exigée hors retrait, les tarifs réservés aux bons cadeaux, et la limite des
+  // deux kilos. Renommer « priority » romprait les trois en silence.
+  if (patch.shipping !== undefined) {
+    const exp = patch.shipping;
+    if (!exp || typeof exp !== 'object') {
+      return res.status(400).json({ error: "Format des frais de port invalide" });
+    }
+    if (exp.freeFrom !== undefined && exp.freeFrom !== null) {
+      const seuil = Number(exp.freeFrom);
+      if (!Number.isFinite(seuil) || seuil < 0) {
+        return res.status(400).json({ error: "Le seuil de livraison offerte doit être un montant." });
+      }
+    }
+    if (exp.options !== undefined) {
+      if (!Array.isArray(exp.options) || exp.options.length === 0) {
+        return res.status(400).json({ error: "La liste des modes d'expédition ne peut pas être vide." });
+      }
+      const connus = new Set((db.getShopSettings().shipping.options || []).map((o) => String(o.id)));
+      for (const o of exp.options) {
+        if (!o || !connus.has(String(o.id))) {
+          return res.status(400).json({ error: "Un mode d'expédition inconnu a été envoyé. Rechargez la page." });
+        }
+        const prix = Number(o.price);
+        if (!Number.isFinite(prix) || prix < 0) {
+          return res.status(400).json({ error: `Le prix de « ${String(o.label || o.id)} » doit être un montant.` });
+        }
+      }
+    }
+  }
   try {
     res.json(db.updateShopSettings(patch));
   } catch (err) {

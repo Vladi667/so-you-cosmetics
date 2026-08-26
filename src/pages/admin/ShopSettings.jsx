@@ -134,6 +134,80 @@ const ShopSettings = ({ fetchHeaders }) => {
         </div>
       </div>
 
+      {/* Frais de port */}
+      <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 sm:p-8 shadow-sm mb-6">
+        <h2 className="font-serif text-xl text-slate-stone mb-1">Frais de port</h2>
+        <p className="text-xs text-stone-gray mb-5">
+          Vos tarifs, tels qu'ils s'affichent à la caisse. Ils étaient écrits dans le code : une
+          hausse de La Poste demandait une intervention. <strong className="text-slate-stone">
+          Les intitulés se modifient, pas les identifiants</strong> — trois règles s'y appuient,
+          dont l'adresse exigée hors retrait et la limite des deux kilos.
+        </p>
+
+        <div className="mb-5">
+          <label className="block text-[11px] uppercase tracking-widest text-stone-gray mb-1">
+            Livraison offerte dès (CHF)
+          </label>
+          <input
+            type="number" min="0" step="1"
+            value={settings.shipping?.freeFrom ?? ''}
+            onChange={(e) => maj({ shipping: { ...settings.shipping, freeFrom: e.target.value === '' ? null : Number(e.target.value) } })}
+            className={champ + ' max-w-[12rem]'}
+          />
+          <p className="text-[11px] text-stone-gray mt-1">
+            Ne s'applique qu'au mode coché « offert au-delà du seuil » ci-dessous.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          {(settings.shipping?.options || []).map((o, i) => (
+            <div key={o.id} className="grid grid-cols-12 items-center gap-2">
+              <input
+                type="text"
+                value={o.label || ''}
+                onChange={(e) => {
+                  const options = settings.shipping.options.map((x, k) => (k === i ? { ...x, label: e.target.value } : x));
+                  maj({ shipping: { ...settings.shipping, options } });
+                }}
+                className={champ + ' col-span-12 sm:col-span-6'}
+              />
+              <input
+                type="number" min="0" step="0.05"
+                value={o.price ?? ''}
+                onChange={(e) => {
+                  const options = settings.shipping.options.map((x, k) => (k === i ? { ...x, price: Number(e.target.value) } : x));
+                  maj({ shipping: { ...settings.shipping, options } });
+                }}
+                className={champ + ' col-span-5 sm:col-span-2'}
+              />
+              <input
+                type="text"
+                placeholder="note"
+                value={o.note || ''}
+                onChange={(e) => {
+                  const options = settings.shipping.options.map((x, k) => (k === i ? { ...x, note: e.target.value } : x));
+                  maj({ shipping: { ...settings.shipping, options } });
+                }}
+                className={champ + ' col-span-7 sm:col-span-3'}
+              />
+              <label className="col-span-12 sm:col-span-1 flex items-center gap-2 text-[11px] text-stone-gray" title="Offert au-delà du seuil">
+                <input
+                  type="checkbox"
+                  checked={Boolean(o.economy)}
+                  onChange={(e) => {
+                    // Un seul mode peut porter la franchise : l'offrir sur
+                    // plusieurs reviendrait à l'offrir sur le plus cher.
+                    const options = settings.shipping.options.map((x, k) => ({ ...x, economy: k === i ? e.target.checked : false }));
+                    maj({ shipping: { ...settings.shipping, options } });
+                  }}
+                />
+                <span className="sm:hidden">Offert au-delà du seuil</span>
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Alertes */}
       <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 sm:p-8 shadow-sm mb-6">
         <h2 className="font-serif text-xl text-slate-stone mb-1">Vos alertes</h2>
