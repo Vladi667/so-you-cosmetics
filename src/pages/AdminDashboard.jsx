@@ -706,7 +706,7 @@ const AdminDashboard = ({ onLogout }) => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-stone/5 text-xs text-stone-gray tracking-wider uppercase font-bold bg-mist-white/30">
-                      <th className="p-6">ID Réservation</th>
+                      <th className="p-6">ID réservation</th>
                       <th className="p-6">Client</th>
                       <th className="p-6">Atelier & Date</th>
                       <th className="p-6 text-center">Places</th>
@@ -723,7 +723,7 @@ const AdminDashboard = ({ onLogout }) => {
                           <p className="text-xs text-stone-gray">{booking.customer_email}</p>
                         </td>
                         <td className="p-6">
-                          <p className="font-medium text-xs text-slate-stone">{booking.workshop_id || 'Atelier Cosmétique Naturelle'}</p>
+                          <p className="font-medium text-xs text-slate-stone">{booking.workshop_id || 'Atelier de cosmétique naturelle'}</p>
                           <p className="text-xs text-stone-gray mt-0.5">{booking.slot_date}</p>
                         </td>
                         <td className="p-6 text-center font-bold">{booking.seats}</td>
@@ -773,7 +773,7 @@ const AdminDashboard = ({ onLogout }) => {
                       <th className="p-6">Email</th>
                       <th className="p-6 text-center">Commandes</th>
                       <th className="p-6 text-center">Ateliers</th>
-                      <th className="p-6 text-right">Total Dépensé</th>
+                      <th className="p-6 text-right">Total dépensé</th>
                       <th className="p-6 text-center">Action</th>
                     </tr>
                   </thead>
@@ -1485,7 +1485,7 @@ const AdminDashboard = ({ onLogout }) => {
         {/* Tab 4: Settings (Change Password) */}
         {activeTab === 'settings' && (
           <div className="max-w-xl">
-            <h1 className="font-serif text-3xl md:text-4xl text-slate-stone mb-8">Sécurité & Paramètres</h1>
+            <h1 className="font-serif text-3xl md:text-4xl text-slate-stone mb-8">Sécurité et paramètres</h1>
             
             <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 sm:p-10 shadow-sm">
               <h3 className="font-serif text-xl text-slate-stone mb-6">Modifier le mot de passe</h3>
@@ -1559,7 +1559,7 @@ const AdminDashboard = ({ onLogout }) => {
             
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h3 className="font-serif text-2xl text-slate-stone">Détails Commande</h3>
+                <h3 className="font-serif text-2xl text-slate-stone">Détails de la commande</h3>
                 <p className="font-mono text-sm text-stone-gray font-bold mt-1">{selectedOrder.id}</p>
               </div>
               <button 
@@ -1642,7 +1642,7 @@ const AdminDashboard = ({ onLogout }) => {
 
             <div className="h-px bg-slate-stone/10 my-6"></div>
 
-            <h4 className="font-sans text-xs tracking-widest uppercase font-bold text-stone-gray/60 mb-4">Articles Achetés</h4>
+            <h4 className="font-sans text-xs tracking-widest uppercase font-bold text-stone-gray/60 mb-4">Articles achetés</h4>
             <div className="space-y-4 mb-6 max-h-56 overflow-y-auto">
               {selectedOrder.items && selectedOrder.items.map((item, idx) => (
                 <div key={idx} className="flex justify-between items-center text-sm font-light">
@@ -1735,7 +1735,7 @@ const AdminDashboard = ({ onLogout }) => {
                 disabled={fulfillSaving}
                 className="w-full py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.25em] text-xs rounded-full hover:bg-slate-stone/90 transition-all shadow-md disabled:opacity-50"
               >
-                {fulfillSaving ? 'Envoi…' : fulfillForm.type === 'pickup' ? 'Marquer prêt + Avertir le client' : 'Marquer expédié + Envoyer le suivi'}
+                {fulfillSaving ? 'Envoi…' : fulfillForm.type === 'pickup' ? 'Marquer prêt et avertir le client' : 'Marquer expédié et envoyer le suivi'}
               </button>
             </form>
 
