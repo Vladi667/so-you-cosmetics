@@ -39,10 +39,17 @@ const Ingredients = () => {
             return (
             <div
               key={index}
-              className={`group flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-6 bg-ivory rounded-[20px] sm:rounded-[30px] p-4 sm:p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgb(0,0,0,0.1)] hover:-translate-y-2 transition-[opacity,transform,box-shadow] duration-300 reveal border border-slate-stone/5${
+              // Les cartes d'une rangee prennent la hauteur de la plus longue.
+              // Le contenu des plus courtes restait colle en haut, laissant
+              // jusqu'a 178 px de vide en dessous — ce qui se lit comme un
+              // element qui n'a pas charge. `justify-center` repartit cet ecart
+              // au-dessus et en dessous, et l'icone garde son alignement sur le
+              // titre parce qu'elle vit dans le bloc interieur.
+              className={`group flex flex-col justify-center bg-ivory rounded-[20px] sm:rounded-[30px] p-4 sm:p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgb(0,0,0,0.1)] hover:-translate-y-2 transition-[opacity,transform,box-shadow] duration-300 reveal border border-slate-stone/5${
                 seuleSurSaLigne ? ' col-span-2 sm:w-[calc(50%-1rem)] lg:w-[calc(50%-1.5rem)] justify-self-center' : ''
               }`}
             >
+              <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-6">
               <div className="w-10 h-10 sm:w-14 sm:h-14 bg-mist-white rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0 text-slate-stone/70 group-hover:scale-110 group-hover:text-slate-stone transition-all duration-250">
                 <IconeEngagement index={index} className="w-5 h-5 sm:w-7 sm:h-7" />
               </div>
@@ -53,6 +60,7 @@ const Ingredients = () => {
                 <p className="font-sans font-light text-stone-gray leading-relaxed text-[11px] sm:text-xs md:text-[15px]">
                   {item.text}
                 </p>
+              </div>
               </div>
             </div>
             );
