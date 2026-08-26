@@ -1281,7 +1281,7 @@ const translations = {
       quote: '',
       s2TitleLine1: "Schönheit,",
       s2TitleLine2: "mit Absicht geschaffen.",
-      s2p1: "Natürliche Schönheit, kompromisslos formuliert. Vegan-freundlich. Vom Aufwachen bis zum Abend verwenden wir zahllose Pflege- und Hygieneprodukte: Zahnpasta, Seife, Shampoo, Deodorant, Pflege, Lotionen, Seren, Düfte — dazu kommen oft Make-up, Nagellack oder Haarfarbe.",
+      s2p1: "Natürliche Schönheit, kompromisslos formuliert. Für Veganer geeignet. Vom Aufwachen bis zum Abend verwenden wir zahllose Pflege- und Hygieneprodukte: Zahnpasta, Seife, Shampoo, Deodorant, Pflege, Lotionen, Seren, Düfte — dazu kommen oft Make-up, Nagellack oder Haarfarbe.",
       s2p2: "Diese Handgriffe gehören selbstverständlich zu unserem Alltag. Deshalb ist die Wahl sorgfältig formulierter Kosmetik aus hochwertigen Inhaltsstoffen natürlichen Ursprungs für uns wesentlich — für unser Wohlbefinden ebenso wie für die Umwelt.",
       s2quote: "„Ich träumte von Kosmetik, die das Raffinement und den sinnlichen Genuss meiner Lieblingsprodukte mit einer natürlicheren Auffassung von Schönheit verbindet — und mit der Freiheit, sie täglich unbeschwert zu geniessen. Das brachte mich dazu, alles zusammenzuführen, wonach ich gesucht hatte.“",
       tpTitle: "Von der Leidenschaft zur Kreation",
