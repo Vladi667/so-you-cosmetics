@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { getShipping, shippingCostFor, exigeAdresse } from '../services/shop';
+import { totalPanier, nombreArticles } from '../services/panier';
+import { Link } from 'react-router-dom';
 import useVerrouDefilement from '../hooks/useVerrouDefilement';
 
-const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
+const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, onAddToCart }) => {
   const { t } = useLanguage();
   const title = type === 'cart' ? t('drawer.cartTitle') : t('drawer.favTitle');
   const [isCheckoutMode, setIsCheckoutMode] = useState(false);
@@ -130,7 +132,10 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
     return product.name || product['Product Name'] || product['Name'] || t('drawer.productFallback');
   };
 
-  const total = items.reduce((sum, item) => sum + parseFloat(getPrice(item)) * (item.qty || 1), 0);
+  // Une seule fonction de total, partagee avec le pied des favoris. Deux
+  // reduce ecrits separement finissent par diverger, et c'est le montant
+  // montre a quelqu'un qui s'apprete a payer.
+  const total = totalPanier(items);
 
   // Ce qui sera réellement débité. Le serveur facture marchandise + expédition
   // (server/routes.js, computeOrderTotal) ; le récapitulatif n'affichait que la
@@ -559,12 +564,77 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-sans text-sm font-medium text-slate-stone truncate">{getName(item)}</h4>
-                    <p className="font-sans text-xs text-stone-gray/60 mt-1">CHF {parseFloat(getPrice(item)).toFixed(2)}</p>
+                    {/* Un favori mene a sa fiche. Sans cela on ne pouvait plus
+                        rien en faire : ni le relire, ni voir ses photos. Le
+                        tiroir se ferme, sinon il reste ouvert par-dessus la
+                        page qu'on vient de demander. */}
+                    {type === 'favorites' ? (
+                      <Link
+                        to={`/product/${item.id}`}
+                        onClick={onClose}
+                        className="font-sans text-sm font-medium text-slate-stone hover:text-stone-gray transition-colors line-clamp-2"
+                      >
+                        {getName(item)}
+                      </Link>
+                    ) : (
+                      <h4 className="font-sans text-sm font-medium text-slate-stone truncate">{getName(item)}</h4>
+                    )}
+
+                    {/* Le prix de ligne en clair. « CHF 12.90 » sur une ligne de
+                        deux articles laissait le lecteur faire le calcul, puis
+                        douter du sous-total. */}
+                    {type === 'cart' && (item.qty || 1) > 1 ? (
+                      <p className="font-sans text-xs text-stone-gray/60 mt-1 tabular-nums">
+                        {item.qty} × CHF {parseFloat(getPrice(item)).toFixed(2)} ={' '}
+                        <span className="text-slate-stone">CHF {(parseFloat(getPrice(item)) * item.qty).toFixed(2)}</span>
+                      </p>
+                    ) : (
+                      <p className="font-sans text-xs text-stone-gray/60 mt-1 tabular-nums">
+                        CHF {parseFloat(getPrice(item)).toFixed(2)}
+                      </p>
+                    )}
+
+                    {type === 'cart' && onQuantityChange && (
+                      // Le compteur remplace la corbeille. Retirer une unite sur
+                      // trois obligeait a tout supprimer puis a rajouter deux
+                      // fois ; et zero retire la ligne, ce qui rend la corbeille
+                      // superflue sans rien perdre.
+                      <div className="mt-2 inline-flex items-center gap-3 rounded-full border border-slate-stone/15 bg-ivory px-3 py-1">
+                        <button
+                          type="button"
+                          onClick={() => onQuantityChange(item, (item.qty || 1) - 1)}
+                          aria-label={t('drawer.decrease')}
+                          className="press text-stone-gray hover:text-slate-stone"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" /></svg>
+                        </button>
+                        <span className="font-sans text-xs tabular-nums min-w-4 text-center">{item.qty || 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => onQuantityChange(item, (item.qty || 1) + 1)}
+                          aria-label={t('drawer.increase')}
+                          className="press text-stone-gray hover:text-slate-stone"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                        </button>
+                      </div>
+                    )}
+
+                    {type === 'favorites' && onAddToCart && (
+                      <button
+                        type="button"
+                        onClick={() => onAddToCart(item, 1)}
+                        className="press mt-2 rounded-full bg-slate-stone px-4 py-1.5 font-sans text-[10px] uppercase tracking-[0.18em] text-white"
+                      >
+                        {t('product.addToCart')}
+                      </button>
+                    )}
                   </div>
-                  <button 
+
+                  <button
                     onClick={() => onRemove(item)}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-stone-gray/40 hover:bg-red-50 hover:text-red-500 transition-all duration-300 flex-shrink-0 self-center"
+                    aria-label={t('drawer.removeLine')}
+                    className="press w-8 h-8 rounded-full flex items-center justify-center text-stone-gray/40 hover:bg-red-50 hover:text-red-500 flex-shrink-0 self-center"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -575,6 +645,21 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove }) => {
             </div>
           )}
         </div>
+
+        {/* Le pied des favoris. Le total vient de la MEME fonction que le
+            sous-total du panier : un second calcul finirait par annoncer un
+            montant que la caisse ne confirme pas. */}
+        {type === 'favorites' && items.length > 0 && onAddToCart && (
+          <div className="shrink-0 px-4 sm:px-8 py-4 sm:py-6 border-t border-slate-stone/10 bg-ivory">
+            <button
+              type="button"
+              onClick={() => { items.forEach((i) => onAddToCart(i, 1)); onClose(); }}
+              className="press w-full rounded-full bg-slate-stone py-4 font-sans text-xs uppercase tracking-[0.2em] text-white"
+            >
+              {t('drawer.addAllToCart', { n: nombreArticles(items), total: total.toFixed(2) })}
+            </button>
+          </div>
+        )}
 
         {/* Footer */}
         {type === 'cart' && items.length > 0 && !isCheckoutMode && !checkoutSuccess && (

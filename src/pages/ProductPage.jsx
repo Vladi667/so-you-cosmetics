@@ -325,6 +325,35 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
               </div>
               
 
+              {/* Rupture de stock : un chemin, pas une impasse.
+                  Le bouton devenait gris et le visiteur restait devant un mur.
+                  On propose ici ce qui existe reellement : la boutique, qui
+                  peut l'avoir en rayon meme quand la reserve en ligne est a
+                  zero, et le produit le plus proche de la meme rubrique.
+
+                  La condition reste `=== false`, JAMAIS `!product.inStock` :
+                  huit fiches seulement portent ce champ en production, et la
+                  forme relachee serait vraie pour les 171 autres — elle
+                  desactiverait l'achat sur presque tout le catalogue sans que
+                  rien ne le signale. */}
+              {product.inStock === false && (
+                <div className="mt-6 rounded-2xl border border-slate-stone/10 bg-ivory p-5">
+                  <p className="font-sans text-sm text-slate-stone mb-1">{t('product.outOfStockTitle')}</p>
+                  <p className="font-sans text-xs text-stone-gray leading-relaxed">
+                    {t('product.outOfStockShop')}{' '}
+                    <a href="tel:+41225566992" className="text-slate-stone underline underline-offset-2">022 556 69 92</a>
+                  </p>
+                  {relatedProducts[0] && (
+                    <Link
+                      to={`/product/${relatedProducts[0].id}`}
+                      className="press mt-4 inline-block rounded-full border border-slate-stone/25 px-5 py-2 font-sans text-[10px] uppercase tracking-[0.18em] text-slate-stone hover:border-slate-stone/60"
+                    >
+                      {t('product.outOfStockNearest', { name: relatedProducts[0].name })}
+                    </Link>
+                  )}
+                </div>
+              )}
+
               {ajoute && (
                 <p
                   role="status"

@@ -241,6 +241,7 @@ function App() {
             items={cart}
             type="cart"
             onRemove={removeFromCart}
+            onQuantityChange={(item, q) => setCart((prev) => fixerQuantite(prev, item.id, q))}
           />
           <SideDrawer
             isOpen={favOpen}
@@ -248,6 +249,7 @@ function App() {
             items={favorites}
             type="favorites"
             onRemove={removeFavorite}
+            onAddToCart={addToCart}
           />
         </>
       )}
