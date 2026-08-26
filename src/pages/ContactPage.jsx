@@ -4,9 +4,22 @@ import { getHours } from '../services/shop';
 import useEnvoiFormulaire from '../hooks/useEnvoiFormulaire';
 import useMetadonnees from '../hooks/useMetadonnees';
 
+// L'adresse et le téléphone de la boutique, écrits une fois. Ils apparaissaient
+// en clair dans le rendu, et la description de la page les répétait : deux
+// endroits à corriger le jour d'un déménagement, dont un qu'on oublierait.
+const ADRESSE_RUE = '3 av. Pictet-De-Rochemont';
+const ADRESSE_VILLE = '1207 Genève';
+const TELEPHONE = '022 556 69 92';
+const TELEPHONE_LIEN = '+41225566992';
+
 const ContactPage = () => {
   const { t } = useLanguage();
-  useMetadonnees({ titre: t('contact.title'), description: t('contact.subtitle') });
+  // Sur une page « nous trouver », ce qu'on cherche est l'adresse — pas le nom
+  // de l'enseigne, que le titre porte déjà.
+  useMetadonnees({
+    titre: t('contact.title'),
+    description: `${t('contact.subtitle')} — ${ADRESSE_RUE}, ${ADRESSE_VILLE}. ${TELEPHONE}`,
+  });
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const { etat, enCours, message, messageVisible, envoyer } = useEnvoiFormulaire();
 
@@ -85,8 +98,8 @@ const ContactPage = () => {
                   </div>
                   <div>
                     <h3 className="font-sans tracking-[0.1em] sm:tracking-[0.2em] text-[9px] sm:text-xs font-bold text-slate-stone mb-1 sm:mb-2 uppercase">{t('contact.addressLabel')}</h3>
-                    <p className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80">3 av. Pictet-De-Rochemont</p>
-                    <p className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80">1207 Genève</p>
+                    <p className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80">{ADRESSE_RUE}</p>
+                    <p className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80">{ADRESSE_VILLE}</p>
                   </div>
                 </div>
 
@@ -97,7 +110,7 @@ const ContactPage = () => {
                   </div>
                   <div>
                     <h3 className="font-sans tracking-[0.1em] sm:tracking-[0.2em] text-[9px] sm:text-xs font-bold text-slate-stone mb-1 sm:mb-2 uppercase">{t('contact.phoneLabel')}</h3>
-                    <a href="tel:+41225566992" className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80 hover:text-slate-stone press">022 556 69 92</a>
+                    <a href={`tel:${TELEPHONE_LIEN}`} className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80 hover:text-slate-stone press">{TELEPHONE}</a>
                   </div>
                 </div>
 
@@ -207,7 +220,7 @@ const ContactPage = () => {
             </div>
             <div className="flex items-center justify-between">
               <p className="font-sans text-stone-gray/50 text-xs sm:text-sm hidden md:block">
-                {t('contact.orCallPrefix')}<a href="tel:+41225566992" className="text-slate-stone hover:underline press">022 556 69 92</a>
+                {t('contact.orCallPrefix')}<a href={`tel:${TELEPHONE_LIEN}`} className="text-slate-stone hover:underline press">{TELEPHONE}</a>
               </p>
               <button
                 type="submit"
