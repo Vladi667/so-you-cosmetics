@@ -4,6 +4,7 @@ import SectionHeader from './SectionHeader';
 import { useLanguage } from '../i18n/LanguageContext';
 
 import { getProducts } from '../services/products';
+import { normaliserTexte } from '../data/texte';
 
 // Drift speed in pixels per second. Slow enough to read a product name as it
 // passes; any faster and the band becomes something you wait out rather than
@@ -27,16 +28,10 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
   // list follows the order of the products. The hard-coded names below are only
   // a fallback for when nothing has been tagged yet, so the home page is never
   // empty.
-  // Ignore case, accents, the œ ligature and the singular/plural, so
-  // "Coup de cœur", "Coups de coeur" and "COUP DE CŒUR" all match. NFD does
-  // not decompose œ, hence the explicit replacement.
-  const normalise = (v) => (v || '')
-    .trim()
-    .toLowerCase()
-    .replace(/œ/g, 'oe')
-    .replace(/æ/g, 'ae')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '');
+  // Casse, accents, ligature et apostrophe : « Coup de cœur », « Coups de
+  // coeur » et « COUP DE CŒUR » désignent la même chose. La règle vit dans
+  // data/texte.js, partagée avec la recherche du catalogue.
+  const normalise = normaliserTexte;
 
   const FEATURED_TAGS = ['coup de coeur', 'coups de coeur'];
   const tagged = productsList.filter(p =>

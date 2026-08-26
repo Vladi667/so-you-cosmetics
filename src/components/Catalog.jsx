@@ -7,6 +7,7 @@ import { visibleCategories } from '../data/categories';
 import { ouvrirPanier, sursautPanier } from '../services/panier';
 import { TRANCHES_PRIX, dansLaTranche, trier, TRIS } from '../data/tri';
 import { grouperParRecette } from '../data/recettes';
+import { normaliserTexte } from '../data/texte';
 import ProductBadge from './ProductBadge';
 import ProductPlaceholder from './ProductPlaceholder';
 
@@ -16,13 +17,10 @@ import ProductPlaceholder from './ProductPlaceholder';
 // dans data/tri.js pour que le compteur et la grille lisent la meme chose.
 const LIBELLES_TRANCHES = { moins15: 'priceUnder', '15a30': 'price15to30', '30a60': 'price30to60', plus60: 'priceOver' };
 
-// Lowercase + strip diacritics so "levres" matches "lèvres", "bebe" matches "bébé", etc.
-const normalizeText = (s) =>
-  (s || '')
-    .toString()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '');
+// Casse, accents, ligature et apostrophe : la comparaison vit dans data/texte.js
+// pour que la recherche et la bande « coup de cœur » lisent la même règle. Elle
+// ignorait ici la ligature et l'apostrophe — « coeur » ne trouvait pas « cœur ».
+const normalizeText = normaliserTexte;
 
 // Remove HTML tags from descriptions so we match words, not markup.
 const stripHtml = (s) => (s || '').toString().replace(/<[^>]*>/g, ' ');
