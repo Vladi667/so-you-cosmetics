@@ -680,7 +680,8 @@ function blocAdresseEmail(order) {
 
 async function avertirNouvelleCommande(order) {
   const { alerts } = db.getShopSettings();
-  if (!alerts.onNewOrder || !alerts.email) return;
+  const destinataire = db.adresseAlerte();
+  if (!alerts.onNewOrder || !destinataire) return;
 
   const lignes = (order.items || []).map((it) => {
     const qte = Math.max(1, parseInt(it.qty, 10) || 1);
@@ -694,7 +695,7 @@ async function avertirNouvelleCommande(order) {
 
   try {
     await emailService.sendMail({
-      to: alerts.email,
+      to: destinataire,
       subject: `Nouvelle commande payée — CHF ${Number(order.total).toFixed(2)}`,
       html: `
         <div style="font-family:sans-serif;color:#3A332B;max-width:600px;margin:0 auto;padding:24px;">
@@ -735,7 +736,8 @@ async function appliquerStockEtAlerter(order) {
   }
 
   if (evenements.length === 0) return;
-  if (!alerts.onLowStock || !alerts.email) return;
+  const destinataire = db.adresseAlerte();
+  if (!alerts.onLowStock || !destinataire) return;
 
   const ruptures = evenements.filter((e) => e.type === 'rupture');
   const bas = evenements.filter((e) => e.type === 'bas');
@@ -743,7 +745,7 @@ async function appliquerStockEtAlerter(order) {
 
   try {
     await emailService.sendMail({
-      to: alerts.email,
+      to: destinataire,
       subject: ruptures.length
         ? `Rupture de stock — ${ruptures.length} produit(s)`
         : `Stock bas — ${bas.length} produit(s)`,
@@ -1154,11 +1156,11 @@ router.post('/workshops/book', async (req, res) => {
 // directement, sans recopier quoi que ce soit. Sans alerte configurée, rien
 // n'est envoyé — comme pour les commandes et le stock.
 async function avertirNouveauMessage({ name, email, subject, message }) {
-  const { alerts } = db.getShopSettings();
-  if (!alerts || !alerts.email) return;
+  const destinataire = db.adresseAlerte();
+  if (!destinataire) return;
   try {
     await emailService.sendMail({
-      to: alerts.email,
+      to: destinataire,
       replyTo: email,
       subject: `Message du site — ${subject || 'sans objet'}`,
       html: `

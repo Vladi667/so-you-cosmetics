@@ -139,8 +139,9 @@ const ShopSettings = ({ fetchHeaders }) => {
         <h2 className="font-serif text-xl text-slate-stone mb-1">Vos alertes</h2>
         <p className="text-xs text-stone-gray mb-5">
           Le stock est retiré automatiquement à chaque paiement confirmé, et un produit épuisé est
-          retiré de la vente. Indiquez ci-dessous où vous prévenir. <strong className="text-slate-stone">
-          Sans adresse, aucune alerte n'est envoyée.</strong>
+          retiré de la vente. Indiquez ci-dessous où vous prévenir — commandes payées, ruptures de
+          stock, et messages reçus par le formulaire de contact. <strong className="text-slate-stone">
+          Laissé vide, tout part sur contact@soyoucosmetics.com.</strong>
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           <div>

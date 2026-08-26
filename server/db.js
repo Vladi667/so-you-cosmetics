@@ -1507,6 +1507,24 @@ const SHOP_DEFAULTS = {
   maintenance: { active: false, fr: '', en: '', de: '' },
 };
 
+// Où envoyer ses alertes : commandes payées, ruptures de stock, messages du
+// formulaire de contact.
+//
+// Le champ est récent et son réglage enregistré peut très bien le contenir
+// vide — auquel cas la valeur par défaut est écrasée et TOUTES ses alertes
+// partaient dans le vide, sans que rien ne le signale. Elle n'aurait appris
+// qu'une commande était arrivée qu'en ouvrant son administration.
+//
+// À défaut, on retombe sur l'adresse de la boutique : celle qui figure déjà sur
+// ses factures et dans ses mentions légales. Une alerte qui arrive à la mauvaise
+// boîte se corrige ; une alerte qui n'arrive nulle part ne se voit jamais.
+function adresseAlerte() {
+  const reglages = getShopSettings();
+  const saisie = String((reglages.alerts && reglages.alerts.email) || '').trim();
+  if (saisie) return saisie;
+  return String((reglages.invoice && reglages.invoice.email) || '').trim();
+}
+
 function getShopSettings() {
   const saved = readSettings().shop;
   if (!saved || typeof saved !== 'object') return SHOP_DEFAULTS;
@@ -1669,6 +1687,7 @@ module.exports = {
   updateArticle,
   deleteArticle,
   getShopSettings,
+  adresseAlerte,
   updateShopSettings,
   nextInvoiceNumber,
   readContent,
