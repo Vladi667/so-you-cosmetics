@@ -7,7 +7,17 @@ const PageLoader = ({ isVisible }) => {
   const [shouldRender, setShouldRender] = useState(isVisible);
 
   useEffect(() => {
-    if (isVisible) setShouldRender(true);
+    if (isVisible) {
+      setShouldRender(true);
+      return undefined;
+    }
+    // Filet de sécurité. Le voile ne se démontait que sur `transitionend` : si
+    // cet évènement n'arrive pas — onglet qui ne peint pas, transition
+    // interrompue, mouvement réduit qui la ramène à zéro — il restait en place,
+    // opaque et cliquable, PAR-DESSUS tout le site. Un seul évènement manqué
+    // suffisait à rendre la boutique inutilisable.
+    const filet = setTimeout(() => setShouldRender(false), 900); // > 700 ms de fondu
+    return () => clearTimeout(filet);
   }, [isVisible]);
 
   const handleAnimationEnd = () => {

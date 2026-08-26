@@ -263,6 +263,14 @@
   }
 }
 
+/* L'ancienne image s'efface pendant que la nouvelle est deja en place dessous.
+   L'inverse — faire apparaitre la nouvelle par-dessus — laisserait voir le fond
+   du cadre a travers, le temps du fondu. */
+@keyframes fondreVersRien {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
 @keyframes apparait {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }

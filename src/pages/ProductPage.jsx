@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getProducts, imageUrl } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -6,6 +6,8 @@ import ProductPlaceholder from '../components/ProductPlaceholder';
 import ProductBadge from '../components/ProductBadge';
 import { descriptionToHtml } from '../utils/description';
 import { ouvrirPanier } from '../services/panier';
+import ImageProduit from '../components/ImageProduit';
+import VisionneuseImage from '../components/VisionneuseImage';
 
 
 
@@ -76,6 +78,12 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   // l'en-tete — souvent hors du champ de vision sur mobile, ou l'on regarde le
   // bouton qu'on vient de toucher.
   const [ajoute, setAjoute] = useState(false);
+  const [visionneuseOuverte, setVisionneuseOuverte] = useState(false);
+  // La barre d'achat collante ne paraît que lorsque le vrai bouton a quitté
+  // l'écran. L'afficher en permanence doublerait un bouton déjà visible et
+  // mangerait le bas de la fiche pour rien.
+  const [boutonVisible, setBoutonVisible] = useState(true);
+  const blocAchatRef = useRef(null);
 
   useEffect(() => {
     getProducts().then(data => handleProductsLoaded(data));
@@ -134,6 +142,17 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
     }
   }, [id, navigate]);
 
+  useEffect(() => {
+    const cible = blocAchatRef.current;
+    if (!cible) return undefined;
+    const observateur = new IntersectionObserver(
+      ([entree]) => setBoutonVisible(entree.isIntersecting),
+      { threshold: 0 }
+    );
+    observateur.observe(cible);
+    return () => observateur.disconnect();
+  }, [product]);
+
   // Le message s'efface seul. La minuterie est nettoyée au démontage : quitter
   // la fiche entre-temps ferait écrire dans un composant parti.
   useEffect(() => {
@@ -189,32 +208,48 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                     </div>
                   )}
                   {images.length === 0 ? <ProductPlaceholder /> : (
-                    <img
-                      src={imageUrl(images[activeImage], 1600)}
+                    // `eager` : c'est le plus gros element de la page et ce
+                    // qu'on vient voir. En « lazy », le navigateur attendait
+                    // d'avoir fini sa mise en page pour le demander, si bien
+                    // que le produit arrivait apres son propre cadre.
+                    <ImageProduit
+                      src={images[activeImage]}
                       alt={product.name}
-                      /* La grande image de la fiche est ce qu'on vient voir, et
-                         le plus gros element de la page. En « lazy », le
-                         navigateur attendait d'avoir fini sa mise en page pour
-                         la demander : le produit apparaissait apres son propre
-                         cadre. Les vignettes, elles, restent differees. */
-                      loading="eager"
-                      fetchPriority="high"
-                      decoding="async"
-                      className="w-full h-full object-cover object-center transition-opacity duration-500"
+                      largeur={1600}
+                      eager
+                      onClick={() => setVisionneuseOuverte(true)}
+                      className="w-full h-full object-cover object-center cursor-zoom-in"
                     />
                   )}
                 </div>
                 
                 {/* Thumbnails */}
                 {images.length > 1 && (
-                  <div className="flex gap-4 overflow-x-auto pb-2 hide-scrollbar">
+                  // `Image 2 sur 4` plutot que « nom du produit 2 » : au lecteur
+                  // d'ecran, l'ancien libelle ne disait pas ou l'on se trouvait
+                  // dans la serie. Les fleches parcourent la galerie sans avoir
+                  // a tabuler d'une vignette a l'autre.
+                  <div
+                    role="group"
+                    aria-label={t('product.galleryLabel', { total: images.length })}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+                      e.preventDefault();
+                      const pas = e.key === 'ArrowRight' ? 1 : -1;
+                      setActiveImage((i) => (i + pas + images.length) % images.length);
+                    }}
+                    className="flex gap-4 overflow-x-auto pb-2 hide-scrollbar"
+                  >
                     {images.map((img, idx) => (
-                      <button 
+                      <button
                         key={idx}
+                        type="button"
                         onClick={() => setActiveImage(idx)}
-                        className={`w-20 h-24 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all duration-300 ${activeImage === idx ? 'border-slate-stone opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                        aria-label={t('product.imageOf', { n: idx + 1, total: images.length })}
+                        aria-current={activeImage === idx}
+                        className={`press w-20 h-24 flex-shrink-0 rounded-xl overflow-hidden border-2 ${activeImage === idx ? 'border-slate-stone opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
                       >
-                        <img src={imageUrl(img, 400)} alt={`${product.name} ${idx+1}`} loading="lazy" className="w-full h-full object-cover" />
+                        <img src={imageUrl(img, 400)} alt="" loading="lazy" className="w-full h-full object-cover" />
                       </button>
                     ))}
                   </div>
@@ -250,7 +285,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
               </div>
 
               {/* Add to Cart Actions */}
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div ref={blocAchatRef} className="flex flex-col sm:flex-row gap-4">
                 <div className="flex items-center justify-between border border-slate-stone/20 rounded-full px-6 py-4 sm:w-1/3 bg-ivory">
                   <button 
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -384,6 +419,69 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
           </div>
         )}
       </div>
+
+      {/* La barre d'achat collante, sous lg seulement.
+          Elle partage litteralement `quantity` et `handleAddToCart` avec le bloc
+          d'origine — ce sont les memes variables, pas une copie. Le plan
+          avertit que deux declencheurs d'ajout qui ne partagent pas vraiment
+          l'etat donnent un article la ou l'on en a demande trois ; ici le cas
+          ne peut pas se produire.
+          `env(safe-area-inset-bottom)` : sans lui, le bouton passe sous la
+          barre d'accueil des iPhone recents. */}
+      {!boutonVisible && product.inStock !== false && (
+        <div
+          className="fixed inset-x-0 bottom-0 z-[80] border-t border-slate-stone/10 bg-ivory/95 backdrop-blur-md lg:hidden"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-sans text-xs text-stone-gray">{product.name}</p>
+              <p className="font-sans text-sm font-medium text-slate-stone tabular-nums">
+                CHF {(product.price * quantity).toFixed(2)}
+              </p>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2 rounded-full border border-slate-stone/20 bg-mist-white px-3 py-2">
+              <button
+                type="button"
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                aria-label="-"
+                className="press text-stone-gray hover:text-slate-stone"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" /></svg>
+              </button>
+              <span className="min-w-4 text-center font-sans text-sm tabular-nums">{quantity}</span>
+              <button
+                type="button"
+                onClick={() => setQuantity(quantity + 1)}
+                aria-label="+"
+                className="press text-stone-gray hover:text-slate-stone"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              className="press shrink-0 rounded-full bg-slate-stone px-6 py-3 font-sans text-[10px] uppercase tracking-[0.2em] text-white"
+            >
+              {t('product.addToCart')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Montee seulement quand elle est ouverte : fermee, elle n'existe pas,
+          donc aucune surcouche ne peut rester au-dessus de la fiche. */}
+      {visionneuseOuverte && images.length > 0 && (
+        <VisionneuseImage
+          images={images}
+          indexInitial={activeImage}
+          alt={product.name}
+          onClose={() => setVisionneuseOuverte(false)}
+        />
+      )}
     </div>
   );
 };
