@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/verifier-traductions.mjs && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "install-all": "npm install && npm install --prefix server",
     "dev:fullstack": "concurrently \"npm run dev\" \"npm run start --prefix server\"",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "verifier:traductions": "node scripts/verifier-traductions.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",
