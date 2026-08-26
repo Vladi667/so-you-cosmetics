@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
-import { getShipping, shippingCostFor, exigeAdresse, getGiftWrap } from '../services/shop';
+import { getShipping, shippingCostFor, exigeAdresse, getGiftWrap, modeAutorise } from '../services/shop';
 import { totalPanier, nombreArticles } from '../services/panier';
 import { Link } from 'react-router-dom';
 import useVerrouDefilement from '../hooks/useVerrouDefilement';
@@ -156,7 +156,16 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
   // marchandise. La cliente lisait CHF 46.00 et sa carte était débitée de
   // CHF 59.00 — un écart de facturation, et une infraction à l'obligation
   // suisse d'annoncer le prix effectivement à payer.
-  const optionChoisie = shipping.options.find((o) => o.id === shippingId) || null;
+  // Les modes que CETTE commande peut réellement prendre. Deux règles s'y
+  // composent : une recharge se retire en boutique, et les quatre tarifs
+  // « Bon cadeau uniquement » ne valent que pour un panier de bons. Les
+  // afficher pour les refuser à la validation ferait remplir tout le
+  // formulaire avant de dire non.
+  const modesProposes = shipping.options.filter(
+    (o) => (!contientRecharge || !exigeAdresse(o.id)) && modeAutorise(o.id, items)
+  );
+
+  const optionChoisie = modesProposes.find((o) => o.id === shippingId) || null;
   const fraisPort = shippingCostFor(optionChoisie, total);
   // Le meme calcul que le serveur : marchandise + port + emballage. Afficher un
   // total qui ignore le supplement rejouerait le defaut des frais de port, ou
@@ -356,13 +365,13 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                 </p>
               )}
 
-              {shipping.options.length > 0 && (
+              {modesProposes.length > 0 && (
                 <div>
                   <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">
                     {t('drawer.shippingTitle')}
                   </label>
                   <div className="space-y-2">
-                    {shipping.options.filter((o) => !contientRecharge || !exigeAdresse(o.id)).map((o) => {
+                    {modesProposes.map((o) => {
                       const cout = shippingCostFor(o, total);
                       const offert = cout === 0 && Number(o.price) > 0;
                       return (

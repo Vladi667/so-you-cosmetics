@@ -71,3 +71,26 @@ export function getGiftWrap() {
   const g = reglages.giftWrap || {};
   return { enabled: Boolean(g.enabled), price: Number(g.price) || 0 };
 }
+
+// Les modes qu'elle réserve aux bons cadeaux.
+//
+// Même liste et même raisonnement que côté serveur : ses quatre tarifs Courrier
+// portent la mention « Bon cadeau uniquement », parce qu'un bon tient dans une
+// enveloppe et pas un colis de savons. On filtre ici pour ne pas proposer un
+// tarif que la commande se verra refuser à la fin — mais c'est le serveur qui
+// tranche, le navigateur ne fait que de la courtoisie.
+const MODES_BON_CADEAU = new Set(['courrierB', 'courrierBsig', 'courrierA', 'courrierAsig']);
+
+export function estBonCadeau(produit) {
+  if (!produit) return false;
+  if (produit.estBonCadeau === true) return true;
+  const texte = `${produit.name || ''} ${(produit.collections || []).join(' ')}`;
+  return /bon\s+cadeau|carte\s+cadeau|gift\s+(card|voucher)/i.test(texte);
+}
+
+// Un seul article ordinaire parmi les bons suffit à en faire un colis.
+export function modeAutorise(shippingId, articles) {
+  if (!MODES_BON_CADEAU.has(String(shippingId || ''))) return true;
+  const lignes = Array.isArray(articles) ? articles : [];
+  return lignes.length > 0 && lignes.every(estBonCadeau);
+}

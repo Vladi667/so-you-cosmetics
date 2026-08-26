@@ -328,6 +328,9 @@ async function computeOrderTotal(items, shippingId, options = {}) {
 
   let goods = 0;
   let nbRecharges = 0;
+  // Ce que la commande contient réellement, pour vérifier ensuite qu'elle a le
+  // droit du mode d'expédition demandé.
+  const produitsCommandes = [];
   for (const line of items || []) {
     const product = byId.get(String(line.id));
     if (!product) continue;                       // ligne inconnue : ignorée, jamais facturée
@@ -335,6 +338,7 @@ async function computeOrderTotal(items, shippingId, options = {}) {
     // article à zéro franc. Quatre existent au catalogue, et sans cette garde
     // un panier n'en contenant qu'elles passait pour le seul prix du port.
     if (!(Number(product.price) > 0)) continue;
+    produitsCommandes.push(product);
 
     // La variante de recharge. Le navigateur DEMANDE une recharge ; c'est le
     // catalogue qui en donne le prix, et seulement si la fiche en propose une.
@@ -358,6 +362,15 @@ async function computeOrderTotal(items, shippingId, options = {}) {
   if (!option) {
     const e = new Error('shipping-inconnu');
     e.code = 'SHIPPING_INCONNU';
+    throw e;
+  }
+
+  // Ses quatre tarifs Courrier portent la mention « Bon cadeau uniquement ».
+  // Elle était affichée, jamais appliquée : on pouvait expédier deux kilos de
+  // savon pour un franc. La différence sortait de sa poche.
+  if (!db.modeAutorise(shippingId, produitsCommandes)) {
+    const e = new Error('mode-reserve');
+    e.code = 'SHIPPING_RESERVE';
     throw e;
   }
 
@@ -421,6 +434,9 @@ router.post('/orders', async (req, res) => {
     try {
       calcul = await computeOrderTotal(items, shippingId, { emballageCadeau: cadeau && cadeau.emballage });
     } catch (err) {
+      if (err && err.code === 'SHIPPING_RESERVE') {
+        return res.status(400).json({ error: "Ce tarif est réservé aux bons cadeaux. Choisissez un envoi colis ou le retrait à la boutique." });
+      }
       if (err && err.code === 'SHIPPING_INCONNU') {
         return res.status(400).json({ error: "Ce mode d'expédition n'est plus proposé. Rechargez la page et choisissez à nouveau." });
       }

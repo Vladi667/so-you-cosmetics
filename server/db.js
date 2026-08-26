@@ -669,6 +669,37 @@ async function deleteProduct(id) {
 // On raisonne sur l'identifiant, et non sur un drapeau ajouté aux options :
 // ses réglages sont déjà enregistrés sur le serveur et ne le porteraient pas,
 // si bien qu'un retrait en boutique se mettrait soudain à réclamer une adresse.
+// Les modes d'expédition qu'elle réserve aux bons cadeaux.
+//
+// Ses quatre tarifs Courrier portent la mention « Bon cadeau uniquement » — un
+// bon tient dans une enveloppe, un colis de savons non. Mais la mention n'était
+// qu'un texte affiché : rien ne l'appliquait. On pouvait commander le kit DIY à
+// CHF 49.50 et choisir Courrier B à CHF 1.00, alors que l'envoi lui coûte de
+// CHF 11 à CHF 15. La différence sortait de sa poche, à chaque commande.
+//
+// On raisonne sur les identifiants, comme pour le retrait : ses réglages
+// enregistrés ne porteraient pas un drapeau ajouté aujourd'hui.
+const MODES_BON_CADEAU = new Set(['courrierB', 'courrierBsig', 'courrierA', 'courrierAsig']);
+
+// Un bon cadeau n'est pas un objet : rien à peser, rien à emballer.
+// Le catalogue n'en contient aucun pour l'instant, donc ces quatre modes ne
+// s'offrent à personne — ce qui est exactement ce qu'il faut. Le jour où elle
+// en crée un, la règle le reconnaît sans qu'on touche au code.
+function estBonCadeau(produit) {
+  if (!produit) return false;
+  if (produit.estBonCadeau === true) return true;
+  const texte = `${produit.name || ''} ${(produit.collections || []).join(' ')}`;
+  return /bon\s+cadeau|carte\s+cadeau|gift\s+(card|voucher)/i.test(texte);
+}
+
+// Un mode réservé n'est proposé que si TOUTE la commande tient dans l'enveloppe.
+// Un seul savon glissé parmi les bons suffit à en faire un colis.
+function modeAutorise(shippingId, produits) {
+  if (!MODES_BON_CADEAU.has(String(shippingId || ''))) return true;
+  const lignes = Array.isArray(produits) ? produits : [];
+  return lignes.length > 0 && lignes.every(estBonCadeau);
+}
+
 const MODES_SANS_ADRESSE = new Set(['pickup']);
 
 function exigeAdresse(shippingId) {
@@ -1501,6 +1532,8 @@ module.exports = {
   updateOrderFulfillment,
   createOrder,
   exigeAdresse,
+  estBonCadeau,
+  modeAutorise,
   createBooking,
   createContact,
   createNewsletterSubscriber,
