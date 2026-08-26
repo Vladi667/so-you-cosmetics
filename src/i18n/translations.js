@@ -1047,7 +1047,7 @@ const translations = {
     loader: { text: 'Handgemacht in Genf' },
     hero: {
       brand: 'So You',
-      titleLine1: 'Schönheit, mit Absicht geschaffen.',
+      titleLine1: 'Schönheit, durchdacht.',
       titleLine2: 'Zum Geniessen.',
       subtitleLine1: 'Die Natur ist das Fundament.',
       subtitleLine2: 'Die Wissenschaft ist die Verfeinerung.',
@@ -1234,7 +1234,7 @@ const translations = {
       addressCountry: 'Land',
       addressPickup: 'Abholung im Laden: keine Adresse erforderlich.',
       addressRequired: 'Bitte geben Sie Strasse, Postleitzahl und Ort an.',
-      acceptTerms: 'Ich habe die',
+      acceptTerms: 'Ich akzeptiere die',
       acceptTermsLink: 'Allgemeinen Geschäftsbedingungen',
       termsRequired: 'Bitte akzeptieren Sie die Allgemeinen Geschäftsbedingungen, um fortzufahren.',
       trustPayment: 'Sichere Zahlung über SumUp. Ihre Kartendaten werden von So You nie gespeichert.',
