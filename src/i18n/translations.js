@@ -257,7 +257,7 @@ const translations = {
       galleryLabel: 'Photos du produit, {total} au total',
       imageOf: 'Image {n} sur {total}',
       shippingTitle: 'Livraison en Suisse',
-      shippingText: "Livraison offerte dès CHF 150.- d'achat. Expédition sous 2 à 4 jours ouvrés.",
+      shippingText: "Livraison Economy offerte dès CHF 150.- d'achat. Expédition sous 2 à 4 jours ouvrés.",
       defaultDesc: 'Un produit artisanal So You, fait main avec amour à Genève.',
       youMayAlsoLike: 'Vous aimerez aussi',
     },
@@ -434,7 +434,7 @@ const translations = {
           'La commande est traitée après confirmation du paiement.',
         ]},
         { heading: '6. Livraison et retrait en boutique', body: [
-          "Nous livrons en Suisse. La livraison est offerte dès CHF 150.- d'achat. Les commandes sont généralement expédiées sous 2 à 4 jours ouvrés, hors jours fériés et périodes de vacances.",
+          "Nous livrons en Suisse. La livraison Economy est offerte dès CHF 150.- d'achat. Les commandes sont généralement expédiées sous 2 à 4 jours ouvrés, hors jours fériés et périodes de vacances.",
           'Le retrait gratuit en boutique est possible au 3 av. Pictet-De-Rochemont, 1207 Genève, aux horaires d\'ouverture. Les délais de livraison sont donnés à titre indicatif et un éventuel retard ne saurait donner lieu à annulation ou indemnité.',
         ]},
         { heading: '7. Retours et échanges', body: [
@@ -760,7 +760,7 @@ const translations = {
       galleryLabel: 'Product photos, {total} in total',
       imageOf: 'Image {n} of {total}',
       shippingTitle: 'Swiss Delivery',
-      shippingText: 'Free delivery on orders over CHF 150.-. Shipped within 2 to 4 business days.',
+      shippingText: 'Free Economy delivery on orders over CHF 150.-. Shipped within 2 to 4 business days.',
       defaultDesc: 'An artisanal So You product, handmade with love in Geneva.',
       youMayAlsoLike: 'You may also like',
     },
@@ -937,7 +937,7 @@ const translations = {
           'The order is processed after payment confirmation.',
         ]},
         { heading: '6. Delivery and in-store pickup', body: [
-          'We deliver within Switzerland. Delivery is free on orders over CHF 150.-. Orders are generally shipped within 2 to 4 business days, excluding public holidays and vacation periods.',
+          'We deliver within Switzerland. Economy delivery is free on orders over CHF 150.-. Orders are generally shipped within 2 to 4 business days, excluding public holidays and vacation periods.',
           'Free in-store pickup is available at 3 av. Pictet-De-Rochemont, 1207 Geneva, during opening hours. Delivery times are given as a guide and any delay shall not give rise to cancellation or compensation.',
         ]},
         { heading: '7. Returns and exchanges', body: [
@@ -1263,7 +1263,7 @@ const translations = {
       galleryLabel: 'Produktfotos, insgesamt {total}',
       imageOf: 'Bild {n} von {total}',
       shippingTitle: 'Lieferung Schweiz',
-      shippingText: 'Kostenlose Lieferung ab CHF 150.- Einkauf. Versand innerhalb von 2 bis 4 Werktagen.',
+      shippingText: 'Kostenloser Economy-Versand ab CHF 150.- Einkauf. Versand innerhalb von 2 bis 4 Werktagen.',
       defaultDesc: 'Ein handwerkliches So You Produkt, mit Liebe in Genf handgemacht.',
       youMayAlsoLike: 'Das könnte Ihnen auch gefallen',
     },
@@ -1440,7 +1440,7 @@ const translations = {
           'Die Bestellung wird nach Bestätigung der Zahlung bearbeitet.',
         ]},
         { heading: '6. Lieferung und Abholung im Geschäft', body: [
-          'Wir liefern in die Schweiz. Die Lieferung ist ab CHF 150.- Einkauf kostenlos. Bestellungen werden in der Regel innerhalb von 2 bis 4 Werktagen versandt, ausgenommen Feiertage und Ferienzeiten.',
+          'Wir liefern in die Schweiz. Der Economy-Versand ist ab CHF 150.- Einkauf kostenlos. Bestellungen werden in der Regel innerhalb von 2 bis 4 Werktagen versandt, ausgenommen Feiertage und Ferienzeiten.',
           'Die kostenlose Abholung im Geschäft ist an der 3 av. Pictet-De-Rochemont, 1207 Genf, zu den Öffnungszeiten möglich. Lieferfristen dienen nur als Richtwert; eine allfällige Verzögerung berechtigt nicht zu Stornierung oder Entschädigung.',
         ]},
         { heading: '7. Rückgabe und Umtausch', body: [
