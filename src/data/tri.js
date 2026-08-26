@@ -34,8 +34,25 @@ export function dansLaTranche(prix, tranche) {
 // portent une date, le tri s'ajoute ici et nulle part ailleurs.
 export const TRIS = ['boutique', 'prixCroissant', 'prixDecroissant', 'alpha'];
 
+// L'ordre de la boutique n'est plus celui d'un fichier.
+//
+// Il était celui de l'export Wix : une suite subie, que rien ne permettait de
+// changer. Une fiche porte maintenant un rang facultatif. Poser un rang sur une
+// seule d'entre elles la remonte sans déranger les autres — celles qui n'en ont
+// pas gardent leur suite d'origine, derrière. C'est ce qui rend le geste sûr :
+// on ne renumérote pas 178 fiches pour en mettre une en avant.
+function ordreBoutique(produits) {
+  const rang = (p) => {
+    const n = Number(p && p.ordre);
+    return Number.isFinite(n) ? n : null;
+  };
+  const classees = produits.filter((p) => rang(p) !== null).sort((a, b) => rang(a) - rang(b));
+  const reste = produits.filter((p) => rang(p) === null);
+  return [...classees, ...reste];
+}
+
 export function trier(produits, tri) {
-  if (tri === 'boutique' || !TRIS.includes(tri)) return produits;
+  if (tri === 'boutique' || !TRIS.includes(tri)) return ordreBoutique(produits);
   const copie = [...produits]; // `sort` modifie sur place : jamais le tableau source
   const prix = (p) => Number(p.price) || 0;
   if (tri === 'prixCroissant') return copie.sort((a, b) => prix(a) - prix(b));

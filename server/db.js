@@ -627,6 +627,15 @@ function normalizeProductInput(input, base = {}) {
   // Le poids expédié, en grammes. C'est le seul champ qui manquait pour que le
   // tarif postal se choisisse d'après le panier réel plutôt qu'au forfait — et
   // le seul des trois qu'elle ne pouvait pas saisir elle-même.
+  // Le rang d'affichage dans la boutique. Plus petit vient d'abord.
+  //
+  // L'ordre actuel est celui de l'export Wix — l'ordre d'un fichier, pas un
+  // choix. Poser un rang sur UNE fiche la remonte sans déranger les autres :
+  // celles qui n'en ont pas gardent leur suite, derrière.
+  if (input.ordre !== undefined) {
+    const n = Number(String(input.ordre).replace(',', '.'));
+    out.ordre = Number.isFinite(n) ? Math.round(n) : null;
+  }
   if (input.poids !== undefined) {
     const g = Number(String(input.poids).replace(',', '.'));
     out.poids = Number.isFinite(g) && g > 0 ? Math.round(g) : null;

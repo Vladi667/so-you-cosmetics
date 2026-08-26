@@ -29,7 +29,7 @@ const AdminDashboard = ({ onLogout }) => {
   const [customBadge, setCustomBadge] = useState(false);
   const [workshopImageUploading, setWorkshopImageUploading] = useState(false);
   const PRODUCTS_PER_PAGE = 25;
-  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], poids: '', contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '', rechargePrix: '' };
+  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], ordre: '', poids: '', contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '', rechargePrix: '' };
   // Charger un produit dans le formulaire.
   //
   // Les deux entrées — « Modifier » et « Dupliquer » — construisaient chacune
@@ -51,6 +51,7 @@ const AdminDashboard = ({ onLogout }) => {
     related: Array.isArray(p.related) ? [...p.related] : [],
     contenance: p.contenance || '',
     poids: p.poids ?? '',
+    ordre: p.ordre ?? '',
     ingredients: p.ingredients || '',
     inci: p.inci || '',
     // Les listes redeviennent du texte pour la saisie, et le serveur les
@@ -905,6 +906,7 @@ const AdminDashboard = ({ onLogout }) => {
                   // dise.
                   contenance: productForm.contenance || '',
                   poids: productForm.poids === '' ? null : productForm.poids,
+                  ordre: productForm.ordre === '' ? null : productForm.ordre,
                   ingredients: productForm.ingredients || '',
                   inci: productForm.inci || '',
                   typePeau: productForm.typePeauText || '',
@@ -1121,6 +1123,16 @@ const AdminDashboard = ({ onLogout }) => {
                         className="px-4 py-2 border rounded w-full" />
                     </div>
                     <div>
+                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Rang dans la boutique</label>
+                      <input type="number" step="1" placeholder="ex : 1" value={productForm.ordre}
+                        onChange={e => setProductForm({...productForm, ordre: e.target.value})}
+                        className="px-4 py-2 border rounded w-full" />
+                      <p className="text-[11px] text-stone-gray mt-1 leading-snug">
+                        Plus le nombre est petit, plus la fiche paraît tôt. Laissé vide, elle garde sa
+                        place actuelle, derrière celles qui portent un rang.
+                      </p>
+                    </div>
+                    <div>
                       <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Poids expédié (g)</label>
                       <input type="number" min="1" step="1" placeholder="ex : 140" value={productForm.poids}
                         onChange={e => setProductForm({...productForm, poids: e.target.value})}
@@ -1227,6 +1239,7 @@ const AdminDashboard = ({ onLogout }) => {
                     <th className="p-4">Catégories</th>
                     <th className="p-4">Prix</th>
                     <th className="p-4">Stock</th>
+                    <th className="p-4">Fiche</th>
                     <th className="p-4">Actions</th>
                   </tr>
                 </thead>
@@ -1261,7 +1274,20 @@ const AdminDashboard = ({ onLogout }) => {
                           </span>
                         )}
                       </td>
-                      <td className="p-4">
+                                            <td className="p-4">
+                        {/* Ou en est cette fiche. Trois champs comptent pour la boutique et
+                            pour ses CGV : la composition, la contenance, le poids. Sur 178
+                            produits, sans repere visible on ne sait pas ce qui reste. */}
+                        <span className="flex gap-1">
+                          {[["INCI", p.inci], ["Cont.", p.contenance], ["Poids", p.poids]].map(([nom, v]) => (
+                            <span key={nom} title={v ? `${nom} : renseigné` : `${nom} : à remplir`}
+                              className={`text-[10px] px-1.5 py-0.5 rounded ${v ? "bg-green-50 text-green-700" : "bg-slate-stone/5 text-stone-gray/50"}`}>
+                              {nom}
+                            </span>
+                          ))}
+                        </span>
+                      </td>
+<td className="p-4">
                         <div className="flex gap-3">
                           <button onClick={() => {
                             // Duplicate: same content, no id -> the form saves it
