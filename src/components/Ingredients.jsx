@@ -1,13 +1,13 @@
 import React from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
+import IconeEngagement from './IconeEngagement';
 
 const Ingredients = () => {
   const { t } = useLanguage();
-  // Une icone par engagement. Il y en avait quatre pour cinq cartes : la
-  // derniere affichait une boite vide, qu'on lit comme une image qui n'a pas
-  // charge plutot que comme un parti pris.
-  const icons = ['🌴', '🧴', '♻️', '🌱', '📍'];
-  const commitments = t('ingredients.commitments').map((c, i) => ({ ...c, icon: icons[i] }));
+  // Une icone par engagement, dans leur ordre. Il y en avait quatre pour cinq
+  // cartes : la derniere affichait une boite vide, qu'on lit comme une image qui
+  // n'a pas charge plutot que comme un parti pris.
+  const commitments = t('ingredients.commitments');
 
   return (
     <section className="py-24 md:py-40 bg-mist-white relative overflow-hidden">
@@ -43,8 +43,8 @@ const Ingredients = () => {
                 seuleSurSaLigne ? ' col-span-2 sm:w-[calc(50%-1rem)] lg:w-[calc(50%-1.5rem)] justify-self-center' : ''
               }`}
             >
-              <div className="w-10 h-10 sm:w-14 sm:h-14 bg-mist-white rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0 text-lg sm:text-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-250">
-                {item.icon}
+              <div className="w-10 h-10 sm:w-14 sm:h-14 bg-mist-white rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0 text-slate-stone/70 group-hover:scale-110 group-hover:text-slate-stone transition-all duration-250">
+                <IconeEngagement index={index} className="w-5 h-5 sm:w-7 sm:h-7" />
               </div>
               <div>
                 <h3 className="font-sans tracking-[0.1em] sm:tracking-[0.15em] uppercase text-[10px] sm:text-xs md:text-sm font-bold text-slate-stone mb-1.5 sm:mb-3">
