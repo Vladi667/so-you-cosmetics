@@ -151,7 +151,7 @@ app.get('*', (req, res, next) => {
 // Start the server
 app.listen(PORT, () => {
   console.log(`=========================================`);
-  console.log(`  SoYou Cosmetics Server is now running!`);
+  console.log(`  Serveur So You Cosmetics démarré.`);
   console.log(`  Local URL:  http://localhost:${PORT}`);
   console.log(`  Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`  Uploads dir: ${uploadsRoot}`);
