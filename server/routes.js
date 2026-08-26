@@ -1108,6 +1108,45 @@ router.get('/workshops/slots', (req, res) => {
   }
 });
 
+// L'avis qu'elle reçoit quand quelqu'un réserve un atelier.
+//
+// La cliente lit « Nous avons le plaisir de vous confirmer votre réservation »
+// et note la date. Sans cet avis, personne côté boutique ne l'apprend : on
+// pouvait se présenter un samedi matin pour un atelier dont Catherine ignorait
+// tout. Le nom de l'atelier est résolu ici, parce qu'un identifiant ne lui dit
+// rien.
+async function avertirNouvelleReservation({ name, email, workshopId, date, seats, bookingId }) {
+  const destinataire = db.adresseAlerte();
+  if (!destinataire) return;
+  let titre = String(workshopId || '');
+  try {
+    const ateliers = await db.getWorkshops();
+    const trouve = (ateliers || []).find((w) => String(w.id) === String(workshopId));
+    if (trouve && trouve.title) titre = trouve.title;
+  } catch { /* le titre reste l'identifiant : mieux que rien */ }
+
+  try {
+    await emailService.sendMail({
+      to: destinataire,
+      replyTo: email,
+      subject: `Réservation d'atelier — ${date}`,
+      html: `
+        <div style="font-family:sans-serif;color:#3A332B;max-width:600px;margin:0 auto;padding:24px;">
+          <p style="margin:0 0 4px;"><strong>${escapeForEmail(name)}</strong></p>
+          <p style="margin:0 0 16px;color:#6A6157;font-size:13px;">${escapeForEmail(email)}</p>
+          <p style="margin:0 0 6px;"><strong>${escapeForEmail(titre)}</strong></p>
+          <p style="margin:0 0 4px;">Date : ${escapeForEmail(String(date))}</p>
+          <p style="margin:0 0 16px;">Places : ${Math.max(1, parseInt(seats, 10) || 1)}</p>
+          <p style="color:#888;font-size:12px;">Réservation ${escapeForEmail(String(bookingId || ''))}. Répondre à ce message écrit directement à ${escapeForEmail(email)}.</p>
+        </div>`,
+    });
+  } catch (err) {
+    // Une réservation enregistrée et confirmée ne doit pas échouer parce que
+    // l'avis n'est pas parti.
+    console.error("Avis de réservation non envoyé :", err.message);
+  }
+}
+
 // 5. Book Workshop
 router.post('/workshops/book', async (req, res) => {
   const { name, email, workshopId, date, seats } = req.body;
@@ -1121,7 +1160,7 @@ router.post('/workshops/book', async (req, res) => {
     // Auto-send booking confirmation email to client
     const emailHtml = `
       <div style="font-family: sans-serif; color: #444; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
-        <h2 style="color: #2c3e50; font-family: serif; border-b: 1px solid #eee; padding-bottom: 10px;">Réservation d'atelier confirmée</h2>
+        <h2 style="color: #2c3e50; font-family: serif; border-bottom: 1px solid #eee; padding-bottom: 10px;">Réservation d'atelier confirmée</h2>
         <p>Bonjour <strong>${name}</strong>,</p>
         <p>Nous avons le plaisir de vous confirmer votre réservation pour l'atelier cosmétique :</p>
         <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
@@ -1139,6 +1178,8 @@ router.post('/workshops/book', async (req, res) => {
       subject: `Votre réservation d'atelier So You Cosmetics est confirmée !`,
       html: emailHtml
     });
+
+    await avertirNouvelleReservation({ name, email, workshopId, date, seats, bookingId: booking.id });
 
     res.status(201).json({
       message: 'Booking confirmed successfully!',
