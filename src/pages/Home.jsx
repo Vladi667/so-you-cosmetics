@@ -6,8 +6,15 @@ import HandmadeGeneva from '../components/HandmadeGeneva';
 import Ingredients from '../components/Ingredients';
 import Workshops from '../components/Workshops';
 import Catalog from '../components/Catalog';
+import { useLanguage } from '../i18n/LanguageContext';
+import useMetadonnees from '../hooks/useMetadonnees';
 
 const Home = ({ addToCart, toggleFavorite, favorites }) => {
+  const { t } = useLanguage();
+  // Pas de titre propre : l'accueil garde celui du site, qui est déjà le sien.
+  // Seule la description manquait.
+  useMetadonnees({ description: t('about.s2p1') });
+
   return (
     <>
       <Hero />

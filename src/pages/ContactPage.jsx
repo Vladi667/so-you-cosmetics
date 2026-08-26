@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { getHours } from '../services/shop';
 import useEnvoiFormulaire from '../hooks/useEnvoiFormulaire';
+import useMetadonnees from '../hooks/useMetadonnees';
 
 const ContactPage = () => {
   const { t } = useLanguage();
+  useMetadonnees({ titre: t('contact.title'), description: t('contact.subtitle') });
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const { etat, enCours, message, messageVisible, envoyer } = useEnvoiFormulaire();
 

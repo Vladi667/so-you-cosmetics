@@ -10,6 +10,7 @@ import { lireRecette } from '../data/recettes';
 import { ouvrirPanier } from '../services/panier';
 import ImageProduit from '../components/ImageProduit';
 import VisionneuseImage from '../components/VisionneuseImage';
+import useMetadonnees from '../hooks/useMetadonnees';
 
 
 
@@ -196,6 +197,18 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
     const minuterie = setTimeout(() => setAjoute(false), 5000);
     return () => clearTimeout(minuterie);
   }, [ajoute]);
+
+  // Le titre de l'onglet, la description et l'image de partage de cette fiche.
+  // Appelé avant le retour anticipé ci-dessous : un hook ne peut pas être
+  // conditionnel, et la fiche non chargée passe simplement des valeurs vides.
+  useMetadonnees({
+    titre: product ? product.name : '',
+    description: product ? product.description : '',
+    image: product && product.images && product.images[0]
+      ? imageUrl(product.images[0], 1200)
+      : '',
+    type: 'product',
+  });
 
   if (!product) return <SqueletteFiche />;
 

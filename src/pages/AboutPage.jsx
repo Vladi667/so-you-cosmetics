@@ -1,9 +1,11 @@
 import React from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import AutoPlayVideo from '../components/AutoPlayVideo';
+import useMetadonnees from '../hooks/useMetadonnees';
 
 const AboutPage = () => {
   const { t } = useLanguage();
+  useMetadonnees({ titre: t('about.title'), description: t('about.s2p1') });
   const values = t('about.values');
 
   return (

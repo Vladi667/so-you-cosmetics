@@ -2,9 +2,11 @@ import { Link } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import AutoPlayVideo from '../components/AutoPlayVideo';
 import { useLanguage } from '../i18n/LanguageContext';
+import useMetadonnees from '../hooks/useMetadonnees';
 
 const WorkshopsPage = () => {
   const { t } = useLanguage();
+  useMetadonnees({ titre: t('workshopsPage.title'), description: t('workshopsPage.introQuote') });
   const [workshops, setWorkshops] = useState([]);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [contactForm, setContactForm] = useState({ name: '', email: '', subject: t('workshopsPage.defaultSubject'), message: '' });

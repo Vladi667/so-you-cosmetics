@@ -1,9 +1,11 @@
 import React from 'react';
 import LegalLayout from '../components/LegalLayout';
 import { useLanguage } from '../i18n/LanguageContext';
+import useMetadonnees from '../hooks/useMetadonnees';
 
 const PrivacyPage = () => {
   const { t } = useLanguage();
+  useMetadonnees({ titre: t('privacy.title'), description: t('privacy.intro') });
   return (
     <LegalLayout
       title={t('privacy.title')}

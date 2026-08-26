@@ -3,6 +3,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { getProducts, imageUrl } from '../services/products';
 import useEnvoiFormulaire from '../hooks/useEnvoiFormulaire';
 import VisionneuseImage from '../components/VisionneuseImage';
+import useMetadonnees from '../hooks/useMetadonnees';
 
 // La fiche « Commande personnalisée » du catalogue. Ses treize photos de
 // réalisations y vivent déjà ; la page les lit de là plutôt que de les recopier,
@@ -19,6 +20,7 @@ const ID_FICHE_SOURCE = 'product_d13bfad4-56a7-e63e-672a-0aa651bd6bf5';
 // elles répondent d'avance à la question qu'on allait poser.
 const PersonnalisationPage = () => {
   const { t } = useLanguage();
+  useMetadonnees({ titre: t('personnalisation.title'), description: t('personnalisation.lead') });
   const [photos, setPhotos] = useState([]);
   // Le nombre de flacons remplis. La route ne renvoie QUE ce nombre : les
   // commandes ne transitent jamais par une route publique, et un compteur n'a

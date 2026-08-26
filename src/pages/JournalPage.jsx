@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useLanguage } from '../i18n/LanguageContext';
+import useMetadonnees from '../hooks/useMetadonnees';
 
 const formatDate = (iso, language) => {
   if (!iso) return '';
@@ -20,6 +21,7 @@ const formatDate = (iso, language) => {
 const JournalPage = () => {
   const { slug } = useParams();
   const { t, language } = useLanguage();
+  useMetadonnees({ titre: t('journal.title'), description: t('journal.intro') });
   const [articles, setArticles] = useState([]);
   const [article, setArticle] = useState(null);
   const [state, setState] = useState('loading');

@@ -2,11 +2,16 @@ import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Catalog from '../components/Catalog';
 import { useLanguage } from '../i18n/LanguageContext';
+import useMetadonnees from '../hooks/useMetadonnees';
 
 const SearchPage = ({ addToCart, toggleFavorite, favorites }) => {
   const { t } = useLanguage();
   const { query } = useParams();
   const decoded = decodeURIComponent(query || '');
+
+  // Le terme cherché dans le titre : c'est ce qui distingue deux onglets de
+  // résultats ouverts côte à côte.
+  useMetadonnees({ titre: `${t('search.label')} ${decoded}`.trim() });
 
   return (
     <div className="pt-24 min-h-screen bg-mist-white flex flex-col">
