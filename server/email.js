@@ -30,7 +30,7 @@ if (isProductionEmail) {
   console.log('Email Service: Running in local MOCK mode. Emails will be logged to server/data/sent_emails.json.');
 }
 
-async function sendMail({ to, subject, html, text }) {
+async function sendMail({ to, subject, html, text, replyTo }) {
   // Le nom qui s'affiche dans la boite de reception de chaque cliente. Il
   // etait faux deux fois : « SoYou » colle, alors que la marque s'ecrit en
   // deux mots, et « Geneva », l'orthographe anglaise d'une ville francaise,
@@ -43,6 +43,9 @@ async function sendMail({ to, subject, html, text }) {
       const info = await transporter.sendMail({
         from: `"${fromName}" <${fromEmail}>`,
         to,
+        // Répondre à un avis de message doit écrire à la cliente, pas à
+        // « no-reply ». Sans cela il faut recopier l'adresse à la main.
+        ...(replyTo ? { replyTo } : {}),
         subject,
         text: text || html.replace(/<[^>]*>/g, ''), // Strip tags for plain text fallback
         html
@@ -59,6 +62,7 @@ async function sendMail({ to, subject, html, text }) {
     id: 'mail_' + Math.random().toString(36).substr(2, 9),
     from: `"${fromName}" <${fromEmail}>`,
     to,
+    replyTo: replyTo || null,
     subject,
     text: text || html.replace(/<[^>]*>/g, ''),
     html,

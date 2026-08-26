@@ -1148,6 +1148,35 @@ router.post('/workshops/book', async (req, res) => {
 });
 
 // 6. Submit Contact Inquiry
+// L'avis qu'elle reçoit quand quelqu'un écrit par le formulaire.
+//
+// `replyTo` porte l'adresse de la cliente : répondre depuis sa boîte lui écrit
+// directement, sans recopier quoi que ce soit. Sans alerte configurée, rien
+// n'est envoyé — comme pour les commandes et le stock.
+async function avertirNouveauMessage({ name, email, subject, message }) {
+  const { alerts } = db.getShopSettings();
+  if (!alerts || !alerts.email) return;
+  try {
+    await emailService.sendMail({
+      to: alerts.email,
+      replyTo: email,
+      subject: `Message du site — ${subject || 'sans objet'}`,
+      html: `
+        <div style="font-family:sans-serif;color:#3A332B;max-width:600px;margin:0 auto;padding:24px;">
+          <p style="margin:0 0 4px;"><strong>${escapeForEmail(name)}</strong></p>
+          <p style="margin:0 0 16px;color:#6A6157;font-size:13px;">${escapeForEmail(email)}</p>
+          <p style="margin:0 0 6px;"><strong>${escapeForEmail(subject || 'Sans objet')}</strong></p>
+          <p style="white-space:pre-wrap;line-height:1.6;">${escapeForEmail(message)}</p>
+          <p style="color:#888;font-size:12px;margin-top:20px;">Répondre à ce message écrit directement à ${escapeForEmail(email)}.</p>
+        </div>`,
+    });
+  } catch (err) {
+    // Un avis qui échoue ne doit pas faire perdre le message : il est déjà
+    // enregistré, et la cliente a déjà son accusé de réception.
+    console.error('Avis de nouveau message non envoyé :', err.message);
+  }
+}
+
 router.post('/contact', async (req, res) => {
   const { name, email, subject, message } = req.body;
   if (!name || !email || !message) {
@@ -1172,6 +1201,16 @@ router.post('/contact', async (req, res) => {
       subject: `Nous avons bien reçu votre message - So You Cosmetics`,
       html: emailHtml
     });
+
+    // Et la prévenir, elle.
+    //
+    // Le formulaire enregistrait le message et accusait réception à la cliente
+    // — puis s'arrêtait là. Personne n'avertissait la boutique. La cliente
+    // lisait « Notre équipe vous répondra dans les plus brefs délais » pendant
+    // que sa demande dormait dans un fichier, visible seulement si Catherine
+    // pensait à ouvrir l'onglet Messages. C'est la même adresse d'alerte que
+    // pour les commandes et les ruptures de stock.
+    await avertirNouveauMessage({ name, email, subject, message });
 
     res.status(200).json({ message: 'Message logged and sent successfully!' });
   } catch (err) {
