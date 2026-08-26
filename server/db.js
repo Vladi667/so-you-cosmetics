@@ -994,6 +994,31 @@ async function createContact(contact) {
   return newContact;
 }
 
+// Relire les inscriptions à l'infolettre.
+//
+// Elles étaient enregistrées depuis le début sans que rien ne permette de les
+// consulter : la fonction manquait, et donc la route et l'écran aussi.
+async function getNewsletterSubscribers() {
+  if (pool) {
+    try {
+      const [rows] = await pool.query('SELECT email, created_at FROM newsletter ORDER BY created_at DESC');
+      return rows;
+    } catch (err) {
+      console.error('MySQL getNewsletterSubscribers failed, falling back to JSON file', err);
+    }
+  }
+  try {
+    const data = JSON.parse(fs.readFileSync(NEWSLETTER_FILE, 'utf8'));
+    // Le fichier a pu être écrit en simples chaînes avant que la date existe.
+    const liste = (Array.isArray(data) ? data : []).map((n) =>
+      typeof n === 'string' ? { email: n, created_at: null } : n
+    );
+    return liste.slice().reverse();
+  } catch {
+    return [];
+  }
+}
+
 // 5b. Create Newsletter Subscriber (idempotent — ignores duplicate emails)
 async function createNewsletterSubscriber(email) {
   const normalized = String(email).toLowerCase().trim();
@@ -1705,6 +1730,7 @@ module.exports = {
   createBooking,
   createContact,
   createNewsletterSubscriber,
+  getNewsletterSubscribers,
   // Admin DB functions
   getAdmin,
   updateAdminPassword,

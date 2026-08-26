@@ -1049,6 +1049,40 @@ function champCsv(valeur) {
   return /[";\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
 }
 
+// Les inscrites à l'infolettre.
+//
+// Le formulaire du pied de page les enregistrait depuis le début, et rien ne
+// permettait de les relire : ni route, ni écran. Elle collectait des adresses
+// personnelles qu'elle ne pouvait ni consulter ni utiliser — une inscription
+// promise, jamais honorée, et des données gardées sans usage.
+router.get('/admin/newsletter', requireAdmin, async (req, res) => {
+  try {
+    const liste = await db.getNewsletterSubscribers();
+    res.json(Array.isArray(liste) ? liste : []);
+  } catch (err) {
+    console.error('Lecture des inscriptions impossible :', err.message);
+    res.status(500).json({ error: "La liste n'a pas pu être lue." });
+  }
+});
+
+// Le même fichier, dans la forme qui se colle dans un outil d'envoi.
+router.get('/admin/newsletter/export', requireAdmin, async (req, res) => {
+  try {
+    const liste = await db.getNewsletterSubscribers();
+    const lignes = (Array.isArray(liste) ? liste : []).map((n) => [
+      champCsv(typeof n === 'string' ? n : (n.email || '')),
+      champCsv(String((n && n.created_at) || '').slice(0, 10)),
+    ].join(';'));
+    const csv = '\ufeff' + [['E-mail', 'Inscrite le'].join(';'), ...lignes].join('\r\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="infolettre-so-you.csv"');
+    res.send(csv);
+  } catch (err) {
+    console.error("Export des inscriptions impossible :", err.message);
+    res.status(500).json({ error: "L'export n'a pas pu être produit." });
+  }
+});
+
 router.get('/admin/orders/export', requireAdmin, async (req, res) => {
   try {
     const annee = String(req.query.year || new Date().getFullYear());

@@ -11,6 +11,9 @@ const statusKey = (s) => String(s || '').toLowerCase();
 
 const AdminDashboard = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState('orders');
+  // Les inscrites a l'infolettre. Elles etaient collectees depuis le debut sans
+  // qu'aucun ecran ne permette de les relire.
+  const [abonnees, setAbonnees] = useState([]);
   const [orders, setOrders] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [clients, setClients] = useState([]);
@@ -238,6 +241,14 @@ const AdminDashboard = ({ onLogout }) => {
         if (activeTab === 'orders') setOrders(data);
         if (activeTab === 'bookings') setBookings(data);
         if (activeTab === 'clients') setClients(data);
+        // Le fichier clients et les inscrites vivent au meme endroit : ce sont
+        // les memes personnes, arrivees par deux portes differentes.
+        if (activeTab === 'clients') {
+          fetch('/api/admin/newsletter', { headers: fetchHeaders })
+            .then((r) => (r.ok ? r.json() : []))
+            .then((l) => setAbonnees(Array.isArray(l) ? l : []))
+            .catch(() => setAbonnees([]));
+        }
         if (activeTab === 'workshops') setWorkshops(data);
         if (activeTab === 'products') setProducts(data);
         setLoading(false);
@@ -560,15 +571,15 @@ const AdminDashboard = ({ onLogout }) => {
           <nav className="space-y-2">
             {[
               { id: 'orders', label: 'Commandes', icon: '🛒' },
-              { id: 'products', label: 'Gestion Produits', icon: '🧴' },
-              { id: 'workshops', label: 'Gestion Ateliers', icon: '🎨' },
-              { id: 'clients', label: 'Fichier Clients', icon: '👤' },
+              { id: 'products', label: 'Gestion des produits', icon: '🧴' },
+              { id: 'workshops', label: 'Gestion des ateliers', icon: '🎨' },
+              { id: 'clients', label: 'Fichier clients', icon: '👤' },
               { id: 'inbox', label: 'Boîte de réception', icon: '📥' },
               { id: 'sumup', label: 'API SumUp', icon: '💳' },
               { id: 'content', label: 'Textes du site', icon: '✏️' },
               { id: 'journal', label: 'Journal', icon: '📝' },
               { id: 'shop', label: 'Horaires & absences', icon: '🕓' },
-              { id: 'settings', label: 'Configuration / Password', icon: '⚙️' }
+              { id: 'settings', label: 'Configuration et mot de passe', icon: '⚙️' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -754,7 +765,7 @@ const AdminDashboard = ({ onLogout }) => {
           <div>
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h1 className="font-serif text-3xl md:text-4xl text-slate-stone">Fichier Clients</h1>
+                <h1 className="font-serif text-3xl md:text-4xl text-slate-stone">Fichier clients</h1>
                 <p className="text-xs text-stone-gray font-light mt-1">Liste consolidée de tous les clients (commandes et ateliers).</p>
               </div>
               <button onClick={loadData} className="px-4 py-2 bg-white rounded-lg border border-slate-stone/10 text-xs text-stone-gray hover:bg-slate-stone/5 transition-all">Rafraîchir 🔄</button>
@@ -799,13 +810,51 @@ const AdminDashboard = ({ onLogout }) => {
                 </table>
               </div>
             )}
+
+            {/* Les inscriptions a l'infolettre.
+                Le formulaire du pied de page les enregistrait depuis le debut,
+                et rien ne permettait de les relire : ni route, ni ecran. Elle
+                collectait des adresses qu'elle ne pouvait ni consulter ni
+                utiliser. */}
+            <div className="mt-10 bg-white rounded-3xl border border-slate-stone/5 p-6 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div>
+                  <h3 className="font-serif text-xl text-slate-stone">Infolettre</h3>
+                  <p className="text-xs text-stone-gray mt-1">
+                    {abonnees.length === 0
+                      ? "Personne ne s'est encore inscrit depuis le pied de page."
+                      : `${abonnees.length} inscription${abonnees.length > 1 ? 's' : ''} depuis le pied de page du site.`}
+                  </p>
+                </div>
+                {abonnees.length > 0 && (
+                  <a
+                    href="/api/admin/newsletter/export"
+                    className="px-4 py-2 bg-slate-stone text-white rounded-full text-[11px] uppercase tracking-widest hover:bg-slate-stone/90 transition-colors"
+                  >
+                    Exporter en CSV
+                  </a>
+                )}
+              </div>
+              {abonnees.length > 0 && (
+                <div className="max-h-64 overflow-y-auto divide-y divide-slate-stone/5">
+                  {abonnees.map((a, i) => (
+                    <div key={i} className="flex items-baseline justify-between gap-4 py-2 text-sm">
+                      <span className="font-mono text-xs text-slate-stone truncate">{a.email}</span>
+                      <span className="text-[11px] text-stone-gray whitespace-nowrap">
+                        {a.created_at ? new Date(a.created_at).toLocaleDateString('fr-CH') : '—'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {/* Tab 3.5: Workshops */}
         {activeTab === 'products' && (
           <div>
-            <h1 className="font-serif text-3xl md:text-4xl text-slate-stone mb-8">Gestion des Produits</h1>
+            <h1 className="font-serif text-3xl md:text-4xl text-slate-stone mb-8">Gestion des produits</h1>
 
             <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 shadow-sm mb-8">
               <h3 className="font-serif text-xl text-slate-stone mb-4">{productForm.id ? 'Modifier le produit' : 'Ajouter un produit'}</h3>
