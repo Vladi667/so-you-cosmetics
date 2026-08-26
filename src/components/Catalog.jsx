@@ -457,8 +457,14 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                     </Link>
                   </div>
                   <div className="mt-auto pt-2 sm:pt-4 flex items-center justify-between border-t border-slate-stone/10">
+                    {/* Quatre fiches du catalogue sont a CHF 0 : les trois
+                        « Collection » et « Commande personnalisee ». Elles ne
+                        valent pas zero franc, elles n'ont pas de prix fixe —
+                        c'est le « sur devis » de son propre texte. Affiche
+                        « CHF 0.00 », on pouvait les commander pour le seul prix
+                        du port. */}
                     <p className="text-slate-stone text-xs sm:text-base font-medium tracking-wide">
-                      CHF {product.price.toFixed(2)}
+                      {Number(product.price) > 0 ? `CHF ${product.price.toFixed(2)}` : t('catalog.onQuote')}
                     </p>
                     <div className="flex space-x-2 sm:space-x-3">
                       <button 
@@ -471,7 +477,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                       </button>
                       {/* Un atelier se réserve, il ne s'ajoute pas au panier :
                           le bouton n'aurait mené qu'à une impasse. */}
-                      {!product.estAtelier && (
+                      {!product.estAtelier && Number(product.price) > 0 && (
                       <button
                         onClick={(e) => {
                           if (product.inStock === false) return;

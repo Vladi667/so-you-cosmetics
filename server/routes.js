@@ -330,6 +330,10 @@ async function computeOrderTotal(items, shippingId) {
   for (const line of items || []) {
     const product = byId.get(String(line.id));
     if (!product) continue;                       // ligne inconnue : ignorée, jamais facturée
+    // Une fiche sans prix ne s'achète pas : c'est un « sur devis », pas un
+    // article à zéro franc. Quatre existent au catalogue, et sans cette garde
+    // un panier n'en contenant qu'elles passait pour le seul prix du port.
+    if (!(Number(product.price) > 0)) continue;
     const price = Number(product.price) || 0;
     const qty = Math.max(1, parseInt(line.qty, 10) || 1);
     goods += price * qty;
@@ -382,7 +386,10 @@ router.post('/orders', async (req, res) => {
       }
       throw err;
     }
-    if (!(calcul.total > 0)) {
+    // On contrôle la MARCHANDISE, pas le total : avec des frais de port, un
+    // panier ne contenant que des fiches sans prix afficherait un total positif
+    // tout en ne vendant rien.
+    if (!(calcul.goods > 0)) {
       return res.status(400).json({ error: 'Panier vide ou produits introuvables' });
     }
 

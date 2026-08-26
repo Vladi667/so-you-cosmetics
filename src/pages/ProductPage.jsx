@@ -275,7 +275,9 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   {product.name}
                 </h1>
                 <div className="flex items-center gap-3 flex-wrap">
-                  <p className="font-sans text-2xl text-stone-gray font-light">CHF {product.price.toFixed(2)}</p>
+                  <p className="font-sans text-2xl text-stone-gray font-light">
+                    {Number(product.price) > 0 ? `CHF ${product.price.toFixed(2)}` : t('catalog.onQuote')}
+                  </p>
                   {/* La contenance appartient au prix : « CHF 24.00 » ne veut
                       rien dire tant qu'on ignore si c'est pour 30 ml ou 200. */}
                   {product.contenance && (
@@ -289,7 +291,21 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 </div>
               </div>
 
+              {/* Sans prix fixe, il n'y a rien a mettre au panier : on
+                  propose ce qui a du sens, une demande de devis. */}
+              {Number(product.price) <= 0 && (
+                <div ref={blocAchatRef}>
+                  <Link
+                    to="/personnalisation"
+                    className="press inline-block rounded-full bg-slate-stone px-8 py-4 font-sans text-xs uppercase tracking-[0.2em] text-white"
+                  >
+                    {t('catalog.askForQuote')}
+                  </Link>
+                </div>
+              )}
+
               {/* Add to Cart Actions */}
+              {Number(product.price) > 0 && (
               <div ref={blocAchatRef} className="flex flex-col sm:flex-row gap-4">
                 <div className="flex items-center justify-between border border-slate-stone/20 rounded-full px-6 py-4 sm:w-1/3 bg-ivory">
                   <button 
@@ -329,6 +345,8 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 </button>
               </div>
               
+
+              )}
 
               {/* Rupture de stock : un chemin, pas une impasse.
                   Le bouton devenait gris et le visiteur restait devant un mur.

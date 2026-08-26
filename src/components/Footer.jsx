@@ -16,6 +16,7 @@ const EXPLORE_LINKS = [
   { key: 'products', to: '/category/All' },
   { key: 'about', to: '/about' },
   { key: 'workshops', to: '/workshops' },
+  { key: 'personnalisation', to: '/personnalisation' },
   { key: 'journal', to: '/journal' },
   { key: 'contact', to: '/contact' }
 ];

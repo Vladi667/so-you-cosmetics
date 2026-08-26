@@ -15,6 +15,7 @@ import PageLoader from './components/PageLoader';
 import SideDrawer from './components/SideDrawer';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
+import PersonnalisationPage from './pages/PersonnalisationPage';
 import Home from './pages/Home';
 import CategoryPage from './pages/CategoryPage';
 import AboutPage from './pages/AboutPage';
@@ -212,6 +213,7 @@ function App() {
           <Route path="/journal" element={<JournalPage />} />
           <Route path="/journal/:slug" element={<JournalPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/personnalisation" element={<PersonnalisationPage />} />
           <Route path="/category/:categoryName" element={<CategoryPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
           <Route path="/product/:id" element={<ProductPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
           <Route path="/search/:query" element={<SearchPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
