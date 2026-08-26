@@ -285,11 +285,21 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                     >
                       {t('signature.add')}
                     </button>
+                    {/* Le libellé portait « Ajouter aux favoris » sans dire
+                        lequel : la bande en montre plusieurs à la fois, et un
+                        lecteur d'écran répétait la même phrase de carte en
+                        carte. Mêmes clefs que le catalogue. */}
                     <button
                       type="button"
                       onClick={() => toggleFavorite(product)}
                       tabIndex={isDuplicate ? -1 : undefined}
-                      aria-label={t('signature.favorite')}
+                      aria-label={t(
+                        favorites.find(f => f.id === product.id)
+                          ? 'catalog.ariaFavoriteRemove'
+                          : 'catalog.ariaFavoriteAdd',
+                        { name: product.name }
+                      )}
+                      aria-pressed={!!favorites.find(f => f.id === product.id)}
                       className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center
                                  hover:bg-slate-stone hover:text-white press"
                     >

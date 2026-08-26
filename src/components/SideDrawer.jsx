@@ -292,8 +292,9 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
           >
             {checkoutSuccess ? t('drawer.thanks') : isCheckoutMode ? t('drawer.finalize') : title}
           </h2>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
+            aria-label={t('drawer.close')}
             className="press w-10 h-10 rounded-full bg-mist-white flex items-center justify-center hover:bg-slate-stone hover:text-white"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -80,6 +80,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
             <Logo className="h-5 w-auto text-white" />
             <button
               onClick={onClose}
+              aria-label={t('drawer.close')}
               className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 press"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

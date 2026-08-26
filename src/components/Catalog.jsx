@@ -488,8 +488,19 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                         : t('catalog.onQuote')}
                     </p>
                     <div className="flex space-x-2 sm:space-x-3">
-                      <button 
+                      {/* Un bouton qui ne contient qu'une icône n'a pas de nom :
+                          un lecteur d'écran annonce « bouton », et rien d'autre.
+                          Le nom porte celui du produit, parce que la page en
+                          répète douze identiques. */}
+                      <button
                         onClick={() => toggleFavorite(product)}
+                        aria-label={t(
+                          favorites.find(f => f.id === product.id)
+                            ? 'catalog.ariaFavoriteRemove'
+                            : 'catalog.ariaFavoriteAdd',
+                          { name: product.name }
+                        )}
+                        aria-pressed={!!favorites.find(f => f.id === product.id)}
                         className={`transition-colors duration-200 ${favorites.find(f => f.id === product.id) ? 'text-red-400' : 'text-slate-stone/60 hover:text-red-400'}`}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill={favorites.find(f => f.id === product.id) ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
@@ -507,6 +518,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
                           setAjouteId(product.id);
                         }}
                         disabled={product.inStock === false}
+                        aria-label={t('catalog.ariaAddToCart', { name: product.name })}
                         className={`transition-all duration-300 ${product.inStock === false ? 'text-slate-stone/20 cursor-not-allowed' : 'text-slate-stone/60 hover:text-slate-stone'}`}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

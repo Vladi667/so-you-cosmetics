@@ -112,7 +112,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
             : 'bg-transparent py-5 lg:py-8'
       }`}>
         <div className="container mx-auto px-4 sm:px-6 md:px-12 flex items-center">
-          <button onClick={() => onCategorySelect('All')} className=" hover:opacity-85 press py-1 flex items-center transform-gpu">
+          <button onClick={() => onCategorySelect('All')} aria-label={t('nav.home')} className=" hover:opacity-85 press py-1 flex items-center transform-gpu">
             {/* The white logo sits over the hero video, so it disappears on a
                 light frame or before the video paints. A soft shadow keeps it
                 readable on any background — the client reported it as
@@ -211,7 +211,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
               </button>
             </form>
 
-            <button id="fav-icon" onClick={onFavClick} className={`relative transition-colors duration-200 p-1.5 sm:p-2 ${getTextColor()}`}>
+            <button id="fav-icon" onClick={onFavClick} aria-label={t('nav.favorites')} className={`relative transition-colors duration-200 p-1.5 sm:p-2 ${getTextColor()}`}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
@@ -222,7 +222,7 @@ const Navbar = ({ cartCount, favCount, onCategorySelect, onCartClick, onFavClick
               )}
             </button>
             
-            <button id="cart-icon" onClick={onCartClick} className={`relative transition-colors duration-200 p-1.5 sm:p-2 ${getTextColor()}`}>
+            <button id="cart-icon" onClick={onCartClick} aria-label={t('nav.cart')} className={`relative transition-colors duration-200 p-1.5 sm:p-2 ${getTextColor()}`}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
