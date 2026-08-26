@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
-import { getShipping, shippingCostFor, exigeAdresse } from '../services/shop';
+import { getShipping, shippingCostFor, exigeAdresse, getGiftWrap } from '../services/shop';
 import { totalPanier, nombreArticles } from '../services/panier';
 import { Link } from 'react-router-dom';
 import useVerrouDefilement from '../hooks/useVerrouDefilement';
+
+const CHAMP_CAISSE = 'w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40';
 
 const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, onAddToCart }) => {
   const { t } = useLanguage();
@@ -24,6 +26,13 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
   // Decochee par defaut, et bloquante : une acceptation pre-cochee n'en est pas
   // une, et c'est le seul bouton du site qui declenche un paiement.
   const [cgvAcceptees, setCgvAcceptees] = useState(false);
+
+  // Un panier contenant un bon cadeau demande à qui il est destiné. La question
+  // n'a pas de sens autrement, et l'imposer à toutes les commandes ferait
+  // trois champs de plus à ignorer pour tout le monde.
+  const contientBonCadeau = items.some((i) => i.bonCadeau);
+  const emballageCadeau = getGiftWrap();
+  const [cadeau, setCadeau] = useState({ destinataire: '', email: '', message: '', date: '', emballage: false });
   // Ne s'affiche qu'apres une tentative : reprocher a quelqu'un de ne pas avoir
   // coche une case qu'il n'a pas encore vue est un reproche gratuit.
   const [tentativeSansCgv, setTentativeSansCgv] = useState(false);
@@ -89,6 +98,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
       setAdresse({ line1: '', line2: '', zip: '', city: '', country: 'CH' });
       setCgvAcceptees(false);
       setTentativeSansCgv(false);
+      setCadeau({ destinataire: '', email: '', message: '', date: '', emballage: false });
     }, 500); // le temps de la transition de fermeture
     return () => clearTimeout(id);
   }, [isOpen]);
@@ -144,7 +154,11 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
   // suisse d'annoncer le prix effectivement à payer.
   const optionChoisie = shipping.options.find((o) => o.id === shippingId) || null;
   const fraisPort = shippingCostFor(optionChoisie, total);
-  const totalAPayer = total + fraisPort;
+  // Le meme calcul que le serveur : marchandise + port + emballage. Afficher un
+  // total qui ignore le supplement rejouerait le defaut des frais de port, ou
+  // le client voyait CHF 46 et payait CHF 59.
+  const supplementCadeau = cadeau.emballage && emballageCadeau.enabled ? emballageCadeau.price : 0;
+  const totalAPayer = total + fraisPort + supplementCadeau;
 
   const handleCheckoutSubmit = (e) => {
     e.preventDefault();
@@ -170,6 +184,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
       // Nulle pour un retrait : il n'y a rien a expedier. Le serveur refait le
       // meme controle — le navigateur ne decide pas de ce qui est exigible.
       address: exigeAdresse(shippingId) ? adresse : null,
+      cadeau: (contientBonCadeau || cadeau.emballage) ? cadeau : null,
       items: items.map(item => ({
         id: item.id,
         name: getName(item),
@@ -442,6 +457,56 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                 <p className="font-sans text-xs text-stone-gray">{t('drawer.addressPickup')}</p>
               )}
 
+              {contientBonCadeau && (
+                <div>
+                  <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">
+                    {t('drawer.giftTitle')}
+                  </label>
+                  <div className="space-y-3">
+                    <input type="text" value={cadeau.destinataire}
+                      onChange={(e) => setCadeau({ ...cadeau, destinataire: e.target.value })}
+                      placeholder={t('drawer.giftRecipient')} className={CHAMP_CAISSE} />
+                    <input type="email" value={cadeau.email}
+                      onChange={(e) => setCadeau({ ...cadeau, email: e.target.value })}
+                      placeholder={t('drawer.giftRecipientEmail')} className={CHAMP_CAISSE} />
+                    <div>
+                      <textarea rows={3} maxLength={200} value={cadeau.message}
+                        onChange={(e) => setCadeau({ ...cadeau, message: e.target.value })}
+                        placeholder={t('drawer.giftMessage')} className={CHAMP_CAISSE} />
+                      <p className="mt-1 text-right font-sans text-[10px] text-stone-gray/60 tabular-nums">
+                        {cadeau.message.length} / 200
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block font-sans text-[10px] uppercase tracking-[0.16em] text-stone-gray/70 mb-1">
+                        {t('drawer.giftDate')}
+                      </label>
+                      <input type="date" value={cadeau.date}
+                        onChange={(e) => setCadeau({ ...cadeau, date: e.target.value })}
+                        className={CHAMP_CAISSE} />
+                      {/* Dit franchement : le bon part tout de suite, la date
+                          est imprimee dessus. Un envoi differe demanderait une
+                          file d'attente que rien ici ne porte, et promettre un
+                          envoi qui n'arrive pas serait pire que ne rien dire. */}
+                      <p className="mt-1 font-sans text-[11px] leading-relaxed text-stone-gray/80">
+                        {t('drawer.giftDateNote')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {emballageCadeau.enabled && (
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" checked={cadeau.emballage}
+                    onChange={(e) => setCadeau({ ...cadeau, emballage: e.target.checked })}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-slate-stone" />
+                  <span className="font-sans text-xs leading-relaxed text-stone-gray">
+                    {t('drawer.giftWrapOffer', { price: emballageCadeau.price.toFixed(2) })}
+                  </span>
+                </label>
+              )}
+
               <div className="bg-mist-white rounded-2xl p-4 border border-slate-stone/5">
                 <h4 className="font-sans text-xs font-bold text-slate-stone uppercase tracking-wider mb-2">{t('drawer.orderDetails')}</h4>
                 <div className="space-y-1 max-h-36 overflow-y-auto">
@@ -465,6 +530,12 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                     <span className="tabular-nums whitespace-nowrap">
                       {fraisPort === 0 ? t('drawer.shippingIncluded') : `CHF ${fraisPort.toFixed(2)}`}
                     </span>
+                  </div>
+                )}
+                {cadeau.emballage && emballageCadeau.enabled && (
+                  <div className="flex justify-between font-sans text-xs text-stone-gray mt-1">
+                    <span>{t('drawer.giftWrapLine')}</span>
+                    <span className="tabular-nums">CHF {emballageCadeau.price.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="h-px bg-slate-stone/10 my-3"></div>

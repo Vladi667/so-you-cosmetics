@@ -505,6 +505,12 @@ function normalizeProductInput(input, base = {}) {
   // colonnes SQL, dans le modèle ensureColumn, ET dans le payload de
   // l'administration. Oublier le quatrième donne une saisie qui paraît
   // acceptée et qui s'évapore au rechargement.
+  // Un produit marque bon cadeau declenche les champs du destinataire a la
+  // caisse. Le montant reste celui de la fiche : un bon de CHF 150 est un
+  // produit a CHF 150, et le serveur facture toujours le prix du catalogue par
+  // identifiant. Une variante de prix aurait ouvert la porte a un bon debite au
+  // montant d'un autre.
+  if (input.bonCadeau !== undefined) out.bonCadeau = !!input.bonCadeau;
   if (input.contenance !== undefined) out.contenance = String(input.contenance || '').trim();
   if (input.ingredients !== undefined) out.ingredients = String(input.ingredients || '').trim();
   if (input.inci !== undefined) out.inci = String(input.inci || '').trim();
@@ -685,6 +691,18 @@ async function createOrder(order) {
           zip: String(order.address.zip || '').trim(),
           city: String(order.address.city || '').trim(),
           country: String(order.address.country || 'CH').trim(),
+        }
+      : null,
+    // Ce qui accompagne un cadeau. Le message est borne a 200 caracteres ici
+    // aussi, et pas seulement dans le formulaire : le navigateur ne decide pas
+    // de ce qui sera imprime.
+    cadeau: order.cadeau
+      ? {
+          destinataire: String(order.cadeau.destinataire || '').trim(),
+          email: String(order.cadeau.email || '').trim(),
+          message: String(order.cadeau.message || '').trim().slice(0, 200),
+          date: String(order.cadeau.date || '').trim(),
+          emballage: !!order.cadeau.emballage,
         }
       : null,
     status: 'Pending',
@@ -1271,6 +1289,10 @@ const SHOP_DEFAULTS = {
   // étant assujettie serait faux, ne rien imprimer ne l'est pas.
   // Où l'avertir, et à partir de quel niveau. Sans adresse renseignée, aucune
   // alerte n'est envoyée : mieux vaut ne rien envoyer que d'écrire dans le vide.
+  // L'emballage cadeau. Son prix vit ici, pas dans le navigateur : c'est le
+  // serveur qui le facture, sinon on reafficherait un total superieur au
+  // montant reellement debite. Desactive tant qu'elle ne l'a pas ouvert.
+  giftWrap: { enabled: false, price: 5 },
   alerts: { email: '', lowStockThreshold: 3, onLowStock: true, onNewOrder: true },
   invoice: {
     enabled: true,
@@ -1306,6 +1328,7 @@ function getShopSettings() {
     hours: Array.isArray(saved.hours) && saved.hours.length ? saved.hours : SHOP_DEFAULTS.hours,
     absence: { ...SHOP_DEFAULTS.absence, ...(saved.absence || {}) },
     maintenance: { ...SHOP_DEFAULTS.maintenance, ...(saved.maintenance || {}) },
+    giftWrap: { ...SHOP_DEFAULTS.giftWrap, ...(saved.giftWrap || {}) },
     alerts: { ...SHOP_DEFAULTS.alerts, ...(saved.alerts || {}) },
     invoice: { ...SHOP_DEFAULTS.invoice, ...(saved.invoice || {}) },
     shipping: {
@@ -1323,6 +1346,7 @@ function updateShopSettings(patch) {
     hours: Array.isArray(patch.hours) ? patch.hours : current.hours,
     absence: { ...current.absence, ...(patch.absence || {}) },
     maintenance: { ...current.maintenance, ...(patch.maintenance || {}) },
+    giftWrap: { ...current.giftWrap, ...(patch.giftWrap || {}) },
     alerts: { ...current.alerts, ...(patch.alerts || {}) },
     invoice: { ...current.invoice, ...(patch.invoice || {}) },
     shipping: { ...current.shipping, ...(patch.shipping || {}) },

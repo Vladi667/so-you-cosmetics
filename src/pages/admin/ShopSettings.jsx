@@ -168,6 +168,37 @@ const ShopSettings = ({ fetchHeaders }) => {
         </div>
       </div>
 
+      {/* Emballage cadeau */}
+      <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 sm:p-8 shadow-sm mb-6">
+        <div className="flex items-baseline justify-between gap-4 mb-1">
+          <h2 className="font-serif text-xl text-slate-stone">Emballage cadeau</h2>
+          <label className="flex items-center gap-2 text-sm text-slate-stone">
+            <input
+              type="checkbox"
+              checked={Boolean(settings.giftWrap?.enabled)}
+              onChange={(e) => maj({ giftWrap: { ...settings.giftWrap, enabled: e.target.checked } })}
+            />
+            Proposer
+          </label>
+        </div>
+        <p className="text-xs text-stone-gray mb-5">
+          Une case à cocher apparaît à la caisse, et le supplément est <strong className="text-slate-stone">
+          facturé par le serveur</strong> — jamais seulement affiché dans le panier. Désactivé, rien
+          n'est proposé et rien n'est débité.
+        </p>
+        <div className="max-w-[200px]">
+          <label className="block text-[11px] uppercase tracking-widest text-stone-gray mb-1">Supplément (CHF)</label>
+          <input
+            type="number"
+            step="0.05"
+            min="0"
+            value={settings.giftWrap?.price ?? 5}
+            onChange={(e) => maj({ giftWrap: { ...settings.giftWrap, price: Number(e.target.value) } })}
+            className={champ}
+          />
+        </div>
+      </div>
+
       {/* Facturation */}
       <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 sm:p-8 shadow-sm mb-6">
         <div className="flex items-baseline justify-between gap-4 mb-1">

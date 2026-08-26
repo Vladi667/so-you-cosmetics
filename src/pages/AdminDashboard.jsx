@@ -26,7 +26,7 @@ const AdminDashboard = ({ onLogout }) => {
   const [customBadge, setCustomBadge] = useState(false);
   const [workshopImageUploading, setWorkshopImageUploading] = useState(false);
   const PRODUCTS_PER_PAGE = 25;
-  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '' };
+  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false };
   // Charger un produit dans le formulaire.
   //
   // Les deux entrées — « Modifier » et « Dupliquer » — construisaient chacune
@@ -54,6 +54,7 @@ const AdminDashboard = ({ onLogout }) => {
     typePeauText: (p.typePeau || []).join(', '),
     besoinsText: (p.besoins || []).join(', '),
     etiquettesText: (p.etiquettes || []).join(', '),
+    bonCadeau: !!p.bonCadeau,
   });
 
   const [loading, setLoading] = useState(false);
@@ -830,7 +831,8 @@ const AdminDashboard = ({ onLogout }) => {
                   inci: productForm.inci || '',
                   typePeau: productForm.typePeauText || '',
                   besoins: productForm.besoinsText || '',
-                  etiquettes: productForm.etiquettesText || ''
+                  etiquettes: productForm.etiquettesText || '',
+                  bonCadeau: !!productForm.bonCadeau
                 };
                 fetch(url, { method, headers: fetchHeaders, body: JSON.stringify(payload) })
                   .then(res => {
@@ -1017,6 +1019,18 @@ const AdminDashboard = ({ onLogout }) => {
                   <h4 className="text-xs uppercase tracking-widest text-stone-gray mb-4">Ce qu'il y a dans le flacon</h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="flex items-center gap-2 text-sm text-slate-stone">
+                        <input type="checkbox" checked={!!productForm.bonCadeau}
+                          onChange={e => setProductForm({...productForm, bonCadeau: e.target.checked})} />
+                        Ce produit est un bon cadeau
+                      </label>
+                      <p className="text-[11px] text-stone-gray mt-1">
+                        La caisse demandera alors le destinataire, un message et une date. Créez un produit par
+                        montant (25, 50, 100, 150, 295) : le serveur facture toujours le prix de la fiche, jamais
+                        celui que le navigateur envoie.
+                      </p>
+                    </div>
                     <div>
                       <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Contenance</label>
                       <input type="text" placeholder="ex : 100 ml, ou 50 g" value={productForm.contenance}

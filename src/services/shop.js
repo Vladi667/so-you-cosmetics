@@ -62,3 +62,12 @@ export function shippingCostFor(option, goodsTotal) {
 const MODES_SANS_ADRESSE = new Set(['pickup']);
 
 export const exigeAdresse = (shippingId) => !MODES_SANS_ADRESSE.has(String(shippingId || ''));
+
+
+// L'emballage cadeau, tel que le serveur l'a publié. Le prix affiché à la
+// caisse vient donc de la même source que celui qui sera facturé.
+export function getGiftWrap() {
+  const reglages = (typeof window !== 'undefined' && window.__SHOP__) || {};
+  const g = reglages.giftWrap || {};
+  return { enabled: Boolean(g.enabled), price: Number(g.price) || 0 };
+}

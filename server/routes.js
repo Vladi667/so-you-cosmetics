@@ -322,7 +322,7 @@ function buildShippedEmail({ name, orderId, carrier, trackingNumber }) {
 // crafted request could have paid one franc for a full basket. Prices are read
 // from the catalogue by product id and shipping from her settings; the client
 // chooses *which* delivery option, never what it costs.
-async function computeOrderTotal(items, shippingId) {
+async function computeOrderTotal(items, shippingId, options = {}) {
   const catalogue = await db.getProducts();
   const byId = new Map(catalogue.map((p) => [String(p.id), p]));
 
@@ -362,16 +362,26 @@ async function computeOrderTotal(items, shippingId) {
     shippingCost = 0;
   }
 
+  // L'emballage cadeau est une ligne d'argent : elle est calculee ICI, avec le
+  // reste, et jamais ajoutee au seul recapitulatif du tiroir. Un supplement
+  // affiche mais non facture — ou l'inverse — est exactement le defaut corrige
+  // sur les frais de port : le client voyait un total et en payait un autre.
+  const { giftWrap } = db.getShopSettings();
+  const emballage = options.emballageCadeau && giftWrap && giftWrap.enabled
+    ? Number(giftWrap.price) || 0
+    : 0;
+
   return {
     goods: Math.round(goods * 100) / 100,
     shippingCost: Math.round(shippingCost * 100) / 100,
-    total: Math.round((goods + shippingCost) * 100) / 100,
+    giftWrapCost: Math.round(emballage * 100) / 100,
+    total: Math.round((goods + shippingCost + emballage) * 100) / 100,
     shippingLabel: option ? option.label : '',
   };
 }
 
 router.post('/orders', async (req, res) => {
-  const { name, email, items, shippingId, address } = req.body;
+  const { name, email, items, shippingId, address, cadeau } = req.body;
   if (!name || !email || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Missing required order details' });
   }
@@ -379,7 +389,7 @@ router.post('/orders', async (req, res) => {
   try {
     let calcul;
     try {
-      calcul = await computeOrderTotal(items, shippingId);
+      calcul = await computeOrderTotal(items, shippingId, { emballageCadeau: cadeau && cadeau.emballage });
     } catch (err) {
       if (err && err.code === 'SHIPPING_INCONNU') {
         return res.status(400).json({ error: "Ce mode d'expédition n'est plus proposé. Rechargez la page et choisissez à nouveau." });
@@ -413,6 +423,10 @@ router.post('/orders', async (req, res) => {
       shipping: { id: shippingId || '', label: calcul.shippingLabel, cost: calcul.shippingCost },
       // Nulle pour un retrait en boutique : il n'y a rien à expédier.
       address: db.exigeAdresse(shippingId) ? address : null,
+      // L'emballage retenu est celui que le serveur a FACTURE, pas celui que le
+      // navigateur a demande : si le reglage est desactive, rien n'a ete debite
+      // et la commande ne doit pas pretendre le contraire.
+      cadeau: cadeau ? { ...cadeau, emballage: calcul.giftWrapCost > 0 } : null,
     });
 
     let checkoutId = `mock_session_${newOrder.id}`;

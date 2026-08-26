@@ -77,6 +77,10 @@ function reglagesPublics(shop) {
     hours: shop.hours,
     absence: shop.absence,
     shipping: shop.shipping,
+    // Le prix de l'emballage cadeau est public : il s'affiche a la caisse. Ce
+    // qui reste prive, c'est tout le reste — l'adresse d'alerte, le compteur de
+    // factures, le numero de TVA. La liste est blanche, jamais noire.
+    giftWrap: shop.giftWrap,
   };
 }
 
