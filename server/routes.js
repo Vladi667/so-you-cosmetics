@@ -946,6 +946,96 @@ router.post('/admin/products/import-metadata', requireAdmin, (req, res) => {
   }
 });
 
+// Traduire l'allemand depuis l'anglais.
+//
+// Elle écrit le français et l'anglais ; l'allemand se déduit du second. Trois
+// langues à rédiger pour chaque texte, c'est un tiers du travail passé dans une
+// langue qu'elle ne parle pas — et c'est ainsi qu'on obtient de l'allemand qu'il
+// faut ensuite faire relire.
+//
+// DeepL plutôt qu'un autre : c'est le meilleur sur l'allemand, et c'est une
+// entreprise européenne, ce qui compte pour les textes d'une boutique suisse.
+// La clé gratuite couvre 500 000 caractères par mois — les 21 sections du site
+// en font quelques dizaines de milliers.
+//
+// Rien n'est enregistré ici : la route renvoie les traductions, l'interface les
+// pose dans le formulaire, et c'est elle qui décide d'enregistrer. Une machine
+// ne publie pas toute seule dans une langue que personne ne relit.
+const LIMITE_TEXTES = 60;
+const LIMITE_CARACTERES = 20000;
+
+router.post('/admin/traduire', requireAdmin, async (req, res) => {
+  const cle = process.env.DEEPL_API_KEY;
+  if (!cle) {
+    return res.status(503).json({
+      error: "La traduction automatique n'est pas configurée.",
+      détail: "Il manque une clé DeepL (DEEPL_API_KEY) dans les réglages du serveur. "
+        + "Un compte gratuit sur deepl.com/pro-api suffit : 500 000 caractères par mois, "
+        + "soit bien plus que les textes du site.",
+    });
+  }
+
+  const textes = Array.isArray(req.body && req.body.textes) ? req.body.textes : [];
+  const source = String((req.body && req.body.source) || 'EN').toUpperCase();
+  const cible = String((req.body && req.body.cible) || 'DE').toUpperCase();
+
+  // On ne traduit que ce qui a du contenu, et on garde la position d'origine
+  // pour reposer chaque réponse en face de sa demande.
+  const aTraduire = [];
+  textes.forEach((t, i) => {
+    const v = String(t == null ? '' : t).trim();
+    if (v) aTraduire.push({ i, v });
+  });
+
+  if (aTraduire.length === 0) return res.json({ traductions: textes.map(() => '') });
+  if (aTraduire.length > LIMITE_TEXTES) {
+    return res.status(400).json({ error: `Trop de textes d'un coup (${aTraduire.length}, maximum ${LIMITE_TEXTES}).` });
+  }
+  const total = aTraduire.reduce((n, x) => n + x.v.length, 0);
+  if (total > LIMITE_CARACTERES) {
+    return res.status(400).json({ error: `Trop de caractères d'un coup (${total}, maximum ${LIMITE_CARACTERES}).` });
+  }
+
+  try {
+    const axios = require('axios');
+    const params = new URLSearchParams();
+    params.append('source_lang', source);
+    params.append('target_lang', cible);
+    // « more » plutôt que « less » : le vouvoiement, qui est le registre du site.
+    params.append('formality', 'prefer_more');
+    aTraduire.forEach((x) => params.append('text', x.v));
+
+    // Une clé gratuite se termine par « :fx » et vit sur un autre domaine.
+    const base = cle.endsWith(':fx') ? 'https://api-free.deepl.com' : 'https://api.deepl.com';
+    const reponse = await axios.post(`${base}/v2/translate`, params, {
+      headers: {
+        Authorization: `DeepL-Auth-Key ${cle}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      timeout: 20000,
+    });
+
+    const rendus = (reponse.data && reponse.data.translations) || [];
+    const sortie = textes.map(() => '');
+    aTraduire.forEach((x, k) => {
+      if (rendus[k] && typeof rendus[k].text === 'string') sortie[x.i] = rendus[k].text;
+    });
+    res.json({ traductions: sortie, traduits: rendus.length });
+  } catch (err) {
+    const code = err.response && err.response.status;
+    // 456 : le quota du mois est épuisé. 403 : la clé est refusée. Les nommer
+    // évite de chercher dans les journaux ce que DeepL dit déjà.
+    if (code === 456) {
+      return res.status(503).json({ error: "Le quota DeepL du mois est épuisé. La traduction reprendra le mois prochain." });
+    }
+    if (code === 403) {
+      return res.status(503).json({ error: "La clé DeepL est refusée. Vérifiez qu'elle est correcte et toujours active." });
+    }
+    console.error('Traduction impossible :', err.message);
+    res.status(502).json({ error: "Le service de traduction n'a pas répondu. Réessayez dans un instant." });
+  }
+});
+
 router.get('/admin/settings/shop', requireAdmin, (req, res) => {
   try {
     res.json(db.getShopSettings());

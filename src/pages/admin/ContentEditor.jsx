@@ -173,6 +173,83 @@ const ContentEditor = ({ fetchHeaders }) => {
     return coded !== undefined ? coded : (resolve(translations[DEFAULT_LANGUAGE], path) || '');
   };
 
+  // Ce que le site montre pour ce champ dans une AUTRE langue que celle
+  // affichée — on lit l'anglais pendant qu'elle est sur l'allemand. Un brouillon
+  // non enregistré compte : elle vient peut-être d'écrire l'anglais à l'instant.
+  const valeurDansLangue = (lang, path) => {
+    const cle = `${lang}::${path}`;
+    if (Object.prototype.hasOwnProperty.call(drafts, cle)) {
+      return drafts[cle] === '__RESET__' ? '' : drafts[cle];
+    }
+    const sien = overrides[lang] && overrides[lang][path];
+    if (sien != null && sien !== '') return sien;
+    const code = resolve(translations[lang], path);
+    return code !== undefined ? code : '';
+  };
+
+  // Traduire toute la section depuis l'anglais.
+  //
+  // Elle écrit le français et l'anglais ; l'allemand se déduit du second. Rien
+  // n'est enregistré : les traductions viennent remplir le formulaire, elle les
+  // relit, et c'est elle qui décide. Une machine ne publie pas seule dans une
+  // langue que personne ne relit.
+  const [traduction, setTraduction] = useState('');
+
+  const traduireDepuisAnglais = async () => {
+    // `paths` porte les chemins des textes simples de la section. Les listes
+    // ont leur propre edition et ne passent pas par ici.
+    const aRemplir = paths.filter((c) => {
+      const v = valeurDansLangue('en', c);
+      return typeof v === 'string' && v.trim();
+    });
+    if (aRemplir.length === 0) {
+      setStatus({ success: '', error: "Rien à traduire : les textes anglais de cette section sont vides." });
+      return;
+    }
+    // Ce qui porte déjà de l'allemand écrit par elle ne sera pas écrasé sans
+    // qu'elle le dise : son texte vaut mieux qu'une machine.
+    const dejaEcrits = aRemplir.filter((c) => hasOverrideIn('de', c));
+    if (dejaEcrits.length > 0) {
+      const ok = window.confirm(
+        `${dejaEcrits.length} texte(s) allemand(s) ont déjà été écrits dans cette section.
+
+`
+        + `Les remplacer par la traduction de l'anglais ?`
+      );
+      if (!ok) return;
+    }
+
+    setTraduction('en cours');
+    setStatus({ success: '', error: '' });
+    try {
+      const r = await fetch('/api/admin/traduire', {
+        method: 'POST',
+        headers: fetchHeaders,
+        body: JSON.stringify({ textes: aRemplir.map((c) => valeurDansLangue('en', c)), source: 'EN', cible: 'DE' }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        setStatus({ success: '', error: [d.error, d['détail']].filter(Boolean).join(' ') });
+        setTraduction('');
+        return;
+      }
+      const suivants = {};
+      aRemplir.forEach((c, i) => {
+        const t = (d.traductions || [])[i];
+        if (t) suivants[`de::${c}`] = t;
+      });
+      setDrafts((prev) => ({ ...prev, ...suivants }));
+      setStatus({
+        success: `${Object.keys(suivants).length} texte(s) traduit(s) depuis l'anglais. Relisez-les, puis enregistrez.`,
+        error: '',
+      });
+    } catch {
+      setStatus({ success: '', error: "La traduction n'a pas abouti. Réessayez." });
+    } finally {
+      setTraduction('');
+    }
+  };
+
   const currentValue = (path) => {
     const key = draftKey(path);
     return Object.prototype.hasOwnProperty.call(drafts, key) ? drafts[key] : savedValue(path);
@@ -363,6 +440,23 @@ const ContentEditor = ({ fetchHeaders }) => {
             </button>
           ))}
         </div>
+
+        {/* Elle écrit le français et l'anglais ; l'allemand se déduit du second.
+            Le bouton ne paraît que sur l'allemand — c'est la seule langue qu'on
+            propose de déduire, et la seule qu'elle ne relit pas elle-même.
+            Rien n'est enregistré : les traductions remplissent le formulaire,
+            elle les relit, elle décide. */}
+        {language === 'de' && (
+          <button
+            type="button"
+            onClick={traduireDepuisAnglais}
+            disabled={traduction === 'en cours'}
+            className="px-4 py-2 rounded-xl border border-slate-stone/15 bg-white text-xs uppercase tracking-widest text-slate-stone hover:bg-mist-white disabled:opacity-50 transition-colors"
+            title="Remplit les textes allemands de cette section à partir de leur version anglaise. Rien n'est enregistré avant votre relecture."
+          >
+            {traduction === 'en cours' ? 'Traduction…' : "Traduire depuis l'anglais"}
+          </button>
+        )}
 
         <select
           value={section}
