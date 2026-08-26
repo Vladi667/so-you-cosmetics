@@ -81,6 +81,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   const [ajoute, setAjoute] = useState(false);
   const [visionneuseOuverte, setVisionneuseOuverte] = useState(false);
   const [senteurs, setSenteurs] = useState([]);
+  const [rituel, setRituel] = useState([]);
   // La barre d'achat collante ne paraît que lorsque le vrai bouton a quitté
   // l'écran. L'afficher en permanence doublerait un bouton déjà visible et
   // mangerait le bas de la fiche pour rien.
@@ -106,6 +107,18 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
         //
         // Les identifiants absents du catalogue sont ignorés : un produit
         // supprimé ne doit pas laisser un trou dans la rangée.
+        // Le rituel auquel ce produit appartient. Les étapes sont triées par
+        // leur numéro, et un rituel d'un seul produit n'en est pas un.
+        const idRituel = foundProduct.rituel && foundProduct.rituel.id;
+        if (idRituel) {
+          const etapes = productsList
+            .filter((p) => p.rituel && p.rituel.id === idRituel)
+            .sort((a, b) => (parseInt(a.rituel.etape, 10) || 0) - (parseInt(b.rituel.etape, 10) || 0));
+          setRituel(etapes.length > 1 ? etapes : []);
+        } else {
+          setRituel([]);
+        }
+
         // Les autres senteurs de la même recette. Dérivées du nom, comme au
         // catalogue : rien n'est écrit, et une fiche renommée suit d'elle-même.
         const recette = lireRecette(foundProduct.name);
@@ -527,8 +540,74 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
           </div>
         </div>
 
+        {/* Le rituel complet.
+            Il remplace « Vous aimerez aussi » quand il existe : proposer des
+            suggestions calculées sous une suite d'étapes qu'elle a écrite
+            elle-même serait mettre le hasard à côté de son intention.
+
+            AUCUNE remise n'est annoncée. Le serveur additionne les prix du
+            catalogue ; un « prix d'ensemble » remisé affiché ici sans code
+            serveur ferait un total affiché inférieur au montant débité — le
+            défaut des frais de port, rejoué sous une autre forme. */}
+        {rituel.length > 1 && (
+          <div className="container mx-auto px-6 lg:px-12 mt-24">
+            <div className="rounded-3xl border border-slate-stone/[0.08] bg-ivory p-6 sm:p-10">
+              <h3 className="font-serif text-2xl sm:text-3xl text-slate-stone mb-2">{t('product.ritualTitle')}</h3>
+              <p className="font-sans text-sm text-stone-gray mb-8">
+                {t('product.ritualLead', { n: rituel.length })}
+              </p>
+
+              <ol className="space-y-5 mb-8">
+                {rituel.map((etape, i) => (
+                  <li key={etape.id} className="flex gap-4 sm:gap-5">
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-stone font-sans text-xs text-white tabular-nums">
+                      {etape.rituel.etape || i + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <Link to={`/product/${etape.id}`}
+                        className={`font-sans text-sm hover:text-stone-gray transition-colors ${etape.id === product.id ? 'font-medium text-slate-stone' : 'text-slate-stone'}`}>
+                        {etape.name}
+                      </Link>
+                      {etape.rituel.geste && (
+                        <p className="font-sans text-xs font-light text-stone-gray leading-relaxed mt-0.5">
+                          {etape.rituel.geste}
+                        </p>
+                      )}
+                    </div>
+                    <span className="font-sans text-sm text-stone-gray tabular-nums whitespace-nowrap">
+                      CHF {(Number(etape.price) || 0).toFixed(2)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+
+              <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-stone/10 pt-6">
+                <p className="font-sans text-sm text-slate-stone tabular-nums">
+                  {t('product.ritualTotal')}{' '}
+                  <span className="font-medium">
+                    CHF {rituel.reduce((n, e) => n + (Number(e.price) || 0), 0).toFixed(2)}
+                  </span>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Un appel par produit, avec sa quantite : l'agregation
+                    // posee en vague 1 fait qu'un rituel de trois articles
+                    // donne trois lignes, pas neuf.
+                    rituel.forEach((e) => addToCart(e, 1));
+                    setAjoute(true);
+                  }}
+                  className="press rounded-full bg-slate-stone px-8 py-3.5 font-sans text-[10px] sm:text-xs uppercase tracking-[0.2em] text-white"
+                >
+                  {t('product.ritualAdd', { n: rituel.length })}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Related Products */}
-        {relatedProducts.length > 0 && (
+        {rituel.length <= 1 && relatedProducts.length > 0 && (
           <div className="container mx-auto px-6 lg:px-12 mt-32">
             <h3 className="font-serif text-3xl text-slate-stone mb-12 text-center">{t('product.youMayAlsoLike')}</h3>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">

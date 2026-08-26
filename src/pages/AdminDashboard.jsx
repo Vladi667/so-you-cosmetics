@@ -26,7 +26,7 @@ const AdminDashboard = ({ onLogout }) => {
   const [customBadge, setCustomBadge] = useState(false);
   const [workshopImageUploading, setWorkshopImageUploading] = useState(false);
   const PRODUCTS_PER_PAGE = 25;
-  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false };
+  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '' };
   // Charger un produit dans le formulaire.
   //
   // Les deux entrées — « Modifier » et « Dupliquer » — construisaient chacune
@@ -55,6 +55,9 @@ const AdminDashboard = ({ onLogout }) => {
     besoinsText: (p.besoins || []).join(', '),
     etiquettesText: (p.etiquettes || []).join(', '),
     bonCadeau: !!p.bonCadeau,
+    rituelId: (p.rituel && p.rituel.id) || '',
+    rituelEtape: (p.rituel && p.rituel.etape) || '',
+    rituelGeste: (p.rituel && p.rituel.geste) || '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -832,7 +835,11 @@ const AdminDashboard = ({ onLogout }) => {
                   typePeau: productForm.typePeauText || '',
                   besoins: productForm.besoinsText || '',
                   etiquettes: productForm.etiquettesText || '',
-                  bonCadeau: !!productForm.bonCadeau
+                  bonCadeau: !!productForm.bonCadeau,
+                  // Le rituel : trois champs, un seul objet cote serveur.
+                  rituel: productForm.rituelId
+                    ? { id: productForm.rituelId, etape: productForm.rituelEtape, geste: productForm.rituelGeste }
+                    : null
                 };
                 fetch(url, { method, headers: fetchHeaders, body: JSON.stringify(payload) })
                   .then(res => {
@@ -1061,6 +1068,26 @@ const AdminDashboard = ({ onLogout }) => {
                         onChange={e => setProductForm({...productForm, ingredients: e.target.value})}
                         className="px-4 py-2 border rounded w-full" />
                     </div>
+                    <div className="md:col-span-2 border-t pt-4 mt-2">
+                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Rituel</label>
+                      <p className="text-[11px] text-stone-gray mb-2">
+                        Donnez le même identifiant à tous les produits d'un même rituel — par exemple
+                        <em> rituel-visage</em> — puis numérotez les étapes. Le bloc « Le rituel complet »
+                        apparaît alors sur chacune de leurs fiches. Laissé vide, rien ne s'affiche.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <input type="text" placeholder="Identifiant du rituel" value={productForm.rituelId}
+                          onChange={e => setProductForm({...productForm, rituelId: e.target.value})}
+                          className="px-4 py-2 border rounded w-full" />
+                        <input type="text" inputMode="numeric" placeholder="N° d'étape" value={productForm.rituelEtape}
+                          onChange={e => setProductForm({...productForm, rituelEtape: e.target.value})}
+                          className="px-4 py-2 border rounded w-full" />
+                        <input type="text" placeholder="Le geste, en une phrase" value={productForm.rituelGeste}
+                          onChange={e => setProductForm({...productForm, rituelGeste: e.target.value})}
+                          className="px-4 py-2 border rounded w-full" />
+                      </div>
+                    </div>
+
                     <div className="md:col-span-2">
                       <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Liste INCI</label>
                       <textarea rows={3} placeholder="La nomenclature réglementaire, telle qu'elle figure sur l'étiquette." value={productForm.inci}
