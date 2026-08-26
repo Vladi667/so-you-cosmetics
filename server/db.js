@@ -524,6 +524,15 @@ function normalizeProductInput(input, base = {}) {
   if (input.recette !== undefined) out.recette = String(input.recette || '').trim();
   if (input.parfum !== undefined) out.parfum = String(input.parfum || '').trim();
   if (input.contenant !== undefined) out.contenant = String(input.contenant || '').trim();
+  // Le prix de la recharge, quand la cliente rapporte son flacon. C'est une
+  // VRAIE variante de prix, pas un rabais affiché : le serveur facturera ce
+  // montant-là pour cette ligne. Sans cela, « je rapporte le mien — CHF 15.00 »
+  // débiterait le prix plein, et elle l'apprendrait par une cliente mécontente
+  // plutôt que par un test.
+  if (input.rechargePrix !== undefined) {
+    const n = Number(input.rechargePrix);
+    out.rechargePrix = Number.isFinite(n) && n > 0 ? n : null;
+  }
   if (input.rituel !== undefined) {
     const r = input.rituel || {};
     out.rituel = r && (r.etape || r.geste)

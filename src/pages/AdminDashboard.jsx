@@ -26,7 +26,7 @@ const AdminDashboard = ({ onLogout }) => {
   const [customBadge, setCustomBadge] = useState(false);
   const [workshopImageUploading, setWorkshopImageUploading] = useState(false);
   const PRODUCTS_PER_PAGE = 25;
-  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '' };
+  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '', rechargePrix: '' };
   // Charger un produit dans le formulaire.
   //
   // Les deux entrées — « Modifier » et « Dupliquer » — construisaient chacune
@@ -58,6 +58,7 @@ const AdminDashboard = ({ onLogout }) => {
     rituelId: (p.rituel && p.rituel.id) || '',
     rituelEtape: (p.rituel && p.rituel.etape) || '',
     rituelGeste: (p.rituel && p.rituel.geste) || '',
+    rechargePrix: p.rechargePrix == null ? '' : String(p.rechargePrix),
   });
 
   const [loading, setLoading] = useState(false);
@@ -839,7 +840,8 @@ const AdminDashboard = ({ onLogout }) => {
                   // Le rituel : trois champs, un seul objet cote serveur.
                   rituel: productForm.rituelId
                     ? { id: productForm.rituelId, etape: productForm.rituelEtape, geste: productForm.rituelGeste }
-                    : null
+                    : null,
+                  rechargePrix: productForm.rechargePrix === '' ? null : productForm.rechargePrix
                 };
                 fetch(url, { method, headers: fetchHeaders, body: JSON.stringify(payload) })
                   .then(res => {
@@ -1068,6 +1070,19 @@ const AdminDashboard = ({ onLogout }) => {
                         onChange={e => setProductForm({...productForm, ingredients: e.target.value})}
                         className="px-4 py-2 border rounded w-full" />
                     </div>
+                    <div className="md:col-span-2 border-t pt-4 mt-2">
+                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Prix en recharge (CHF)</label>
+                      <p className="text-[11px] text-stone-gray mb-2">
+                        Si la cliente rapporte son flacon. Laissé vide, aucune recharge n'est proposée.
+                        Une recharge se retire <strong>à la boutique</strong> — le serveur refuse de
+                        l'expédier, et facture bien ce prix-là, pas le prix plein.
+                      </p>
+                      <input type="number" step="0.05" min="0" placeholder="ex : 15.00"
+                        value={productForm.rechargePrix}
+                        onChange={e => setProductForm({...productForm, rechargePrix: e.target.value})}
+                        className="px-4 py-2 border rounded w-full max-w-[200px]" />
+                    </div>
+
                     <div className="md:col-span-2 border-t pt-4 mt-2">
                       <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Rituel</label>
                       <p className="text-[11px] text-stone-gray mb-2">

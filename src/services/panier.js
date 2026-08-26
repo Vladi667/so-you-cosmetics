@@ -30,7 +30,7 @@ function lire(cle) {
     if (age > PEREMPTION_JOURS * 24 * 3600 * 1000) return [];
     return data.lignes
       .filter((l) => l && typeof l.id === 'string')
-      .map((l) => ({ id: l.id, qty: Math.max(1, parseInt(l.qty, 10) || 1) }));
+      .map((l) => ({ id: l.id, qty: Math.max(1, parseInt(l.qty, 10) || 1), recharge: Boolean(l.recharge) }));
   } catch {
     return [];
   }
@@ -44,12 +44,20 @@ function ecrire(cle, lignes) {
   }
 }
 
+// Ce qui distingue deux lignes du panier.
+//
+// L'identifiant ne suffit plus : le même savon liquide peut être acheté plein
+// ou en recharge, à deux prix différents. Sans cette clé, les deux fusionnent
+// en une seule ligne — et le prix affiché serait celui de la première ajoutée,
+// pendant que le serveur facturerait chaque unité à son propre tarif.
+export const cleLigne = (item) => `${item.id}|${item.recharge ? 'r' : ''}`;
+
 export const lirePanier = () => lire(CLE_PANIER);
 export const lireFavoris = () => lire(CLE_FAVORIS);
 
 // On n'écrit que l'identifiant et la quantité, quelle que soit la forme reçue.
 export const ecrirePanier = (items) =>
-  ecrire(CLE_PANIER, items.map((p) => ({ id: p.id, qty: p.qty || 1 })));
+  ecrire(CLE_PANIER, items.map((p) => ({ id: p.id, qty: p.qty || 1, recharge: Boolean(p.recharge) })));
 export const ecrireFavoris = (items) =>
   ecrire(CLE_FAVORIS, items.map((p) => ({ id: p.id, qty: 1 })));
 
@@ -65,7 +73,15 @@ export function resoudre(lignes, catalogue) {
   for (const l of lignes) {
     const produit = parId.get(String(l.id));
     if (!produit) continue;
-    sortie.push({ ...produit, qty: Math.max(1, parseInt(l.qty, 10) || 1) });
+    // Le prix affiché suit la variante : une recharge se lit à son prix de
+    // recharge, qui est celui que le serveur facturera pour cette ligne.
+    const recharge = Boolean(l.recharge) && Number(produit.rechargePrix) > 0;
+    sortie.push({
+      ...produit,
+      qty: Math.max(1, parseInt(l.qty, 10) || 1),
+      recharge,
+      price: recharge ? Number(produit.rechargePrix) : produit.price,
+    });
   }
   return sortie;
 }
@@ -77,16 +93,22 @@ export function resoudre(lignes, catalogue) {
 // tout supprimer.
 export function ajouter(items, produit, quantite = 1) {
   const q = Math.max(1, parseInt(quantite, 10) || 1);
-  const i = items.findIndex((p) => p.id === produit.id);
+  // On fusionne sur la clé de ligne, pas sur l'identifiant seul : un plein et
+  // une recharge du même produit restent deux lignes, à deux prix.
+  const cle = cleLigne(produit);
+  const i = items.findIndex((p) => cleLigne(p) === cle);
   if (i === -1) return [...items, { ...produit, qty: q }];
   return items.map((p, k) => (k === i ? { ...p, qty: (p.qty || 1) + q } : p));
 }
 
 // Fixe la quantité d'une ligne ; zéro ou moins la retire.
-export function fixerQuantite(items, id, quantite) {
+// `reference` accepte la ligne entière (recommandé) ou un simple identifiant,
+// pour ne pas casser les appelants d'avant la recharge.
+export function fixerQuantite(items, reference, quantite) {
+  const cle = typeof reference === 'string' ? `${reference}|` : cleLigne(reference);
   const q = parseInt(quantite, 10);
-  if (!Number.isFinite(q) || q <= 0) return items.filter((p) => p.id !== id);
-  return items.map((p) => (p.id === id ? { ...p, qty: q } : p));
+  if (!Number.isFinite(q) || q <= 0) return items.filter((p) => cleLigne(p) !== cle);
+  return items.map((p) => (cleLigne(p) === cle ? { ...p, qty: q } : p));
 }
 
 export const totalPanier = (items) =>

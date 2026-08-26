@@ -327,6 +327,7 @@ async function computeOrderTotal(items, shippingId, options = {}) {
   const byId = new Map(catalogue.map((p) => [String(p.id), p]));
 
   let goods = 0;
+  let nbRecharges = 0;
   for (const line of items || []) {
     const product = byId.get(String(line.id));
     if (!product) continue;                       // ligne inconnue : ignorée, jamais facturée
@@ -334,9 +335,16 @@ async function computeOrderTotal(items, shippingId, options = {}) {
     // article à zéro franc. Quatre existent au catalogue, et sans cette garde
     // un panier n'en contenant qu'elles passait pour le seul prix du port.
     if (!(Number(product.price) > 0)) continue;
-    const price = Number(product.price) || 0;
+
+    // La variante de recharge. Le navigateur DEMANDE une recharge ; c'est le
+    // catalogue qui en donne le prix, et seulement si la fiche en propose une.
+    // Une demande de recharge sur un produit qui n'en a pas retombe sur le
+    // prix plein — jamais sur un montant que le navigateur aurait choisi.
+    const recharge = line.recharge && Number(product.rechargePrix) > 0;
+    const price = recharge ? Number(product.rechargePrix) : (Number(product.price) || 0);
     const qty = Math.max(1, parseInt(line.qty, 10) || 1);
     goods += price * qty;
+    if (recharge) nbRecharges += qty;
   }
 
   const { shipping } = db.getShopSettings();
@@ -375,10 +383,32 @@ async function computeOrderTotal(items, shippingId, options = {}) {
     goods: Math.round(goods * 100) / 100,
     shippingCost: Math.round(shippingCost * 100) / 100,
     giftWrapCost: Math.round(emballage * 100) / 100,
+    nbRecharges,
     total: Math.round((goods + shippingCost + emballage) * 100) / 100,
     shippingLabel: option ? option.label : '',
   };
 }
+
+// Combien de flacons ont été remplis, en tout.
+//
+// La route n'expose QUE ce nombre. Elle lit les commandes payées et ne renvoie
+// ni les noms, ni les adresses, ni les montants : server/data/orders.json ne
+// doit jamais transiter par une route publique, et un compteur n'a pas besoin
+// de son contenu pour compter.
+router.get('/refill-count', async (req, res) => {
+  try {
+    const commandes = await db.getOrders();
+    const total = (commandes || [])
+      .filter((c) => db.canonicalOrderStatus(c.status) !== 'Pending')
+      .reduce((n, c) => n + (c.items || []).reduce(
+        (m, l) => m + (l.recharge ? Math.max(1, parseInt(l.qty, 10) || 1) : 0), 0), 0);
+    res.json({ count: total });
+  } catch {
+    // Un compteur indisponible n'est pas une panne : on renvoie zéro et la
+    // page n'affiche simplement rien.
+    res.json({ count: 0 });
+  }
+});
 
 router.post('/orders', async (req, res) => {
   const { name, email, items, shippingId, address, cadeau } = req.body;
@@ -401,6 +431,15 @@ router.post('/orders', async (req, res) => {
     // tout en ne vendant rien.
     if (!(calcul.goods > 0)) {
       return res.status(400).json({ error: 'Panier vide ou produits introuvables' });
+    }
+
+    // Une recharge suppose que la cliente apporte son flacon : elle se retire
+    // forcément en boutique. L'interface l'impose déjà, le serveur le vérifie —
+    // sinon une requête forgée obtiendrait un prix de recharge pour un colis.
+    if (calcul.nbRecharges > 0 && db.exigeAdresse(shippingId)) {
+      return res.status(400).json({
+        error: 'Une recharge se retire à la boutique : choisissez « Retrait à la boutique ».',
+      });
     }
 
     // Une commande postale sans adresse ne peut pas être expédiée. La condition

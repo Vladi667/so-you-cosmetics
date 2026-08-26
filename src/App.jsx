@@ -111,7 +111,7 @@ function App() {
     // Par identifiant, plus par position : une ligne porte maintenant une
     // quantité, et l'index d'une liste qui fusionne ne désigne plus rien de
     // stable.
-    setCart(prev => fixerQuantite(prev, product.id, 0));
+    setCart(prev => fixerQuantite(prev, product, 0));
   };
 
   const toggleFavorite = (product) => {
@@ -243,7 +243,7 @@ function App() {
             items={cart}
             type="cart"
             onRemove={removeFromCart}
-            onQuantityChange={(item, q) => setCart((prev) => fixerQuantite(prev, item.id, q))}
+            onQuantityChange={(item, q) => setCart((prev) => fixerQuantite(prev, item, q))}
           />
           <SideDrawer
             isOpen={favOpen}

@@ -31,6 +31,10 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
   // n'a pas de sens autrement, et l'imposer à toutes les commandes ferait
   // trois champs de plus à ignorer pour tout le monde.
   const contientBonCadeau = items.some((i) => i.bonCadeau);
+  // Une recharge suppose qu'on apporte son flacon : elle se retire forcément.
+  // On l'impose ici, et le serveur le revérifie — l'interface ne décide pas de
+  // ce qui est expédiable.
+  const contientRecharge = items.some((i) => i.recharge);
   const emballageCadeau = getGiftWrap();
   const [cadeau, setCadeau] = useState({ destinataire: '', email: '', message: '', date: '', emballage: false });
   // Ne s'affiche qu'apres une tentative : reprocher a quelqu'un de ne pas avoir
@@ -189,7 +193,10 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
         id: item.id,
         name: getName(item),
         qty: item.qty || 1,
-        price: getPrice(item)
+        price: getPrice(item),
+        // Le drapeau, pas le prix : le serveur lira le tarif de recharge dans
+        // le catalogue. Le navigateur demande une variante, il ne la chiffre pas.
+        recharge: Boolean(item.recharge)
       }))
     };
 
@@ -343,13 +350,19 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
             )}
 
             <form onSubmit={handleCheckoutSubmit} className="space-y-6 pt-4">
+              {contientRecharge && (
+                <p className="rounded-2xl bg-mist-white px-4 py-3 font-sans text-xs leading-relaxed text-stone-gray">
+                  {t('drawer.refillPickupOnly')}
+                </p>
+              )}
+
               {shipping.options.length > 0 && (
                 <div>
                   <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">
                     {t('drawer.shippingTitle')}
                   </label>
                   <div className="space-y-2">
-                    {shipping.options.map((o) => {
+                    {shipping.options.filter((o) => !contientRecharge || !exigeAdresse(o.id)).map((o) => {
                       const cout = shippingCostFor(o, total);
                       const offert = cout === 0 && Number(o.price) > 0;
                       return (

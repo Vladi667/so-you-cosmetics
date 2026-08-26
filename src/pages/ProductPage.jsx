@@ -82,6 +82,9 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   const [visionneuseOuverte, setVisionneuseOuverte] = useState(false);
   const [senteurs, setSenteurs] = useState([]);
   const [rituel, setRituel] = useState([]);
+  // Faux par défaut : on n'engage pas quelqu'un à rapporter un flacon qu'il
+  // n'a peut-être pas.
+  const [enRecharge, setEnRecharge] = useState(false);
   // La barre d'achat collante ne paraît que lorsque le vrai bouton a quitté
   // l'écran. L'afficher en permanence doublerait un bouton déjà visible et
   // mangerait le bas de la fiche pour rien.
@@ -196,6 +199,11 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   if (!product) return <SqueletteFiche />;
 
   const isFavorite = favorites.some(p => p.id === product.id);
+
+  // Le prix qu'on lit à l'écran. Quand la recharge est choisie, c'est celui de
+  // la recharge — le même que le serveur facturera pour cette ligne.
+  const rechargePossible = Number(product.rechargePrix) > 0;
+  const prixCourant = enRecharge && rechargePossible ? Number(product.rechargePrix) : Number(product.price);
   
   // Use real images if available, otherwise fallback
   const images = product.images && product.images.length > 0 
@@ -206,7 +214,9 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
     // In a real app we'd pass quantity, but for now we'll just add it multiple times or rely on the cart logic
     // Un seul appel avec la quantité : la boucle créait autant de lignes
     // identiques que d'unités, et chacune relançait l'animation du panier.
-    addToCart(product, quantity);
+    // Le drapeau voyage avec la ligne : c'est lui qui dira au serveur quel
+    // prix facturer, et c'est le serveur qui décidera si la fiche le permet.
+    addToCart({ ...product, recharge: enRecharge, price: prixCourant }, quantity);
     setAjoute(true);
   };
 
@@ -308,7 +318,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 </h1>
                 <div className="flex items-center gap-3 flex-wrap">
                   <p className="font-sans text-2xl text-stone-gray font-light">
-                    {Number(product.price) > 0 ? `CHF ${product.price.toFixed(2)}` : t('catalog.onQuote')}
+                    {Number(product.price) > 0 ? `CHF ${prixCourant.toFixed(2)}` : t('catalog.onQuote')}
                   </p>
                   {/* La contenance appartient au prix : « CHF 24.00 » ne veut
                       rien dire tant qu'on ignore si c'est pour 30 ml ou 200. */}
@@ -322,6 +332,44 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   )}
                 </div>
               </div>
+
+              {/* « Je rapporte mon flacon ».
+                  Elle le fait déjà en boutique — son propre texte le dit : on
+                  apporte ses flacons nettoyés, et le prix du contenant est
+                  déduit. Ceci le met en ligne.
+
+                  Les deux prix sont deux VARIANTES côté serveur, pas un rabais
+                  affiché : la ligne porte un drapeau, et c'est le catalogue qui
+                  donne le montant. Sans cela, « je rapporte le mien —
+                  CHF 15.00 » débiterait le prix plein, et elle l'apprendrait
+                  par une cliente mécontente plutôt que par un test. */}
+              {rechargePossible && (
+                <div className="mb-8">
+                  <div className="inline-flex rounded-full border border-slate-stone/20 bg-ivory p-1">
+                    {[false, true].map((mode) => (
+                      <button
+                        key={String(mode)}
+                        type="button"
+                        onClick={() => setEnRecharge(mode)}
+                        aria-pressed={enRecharge === mode}
+                        className={`press rounded-full px-5 py-2 font-sans text-xs ${
+                          enRecharge === mode ? 'bg-slate-stone text-white' : 'text-slate-stone'
+                        }`}
+                      >
+                        {mode ? t('product.refillMine') : t('product.refillNew')}
+                        <span className={`ml-2 tabular-nums ${enRecharge === mode ? 'text-white/70' : 'text-stone-gray/60'}`}>
+                          {(mode ? Number(product.rechargePrix) : Number(product.price)).toFixed(2)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  {enRecharge && (
+                    <p className="mt-3 font-sans text-xs leading-relaxed text-stone-gray max-w-[55ch]">
+                      {t('product.refillNote')}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* L'orgue à parfums. Quinze senteurs d'un même savon occupaient
                   quinze fiches sans jamais se citer l'une l'autre : on tombait

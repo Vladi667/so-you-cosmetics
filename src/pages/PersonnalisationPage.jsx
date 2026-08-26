@@ -20,6 +20,10 @@ const ID_FICHE_SOURCE = 'product_d13bfad4-56a7-e63e-672a-0aa651bd6bf5';
 const PersonnalisationPage = () => {
   const { t } = useLanguage();
   const [photos, setPhotos] = useState([]);
+  // Le nombre de flacons remplis. La route ne renvoie QUE ce nombre : les
+  // commandes ne transitent jamais par une route publique, et un compteur n'a
+  // pas besoin de leur contenu pour compter.
+  const [flaconsRemplis, setFlaconsRemplis] = useState(0);
   const [visionneuse, setVisionneuse] = useState(null); // index ouvert, ou null
   const [formulaire, setFormulaire] = useState({
     name: '', email: '', occasion: '', quantite: '', date: '', details: '',
@@ -34,6 +38,15 @@ const PersonnalisationPage = () => {
         const fiche = (liste || []).find((p) => p.id === ID_FICHE_SOURCE);
         setPhotos(fiche && Array.isArray(fiche.images) ? fiche.images : []);
       })
+      .catch(() => {});
+    return () => { actif = false; };
+  }, []);
+
+  useEffect(() => {
+    let actif = true;
+    fetch('/api/refill-count')
+      .then((r) => (r.ok ? r.json() : { count: 0 }))
+      .then((d) => { if (actif) setFlaconsRemplis(Number(d.count) || 0); })
       .catch(() => {});
     return () => { actif = false; };
   }, []);
@@ -124,6 +137,13 @@ const PersonnalisationPage = () => {
           <p className="font-sans text-xs text-stone-gray/80 leading-relaxed max-w-[65ch]">
             {t('personnalisation.refillCondition')}
           </p>
+          {/* Rien tant que le compte est a zero : « 0 flacon rempli » sur une
+              page qui vante la recharge dirait exactement le contraire. */}
+          {flaconsRemplis > 0 && (
+            <p className="mt-5 font-serif text-2xl text-slate-stone tabular-nums">
+              {t('personnalisation.refillCount', { n: flaconsRemplis })}
+            </p>
+          )}
         </section>
 
         <section className="mb-16">
