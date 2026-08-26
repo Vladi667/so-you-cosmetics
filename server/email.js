@@ -31,7 +31,11 @@ if (isProductionEmail) {
 }
 
 async function sendMail({ to, subject, html, text }) {
-  const fromName = 'SoYou Cosmetics Geneva';
+  // Le nom qui s'affiche dans la boite de reception de chaque cliente. Il
+  // etait faux deux fois : « SoYou » colle, alors que la marque s'ecrit en
+  // deux mots, et « Geneva », l'orthographe anglaise d'une ville francaise,
+  // dans des messages entierement rediges en francais.
+  const fromName = 'So You Cosmetics Genève';
   const fromEmail = process.env.SMTP_FROM || 'no-reply@soyoucosmetics.com';
   
   if (transporter) {
