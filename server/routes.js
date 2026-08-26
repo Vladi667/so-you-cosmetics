@@ -1059,8 +1059,10 @@ router.get('/admin/orders/export', requireAdmin, async (req, res) => {
       return payee && String(o.created_at || '').startsWith(annee);
     });
 
+    // Les accents passent : le fichier porte un BOM, qu'Excel lit comme la
+    // marque d'un contenu UTF-8. Sans lui il faudrait les retirer.
     const entetes = ['Date', 'Commande', 'Facture', 'Client', 'E-mail', 'Articles',
-                     'Expedition', 'Frais de port', 'Total encaisse', 'Statut'];
+                     'Expédition', 'Frais de port', 'Total encaissé', 'Statut'];
     const lignes = ventes.map((o) => {
       const articles = (o.items || [])
         .map((it) => `${Math.max(1, parseInt(it.qty, 10) || 1)} x ${it.name || it.id || ''}`)
