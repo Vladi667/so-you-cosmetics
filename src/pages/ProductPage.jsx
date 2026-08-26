@@ -576,7 +576,11 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 </div>
               )}
 
-              {/* Shipping info */}
+              {/* Shipping info — pas sur une fiche sans prix.
+                  « Livraison offerte des CHF 150.- d'achat » n'a pas de sens
+                  face a un produit sur devis : il n'y a pas de montant, et les
+                  conditions d'envoi se discutent avec le devis lui-meme. */}
+              {Number(product.price) > 0 && (
               <div className="mt-10 p-6 bg-ivory rounded-2xl border border-slate-stone/5 flex items-start gap-4">
                 <span className="text-2xl">📦</span>
                 <div>
@@ -584,6 +588,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   <p className="font-sans text-sm text-stone-gray font-light">{t('product.shippingText')}</p>
                 </div>
               </div>
+              )}
             </div>
           </div>
         </div>
