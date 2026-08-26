@@ -82,7 +82,7 @@ const translations = {
       didYouKnowText: 'Notre production ne génère aucune émission de gaz, fumée ou déchet toxique. Tous nos emballages sont recyclables, rechargeables ou biodégradables.',
     },
     workshopsSection: {
-      eyebrow: "L'Expérience So You",
+      eyebrow: "L'expérience So You",
       title: "Nos ateliers artisanaux",
       text: "Découvrez l'art de créer vos propres cosmétiques naturels lors d'ateliers intimistes à Genève. Repartez avec des créations uniques, réalisées de vos propres mains.",
       cta1: 'Découvrir',
@@ -283,7 +283,7 @@ const translations = {
       tpp2: "Au fil du temps, convaincue par la qualité des formulations et les bienfaits qu'elles apportaient à la peau, l'envie de partager ces créations avec le plus grand nombre s'est imposée comme une évidence. Forte de mon expérience dans le négoce international, j'ai décidé de créer une marque reflétant mes valeurs et ma vision d'une beauté plus naturelle, plus authentique et plus consciente.",
       tpQuotePrefix: "C'est ainsi qu'est née ",
       tpQuoteBrand: 'So You',
-      tpQuoteSuffix: " : une marque suisse indépendante qui crée des cosmétiques naturels pensés avec soin, formulés avec intention et conçus pour être pleinement appréciés au quotidien.",
+      tpQuoteSuffix: " : une marque suisse indépendante qui crée des cosmétiques naturels pensés avec soin, formulés avec exigence et conçus pour être pleinement appréciés au quotidien.",
       valuesTitle: "So You, créateur de beauté au naturel",
       valuesIntro: "Ce qui guide chacune de nos créations. Notre vision de la beauté naturelle se traduit par des choix concrets et des exigences : des ingrédients d'exception, sans compromis. Pour ne citer qu'un exemple parmi tant d'autres, nous privilégions les huiles et beurres végétaux non OGM et, lorsque cela est possible, ceux issus de première pression à froid ou d'extraction mécanique.",
       values: [
@@ -305,7 +305,7 @@ const translations = {
       priceLabel: "Tarif",
       durationLabel: "Durée",
       detailsLink: "En savoir plus",
-      eyebrow: "L'Expérience So You",
+      eyebrow: "L'expérience So You",
       title: "Nos ateliers artisanaux",
       quote: "Créez vos propres cosmétiques naturels personnalisés",
       introTitleLine1: "Vivez",
