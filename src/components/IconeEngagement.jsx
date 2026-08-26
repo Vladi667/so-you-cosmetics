@@ -48,6 +48,52 @@ const CHEMINS = [
   </>,
 ];
 
+// Les trois piliers de « fait main à Genève », et le colis de la fiche produit.
+// Mêmes raisons, même trait : 🤍 🌿 💧 et 📦 souffraient exactement du même
+// défaut que les cinq précédents.
+const AUTRES = {
+  // Votre peau, votre plus belle tenue.
+  peau: (
+    <>
+      <path d="M12 21s-7-4.4-7-9.6A4.4 4.4 0 0 1 12 8a4.4 4.4 0 0 1 7 3.4C19 16.6 12 21 12 21Z" />
+    </>
+  ),
+  // Les tendances passent. La beauté naturelle demeure.
+  feuille: (
+    <>
+      <path d="M4 20c0-8 5-14 16-14 0 9-5 14-11.5 14H4Z" />
+      <path d="M8 16c2.5-3.5 5.5-5.8 9-7" />
+    </>
+  ),
+  // Votre peau est intuitive. Êtes-vous à l'écoute ?
+  goutte: (
+    <>
+      <path d="M12 3s6 6.4 6 10.5A6 6 0 0 1 6 13.5C6 9.4 12 3 12 3Z" />
+      <path d="M9.5 14.2a2.7 2.7 0 0 0 2.5 2.3" />
+    </>
+  ),
+  // Le bloc livraison de la fiche produit.
+  colis: (
+    <>
+      <path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9Z" />
+      <path d="M3 7.5 12 12l9-4.5M12 12v9" />
+    </>
+  ),
+};
+
+export const IconeSimple = ({ nom, className = '' }) => {
+  const dessin = AUTRES[nom];
+  if (!dessin) return null;
+  return (
+    <svg
+      viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}
+    >
+      {dessin}
+    </svg>
+  );
+};
+
 const IconeEngagement = ({ index, className = '' }) => {
   const dessin = CHEMINS[index];
   if (!dessin) return null;

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
+import { IconeSimple } from './IconeEngagement';
 
 // The philosophy banner, following the reference the client supplied: a quiet
 // statement on plaster, above a band of botanical detail shots.
@@ -23,10 +24,12 @@ const HandmadeGeneva = () => {
   // Geneva craftsmanship, Swiss ingredients". The copy is now a statement about
   // skin, and the flag would restate an origin claim that was removed from the
   // site this morning precisely because the ingredients are not all Swiss.
+  // Au trait plutot qu'en emoji : un emoji est dessine par le systeme, sans la
+  // couleur ni le trait de la marque, et change d'aspect d'un appareil a l'autre.
   const icons = [
-    <span className="text-3xl" aria-hidden="true">🤍</span>,
-    <span className="text-3xl" aria-hidden="true">🌿</span>,
-    <span className="text-3xl" aria-hidden="true">💧</span>,
+    <IconeSimple nom="peau" className="w-7 h-7" />,
+    <IconeSimple nom="feuille" className="w-7 h-7" />,
+    <IconeSimple nom="goutte" className="w-7 h-7" />,
   ];
   const pillars = t('handmade.pillars').map((p, i) => ({ ...p, icon: icons[i] }));
 

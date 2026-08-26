@@ -4,6 +4,7 @@ import { getProducts, imageUrl } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
 import ProductPlaceholder from '../components/ProductPlaceholder';
 import ProductBadge from '../components/ProductBadge';
+import { IconeSimple } from '../components/IconeEngagement';
 import { descriptionToHtml } from '../utils/description';
 import { lireRecette } from '../data/recettes';
 import { ouvrirPanier } from '../services/panier';
@@ -582,7 +583,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   conditions d'envoi se discutent avec le devis lui-meme. */}
               {Number(product.price) > 0 && (
               <div className="mt-10 p-6 bg-ivory rounded-2xl border border-slate-stone/5 flex items-start gap-4">
-                <span className="text-2xl">📦</span>
+                <IconeSimple nom="colis" className="w-6 h-6 shrink-0 text-slate-stone/60" />
                 <div>
                   <h4 className="font-sans text-xs tracking-widest uppercase text-slate-stone font-bold mb-2">{t('product.shippingTitle')}</h4>
                   <p className="font-sans text-sm text-stone-gray font-light">{t('product.shippingText')}</p>
