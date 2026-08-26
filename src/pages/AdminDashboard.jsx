@@ -26,7 +26,36 @@ const AdminDashboard = ({ onLogout }) => {
   const [customBadge, setCustomBadge] = useState(false);
   const [workshopImageUploading, setWorkshopImageUploading] = useState(false);
   const PRODUCTS_PER_PAGE = 25;
-  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [] };
+  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '' };
+  // Charger un produit dans le formulaire.
+  //
+  // Les deux entrées — « Modifier » et « Dupliquer » — construisaient chacune
+  // cet objet à la main, et toutes deux OUBLIAIENT `related`. Le payload, lui,
+  // envoie toujours `related`, donc à undefined il partait comme liste vide :
+  // ouvrir une fiche et l'enregistrer effaçait en silence sa sélection « Vous
+  // aimerez aussi ». Écrit une fois, le champ ne peut plus manquer d'un côté.
+  const chargerProduitDansFormulaire = (p, { copie = false } = {}) => ({
+    ...emptyProductForm,
+    id: copie ? null : p.id,
+    name: copie ? `${p.name} (copie)` : (p.name || ''),
+    price: p.price ?? '',
+    ribbon: p.ribbon || '',
+    collectionsText: (p.collections || []).join(', '),
+    images: Array.isArray(p.images) ? [...p.images] : [],
+    description: p.description || '',
+    stock: p.stock == null ? '' : String(p.stock),
+    inStock: p.inStock !== false,
+    related: Array.isArray(p.related) ? [...p.related] : [],
+    contenance: p.contenance || '',
+    ingredients: p.ingredients || '',
+    inci: p.inci || '',
+    // Les listes redeviennent du texte pour la saisie, et le serveur les
+    // redécoupe. La forme stockée reste un tableau.
+    typePeauText: (p.typePeau || []).join(', '),
+    besoinsText: (p.besoins || []).join(', '),
+    etiquettesText: (p.etiquettes || []).join(', '),
+  });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -791,7 +820,17 @@ const AdminDashboard = ({ onLogout }) => {
                   clearImages: productForm.images.length === 0,
                   stock: productForm.stock === '' ? null : productForm.stock,
                   related: productForm.related || [],
-                  inStock: !!productForm.inStock
+                  inStock: !!productForm.inStock,
+                  // Le quatrième endroit. La liste blanche du serveur est
+                  // stricte : un champ absent d'ici est saisi, paraît accepté,
+                  // et s'évapore au rechargement sans qu'aucune erreur ne le
+                  // dise.
+                  contenance: productForm.contenance || '',
+                  ingredients: productForm.ingredients || '',
+                  inci: productForm.inci || '',
+                  typePeau: productForm.typePeauText || '',
+                  besoins: productForm.besoinsText || '',
+                  etiquettes: productForm.etiquettesText || ''
                 };
                 fetch(url, { method, headers: fetchHeaders, body: JSON.stringify(payload) })
                   .then(res => {
@@ -967,6 +1006,58 @@ const AdminDashboard = ({ onLogout }) => {
                   <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Stock (interne, non affiché)</label>
                   <input type="number" min="0" step="1" placeholder="ex: 12" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} className="px-4 py-2 border rounded w-full" />
                 </div>
+
+                {/* Ce qu'il y a dans le flacon.
+                    Ces renseignements existent déjà pour une bonne part dans
+                    l'export Wix — 104 contenances et 101 listes d'ingrédients —
+                    et se relisent plutôt qu'ils ne se ressaisissent. Rien n'est
+                    obligatoire : un champ vide ne s'affiche simplement pas sur
+                    la fiche. */}
+                <div className="md:col-span-2 border-t pt-5 mt-2">
+                  <h4 className="text-xs uppercase tracking-widest text-stone-gray mb-4">Ce qu'il y a dans le flacon</h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Contenance</label>
+                      <input type="text" placeholder="ex : 100 ml, ou 50 g" value={productForm.contenance}
+                        onChange={e => setProductForm({...productForm, contenance: e.target.value})}
+                        className="px-4 py-2 border rounded w-full" />
+                    </div>
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Étiquettes libres</label>
+                      <input type="text" placeholder="une par ligne, ou séparées par des virgules" value={productForm.etiquettesText}
+                        onChange={e => setProductForm({...productForm, etiquettesText: e.target.value})}
+                        className="px-4 py-2 border rounded w-full" />
+                    </div>
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Types de peau</label>
+                      <input type="text" placeholder="ex : sèche, sensible" value={productForm.typePeauText}
+                        onChange={e => setProductForm({...productForm, typePeauText: e.target.value})}
+                        className="px-4 py-2 border rounded w-full" />
+                    </div>
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Besoins</label>
+                      <input type="text" placeholder="ex : hydratation, apaisement" value={productForm.besoinsText}
+                        onChange={e => setProductForm({...productForm, besoinsText: e.target.value})}
+                        className="px-4 py-2 border rounded w-full" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Ingrédients (en français)</label>
+                      <textarea rows={3} placeholder="Tels que vous les diriez à une cliente." value={productForm.ingredients}
+                        onChange={e => setProductForm({...productForm, ingredients: e.target.value})}
+                        className="px-4 py-2 border rounded w-full" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Liste INCI</label>
+                      <textarea rows={3} placeholder="La nomenclature réglementaire, telle qu'elle figure sur l'étiquette." value={productForm.inci}
+                        onChange={e => setProductForm({...productForm, inci: e.target.value})}
+                        className="px-4 py-2 border rounded w-full" />
+                      <p className="text-[11px] text-stone-gray mt-1">
+                        Aucune mise en évidence des allergènes n'est faite : elle demanderait de les saisir un à un, produit par produit.
+                      </p>
+                    </div>
+                  </div>
+                </div>
                 <div className="flex items-end">
                   <label className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-red-50 border border-red-200 rounded w-full">
                     <input type="checkbox" checked={!productForm.inStock} onChange={e => setProductForm({...productForm, inStock: !e.target.checked})} className="w-4 h-4 accent-red-600" />
@@ -1034,32 +1125,12 @@ const AdminDashboard = ({ onLogout }) => {
                             // as a new product. Name is suffixed so the two are
                             // distinguishable in the list.
                             setCustomBadge(!!p.ribbon && !['coming-soon', 'best-seller'].includes(p.ribbon));
-                            setProductForm({
-                              id: null,
-                              name: `${p.name} (copie)`,
-                              price: p.price ?? '',
-                              ribbon: p.ribbon || '',
-                              collectionsText: (p.collections || []).join(', '),
-                              images: Array.isArray(p.images) ? [...p.images] : [],
-                              description: p.description || '',
-                              stock: p.stock == null ? '' : String(p.stock),
-                              inStock: p.inStock !== false
-                            });
+                            setProductForm(chargerProduitDansFormulaire(p, { copie: true }));
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }} className="text-slate-stone underline">Dupliquer</button>
                           <button onClick={() => {
                             setCustomBadge(!!p.ribbon && !['coming-soon', 'best-seller'].includes(p.ribbon));
-                            setProductForm({
-                              id: p.id,
-                              name: p.name || '',
-                              price: p.price ?? '',
-                              ribbon: p.ribbon || '',
-                              collectionsText: (p.collections || []).join(', '),
-                              images: Array.isArray(p.images) ? [...p.images] : [],
-                              description: p.description || '',
-                              stock: p.stock == null ? '' : String(p.stock),
-                              inStock: p.inStock !== false
-                            });
+                            setProductForm(chargerProduitDansFormulaire(p));
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }} className="text-blue-500 underline">Modifier</button>
                           <button onClick={() => {

@@ -276,6 +276,11 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 </h1>
                 <div className="flex items-center gap-3 flex-wrap">
                   <p className="font-sans text-2xl text-stone-gray font-light">CHF {product.price.toFixed(2)}</p>
+                  {/* La contenance appartient au prix : « CHF 24.00 » ne veut
+                      rien dire tant qu'on ignore si c'est pour 30 ml ou 200. */}
+                  {product.contenance && (
+                    <span className="font-sans text-sm text-stone-gray/70">· {product.contenance}</span>
+                  )}
                   {product.inStock === false && (
                     <span className="inline-block bg-red-100 text-red-700 text-xs tracking-widest uppercase px-3 py-1 rounded-full font-medium">
                       {t('catalog.outOfStock')}
@@ -373,9 +378,13 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
               <div className="h-px w-full bg-slate-stone/10 my-8"></div>
 
               {/* HTML Description */}
+              {/* `max-w-none` supprimait la mesure que `prose` pose lui-même :
+                  la description s'étalait sur toute la colonne, jusqu'à une
+                  centaine de caractères par ligne, où l'œil perd le début de la
+                  suivante en revenant à la marge. */}
               {product.description ? (
                 <div
-                  className="prose prose-sm prose-slate max-w-none font-sans font-light text-stone-gray leading-relaxed mb-10
+                  className="prose prose-sm prose-slate max-w-[65ch] font-sans font-light text-stone-gray leading-relaxed mb-10
                              prose-headings:font-serif prose-headings:text-slate-stone prose-headings:font-normal
                              prose-h2:text-xl prose-h3:text-lg prose-h4:text-base
                              prose-strong:text-slate-stone prose-strong:font-medium
@@ -386,6 +395,51 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 <p className="font-sans font-light text-stone-gray leading-relaxed mb-10">
                   {t('product.defaultDesc')}
                 </p>
+              )}
+
+              {/* Ce qu'il y a dans le flacon.
+                  Replié : ces listes sont longues et ne se lisent pas d'un
+                  bout à l'autre — on les ouvre pour vérifier un point précis.
+                  Dépliées d'office, elles repousseraient la livraison et les
+                  suggestions hors de l'écran.
+                  Rien ne s'affiche tant qu'elle n'a rien saisi : un intitulé
+                  vide vaudrait moins que son absence. */}
+              {(product.ingredients || product.inci || (product.typePeau || []).length > 0 || (product.besoins || []).length > 0) && (
+                <div className="mb-10 border-t border-slate-stone/10 pt-6">
+                  {((product.typePeau || []).length > 0 || (product.besoins || []).length > 0) && (
+                    <div className="mb-5 flex flex-wrap gap-2">
+                      {[...(product.typePeau || []), ...(product.besoins || [])].map((etiquette, i) => (
+                        <span key={i} className="rounded-full bg-ivory border border-slate-stone/10 px-3 py-1 font-sans text-[10px] uppercase tracking-[0.14em] text-stone-gray">
+                          {etiquette}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {product.ingredients && (
+                    <details className="group border-b border-slate-stone/10 pb-3 mb-3">
+                      <summary className="cursor-pointer list-none font-sans text-xs uppercase tracking-[0.18em] text-slate-stone marker:hidden">
+                        {t('product.ingredientsTitle')}
+                        <span className="float-right text-stone-gray/50 transition-transform group-open:rotate-45">+</span>
+                      </summary>
+                      <p className="mt-3 max-w-[65ch] font-sans text-sm font-light leading-relaxed text-stone-gray whitespace-pre-line">
+                        {product.ingredients}
+                      </p>
+                    </details>
+                  )}
+
+                  {product.inci && (
+                    <details className="group">
+                      <summary className="cursor-pointer list-none font-sans text-xs uppercase tracking-[0.18em] text-slate-stone marker:hidden">
+                        {t('product.inciTitle')}
+                        <span className="float-right text-stone-gray/50 transition-transform group-open:rotate-45">+</span>
+                      </summary>
+                      <p className="mt-3 max-w-[65ch] font-sans text-xs font-light leading-relaxed text-stone-gray/80 whitespace-pre-line">
+                        {product.inci}
+                      </p>
+                    </details>
+                  )}
+                </div>
               )}
 
               {/* Shipping info */}

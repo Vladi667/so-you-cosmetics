@@ -491,6 +491,40 @@ function normalizeProductInput(input, base = {}) {
   if (input.inStock !== undefined) {
     out.inStock = !!input.inStock;
   }
+
+  // Ce qu'il y a dans le flacon.
+  //
+  // Ces champs sont cadrés TOUS ENSEMBLE, y compris ceux dont l'interface
+  // viendra plus tard. La raison est mécanique : cette liste blanche est
+  // stricte et sans branche par défaut — tout champ qu'elle ne connaît pas est
+  // silencieusement jeté. Les ajouter au fil de l'eau voudrait dire six
+  // migrations du catalogue et six redémarrages du serveur, alors qu'un seul
+  // cadrage suffit.
+  //
+  // Un champ n'existe vraiment qu'ajouté aux QUATRE endroits : ici, dans les
+  // colonnes SQL, dans le modèle ensureColumn, ET dans le payload de
+  // l'administration. Oublier le quatrième donne une saisie qui paraît
+  // acceptée et qui s'évapore au rechargement.
+  if (input.contenance !== undefined) out.contenance = String(input.contenance || '').trim();
+  if (input.ingredients !== undefined) out.ingredients = String(input.ingredients || '').trim();
+  if (input.inci !== undefined) out.inci = String(input.inci || '').trim();
+  if (input.typePeau !== undefined) out.typePeau = toArray(input.typePeau);
+  if (input.besoins !== undefined) out.besoins = toArray(input.besoins);
+  if (input.etiquettes !== undefined) out.etiquettes = toArray(input.etiquettes);
+
+  // Réservés aux modules signature, cadrés maintenant pour ne plus toucher au
+  // catalogue ensuite : la recette et le parfum (orgue à parfums), le rituel
+  // {etape, geste} (rituel complet), le contenant (recharge en ligne).
+  if (input.recette !== undefined) out.recette = String(input.recette || '').trim();
+  if (input.parfum !== undefined) out.parfum = String(input.parfum || '').trim();
+  if (input.contenant !== undefined) out.contenant = String(input.contenant || '').trim();
+  if (input.rituel !== undefined) {
+    const r = input.rituel || {};
+    out.rituel = r && (r.etape || r.geste)
+      ? { id: String(r.id || '').trim(), etape: String(r.etape || '').trim(), geste: String(r.geste || '').trim() }
+      : null;
+  }
+
   return out;
 }
 
