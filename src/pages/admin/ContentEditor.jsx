@@ -239,10 +239,25 @@ const ContentEditor = ({ fetchHeaders }) => {
         if (t) suivants[`de::${c}`] = t;
       });
       setDrafts((prev) => ({ ...prev, ...suivants }));
-      setStatus({
-        success: `${Object.keys(suivants).length} texte(s) traduit(s) depuis l'anglais. Relisez-les, puis enregistrez.`,
-        error: '',
-      });
+      const n = Object.keys(suivants).length;
+      // Un traducteur peut changer un nombre sans que rien ne le montre :
+      // l'allemand se lit parfaitement, seul le prix est faux. Le serveur
+      // compare les chiffres avant et après ; ce qui ne correspond pas est
+      // nommé ici plutôt que découvert dans six mois.
+      const suspects = Array.isArray(d.suspects) ? d.suspects : [];
+      if (suspects.length > 0) {
+        setStatus({
+          success: '',
+          error: `${n} texte(s) traduit(s), mais ${suspects.length} d'entre eux ne portent plus les mêmes chiffres `
+            + `que l'anglais — vérifiez les montants avant d'enregistrer. Par exemple : « ${suspects[0].source} » `
+            + `est devenu « ${suspects[0].traduction} ».`,
+        });
+      } else {
+        setStatus({
+          success: `${n} texte(s) traduit(s) depuis l'anglais. Relisez-les, puis enregistrez.`,
+          error: '',
+        });
+      }
     } catch {
       setStatus({ success: '', error: "La traduction n'a pas abouti. Réessayez." });
     } finally {

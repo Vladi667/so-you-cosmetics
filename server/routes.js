@@ -964,6 +964,30 @@ router.post('/admin/products/import-metadata', requireAdmin, (req, res) => {
 const LIMITE_TEXTES = 60;
 const LIMITE_CARACTERES = 20000;
 
+// Les chiffres d'un texte doivent survivre à sa traduction.
+//
+// Éprouvé sur un service gratuit sans clé : « Free delivery on orders over
+// CHF 150 » est revenu en « Portofrei ab CHF 20 ». Trois phrases sur quatre
+// étaient justes ; la quatrième avait changé le montant, parce que ce service
+// renvoie la correspondance mémorisée la plus proche plutôt qu'une traduction.
+// L'allemand se lisait parfaitement — seul le prix était faux, et invisible.
+//
+// Aucun traducteur n'est à l'abri de ce genre d'écart. On compare donc les
+// nombres avant et après, et on signale ce qui ne correspond pas plutôt que de
+// le publier. Un prix faux dans les CGV allemandes engage la vendeuse.
+function chiffresDe(texte) {
+  return (String(texte || '').match(/\d[\d'.,\s]*\d|\d/g) || [])
+    .map((n) => n.replace(/[^\d]/g, ''))
+    .filter(Boolean)
+    .sort();
+}
+
+function chiffresPreserves(source, traduction) {
+  const a = chiffresDe(source);
+  const b = chiffresDe(traduction);
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
 router.post('/admin/traduire', requireAdmin, async (req, res) => {
   const cle = process.env.DEEPL_API_KEY;
   if (!cle) {
@@ -1017,10 +1041,18 @@ router.post('/admin/traduire', requireAdmin, async (req, res) => {
 
     const rendus = (reponse.data && reponse.data.translations) || [];
     const sortie = textes.map(() => '');
+    const suspects = [];
     aTraduire.forEach((x, k) => {
-      if (rendus[k] && typeof rendus[k].text === 'string') sortie[x.i] = rendus[k].text;
+      if (!rendus[k] || typeof rendus[k].text !== 'string') return;
+      const t = rendus[k].text;
+      if (!chiffresPreserves(x.v, t)) {
+        // On le rend quand même, mais on le nomme : elle doit savoir lequel
+        // relire, pas découvrir un prix faux dans six mois.
+        suspects.push({ source: x.v.slice(0, 80), traduction: t.slice(0, 80) });
+      }
+      sortie[x.i] = t;
     });
-    res.json({ traductions: sortie, traduits: rendus.length });
+    res.json({ traductions: sortie, traduits: rendus.length, suspects });
   } catch (err) {
     const code = err.response && err.response.status;
     // 456 : le quota du mois est épuisé. 403 : la clé est refusée. Les nommer
