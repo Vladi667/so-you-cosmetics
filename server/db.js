@@ -665,6 +665,12 @@ function normalizeProductInput(input, base = {}) {
 async function createProduct(input) {
   const product = normalizeProductInput(input, {
     id: 'product_' + crypto.randomUUID(),
+    // La date de création. Aucune des 178 fiches importées de Wix n'en porte —
+    // leur ordre est celui de l'export, pas celui des créations — et c'est
+    // pourquoi il n'existe pas de tri « Nouveautés ». Sans cette ligne, une
+    // fiche créée demain n'en porterait pas davantage et la situation ne
+    // s'améliorerait jamais. Une date ne se rattrape pas après coup.
+    created_at: new Date().toISOString(),
     description: '',
     price: 0,
     ribbon: null,
