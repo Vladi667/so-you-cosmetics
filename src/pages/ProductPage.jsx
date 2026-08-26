@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { getProducts, imageUrl } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
 import ProductPlaceholder from '../components/ProductPlaceholder';
@@ -72,8 +72,8 @@ const SqueletteFiche = () => (
 const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   const { t, tCategory } = useLanguage();
   const { id } = useParams();
-  const navigate = useNavigate();
   const [product, setProduct] = useState(null);
+  const [introuvable, setIntrouvable] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [relatedProducts, setRelatedProducts] = useState([]);
@@ -94,6 +94,10 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   const blocAchatRef = useRef(null);
 
   useEffect(() => {
+    // Remis à zéro à chaque référence : le routeur garde le même composant
+    // d'une fiche à l'autre, donc sans cette ligne un seul lien mort suffisait
+    // à faire passer pour supprimés tous les produits consultés ensuite.
+    setIntrouvable(false);
     getProducts().then(data => handleProductsLoaded(data));
 
     function handleProductsLoaded(productsList) {
@@ -173,11 +177,15 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
         }
         setRelatedProducts(related);
       } else {
-        // Product not found, redirect to home
-        navigate('/');
+        // Une référence inconnue renvoyait à l'accueil sans un mot. Quelqu'un
+        // qui ouvre un lien reçu par message se retrouvait sur la page
+        // d'accueil et en concluait qu'il s'était trompé de lien — alors que
+        // le produit avait simplement quitté le catalogue. Les liens de
+        // produits vivent longtemps dans les messageries et les publications.
+        setIntrouvable(true);
       }
     }
-  }, [id, navigate]);
+  }, [id]);
 
   useEffect(() => {
     const cible = blocAchatRef.current;
@@ -202,13 +210,34 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   // Appelé avant le retour anticipé ci-dessous : un hook ne peut pas être
   // conditionnel, et la fiche non chargée passe simplement des valeurs vides.
   useMetadonnees({
-    titre: product ? product.name : '',
-    description: product ? product.description : '',
+    titre: introuvable ? t('product.introuvableTitle') : (product ? product.name : ''),
+    description: introuvable ? t('product.introuvableText') : (product ? product.description : ''),
     image: product && product.images && product.images[0]
       ? imageUrl(product.images[0], 1200)
       : '',
     type: 'product',
   });
+
+  if (introuvable) {
+    return (
+      <div className="min-h-screen bg-mist-white flex items-center justify-center px-6">
+        <div className="text-center max-w-md">
+          <h1 className="font-serif text-2xl sm:text-3xl text-slate-stone mb-4">
+            {t('product.introuvableTitle')}
+          </h1>
+          <p className="font-sans font-light text-stone-gray leading-relaxed">
+            {t('product.introuvableText')}
+          </p>
+          <Link
+            to="/category/All"
+            className="inline-block mt-8 px-8 py-3 bg-slate-stone text-white rounded-full text-xs uppercase tracking-widest hover:bg-slate-stone/90 transition-colors press"
+          >
+            {t('product.introuvableBack')}
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (!product) return <SqueletteFiche />;
 
