@@ -3,7 +3,10 @@ import { useLanguage } from '../i18n/LanguageContext';
 
 const Ingredients = () => {
   const { t } = useLanguage();
-  const icons = ['🌴', '🧴', '♻️', '🌱'];
+  // Une icone par engagement. Il y en avait quatre pour cinq cartes : la
+  // derniere affichait une boite vide, qu'on lit comme une image qui n'a pas
+  // charge plutot que comme un parti pris.
+  const icons = ['🌴', '🧴', '♻️', '🌱', '📍'];
   const commitments = t('ingredients.commitments').map((c, i) => ({ ...c, icon: icons[i] }));
 
   return (
@@ -27,10 +30,18 @@ const Ingredients = () => {
 
         {/* 4 Commitment Cards — 2x2 Grid */}
         <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:gap-8 max-w-4xl mx-auto">
-          {commitments.map((item, index) => (
+          {commitments.map((item, index) => {
+            // Un nombre impair d'engagements laisse la derniere carte seule sur
+            // sa ligne. Elle restait calee a gauche, sous une colonne vide : on
+            // lisait un trou plutot qu'une fin. Elle occupe desormais la largeur
+            // de la ligne et se centre, en gardant la largeur d'une colonne.
+            const seuleSurSaLigne = index === commitments.length - 1 && commitments.length % 2 === 1;
+            return (
             <div
               key={index}
-              className="group flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-6 bg-ivory rounded-[20px] sm:rounded-[30px] p-4 sm:p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgb(0,0,0,0.1)] hover:-translate-y-2 transition-[opacity,transform,box-shadow] duration-300 reveal border border-slate-stone/5"
+              className={`group flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-6 bg-ivory rounded-[20px] sm:rounded-[30px] p-4 sm:p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgb(0,0,0,0.1)] hover:-translate-y-2 transition-[opacity,transform,box-shadow] duration-300 reveal border border-slate-stone/5${
+                seuleSurSaLigne ? ' col-span-2 sm:w-[calc(50%-1rem)] lg:w-[calc(50%-1.5rem)] justify-self-center' : ''
+              }`}
             >
               <div className="w-10 h-10 sm:w-14 sm:h-14 bg-mist-white rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0 text-lg sm:text-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-250">
                 {item.icon}
@@ -44,7 +55,8 @@ const Ingredients = () => {
                 </p>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Le saviez-vous callout */}
