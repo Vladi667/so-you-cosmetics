@@ -33,7 +33,18 @@ export function visibleCategories(products) {
     for (const c of p.collections || []) presentes.add(c);
   }
   const retenues = SHOP_CATEGORIES.filter((c) => presentes.has(c));
+
+  // Puis celles qu'elle a créées elle-même, que cette liste ne connaît pas.
+  //
+  // Sans cela, taper « Coffrets de Noël » sur une fiche depuis l'administration
+  // ne produisait rien : la rubrique n'apparaissait dans aucun menu, sans
+  // erreur ni avertissement, et un produit qui n'aurait porté qu'elle devenait
+  // inatteignable depuis la navigation. Sa liste garde son rang et son ordre —
+  // c'est la raison d'être de ce fichier — et ce qui vient après la suit.
+  const siennes = [...presentes].filter((c) => c && !SHOP_CATEGORIES.includes(c)).sort();
+
+  const toutes = [...retenues, ...siennes];
   // Tant que le catalogue n'a pas été reclassé, aucune des nouvelles rubriques
   // n'existe : on montre la liste complète plutôt qu'un menu vide.
-  return retenues.length > 0 ? retenues : SHOP_CATEGORIES;
+  return toutes.length > 0 ? toutes : SHOP_CATEGORIES;
 }
