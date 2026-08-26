@@ -196,6 +196,26 @@ function orderContact(order) {
 // depuis un téléphone sans rien télécharger, imprimable en PDF par le lecteur
 // s'il le souhaite, et n'ajoute aucune dépendance de génération de document au
 // serveur. Le numéro, lui, est réservé une seule fois et ne recule jamais.
+// L'adresse de livraison sur la facture.
+//
+// Elle figurait dans l'administration et dans l'avis qu'elle reçoit, mais pas
+// sur le document que la cliente reçoit — celui qui « tient lieu de facture
+// acquittée ». Une facture d'envoi qui ne dit pas où le colis est parti est
+// incomplète, et c'est la pièce qu'on garde.
+//
+// Rien pour un retrait en boutique : il n'y a pas eu d'expédition.
+function adresseFacture(order) {
+  const a = order && order.address;
+  if (!a || !a.line1) return '';
+  const lignes = [
+    escapeForEmail(a.line1),
+    a.line2 ? escapeForEmail(a.line2) : '',
+    `${escapeForEmail(a.zip || '')} ${escapeForEmail(a.city || '')}`.trim(),
+    a.country && a.country !== 'CH' ? escapeForEmail(a.country) : '',
+  ].filter(Boolean);
+  return `<p style="margin:0 0 4px;color:#6A6157;font-size:13px;line-height:1.5;">${lignes.join('<br>')}</p>`;
+}
+
 function buildInvoiceHtml({ invoiceNumber, order, settings }) {
   const inv = settings.invoice;
   const lignes = (order.items || []).map((it) => {
@@ -228,6 +248,7 @@ function buildInvoiceHtml({ invoiceNumber, order, settings }) {
           <span style="color:#6A6157;font-size:12px;">${new Date(order.created_at || Date.now()).toLocaleDateString('fr-CH')}</span></td>
       </tr></table>
       <p style="margin:0 0 4px;"><strong>${escapeForEmail(order.customer_name || '')}</strong></p>
+      ${adresseFacture(order)}
       <p style="margin:0 0 20px;color:#6A6157;font-size:13px;">Commande ${escapeForEmail(order.id)}</p>
       <table style="width:100%;border-collapse:collapse;font-size:14px;">
         <thead><tr>
@@ -544,6 +565,15 @@ router.post('/orders', async (req, res) => {
           subject: `Merci pour votre achat ${newOrder.id} - So You Cosmetics`,
           html: buildPaymentConfirmedEmail({ name, orderId: newOrder.id, total })
         });
+        // Les trois mêmes suites qu'un vrai paiement. Ce chemin n'envoyait que
+        // la confirmation : ni facture, ni avis à la boutique, ni mouvement de
+        // stock. Tant que SumUp est configuré cela ne se voit pas — mais le
+        // jour où la clé expire ou est retirée, le site continuerait d'encaisser
+        // en apparence tout en cessant silencieusement de facturer, de la
+        // prévenir et de décompter ce qui part.
+        await sendInvoiceIfEnabled(newOrder, email);
+        await avertirNouvelleCommande(newOrder);
+        await appliquerStockEtAlerter(newOrder);
       } catch (mailErr) {
         console.error('Failed to send order confirmation email:', mailErr);
       }
