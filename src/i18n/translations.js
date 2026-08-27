@@ -207,6 +207,7 @@ const translations = {
       emptyCart: 'Votre panier est vide',
       emptyFav: 'Aucun favori pour le moment',
       order: 'Commander',
+      continueShopping: 'Continuer mes achats',
       productFallback: 'Produit',
       removeLine: 'Retirer cet article',
       decrease: 'Diminuer la quantité',
@@ -238,7 +239,7 @@ const translations = {
       // Les trois lignes de réassurance, composées de ce que le site affirme
       // déjà par ailleurs — aucune promesse nouvelle.
       trustPayment: 'Paiement sécurisé par SumUp. Vos données de carte ne sont jamais conservées par So You.',
-      trustMade: 'Fait main à Genève — expédition sous 2 à 4 jours ouvrés.',
+      trustMade: 'Expédition sous 2 à 4 jours ouvrés.',
       trustContact: 'Une question ? 022 556 69 92 — 3 av. Pictet-De-Rochemont, 1207 Genève.',
     },
     product: {
@@ -724,6 +725,7 @@ const translations = {
       emptyCart: 'Your cart is empty',
       emptyFav: 'No favourites yet',
       order: 'Checkout',
+      continueShopping: 'Continue shopping',
       productFallback: 'Product',
       removeLine: 'Remove this item',
       decrease: 'Decrease quantity',
@@ -750,7 +752,7 @@ const translations = {
       acceptTermsLink: 'terms and conditions of sale',
       termsRequired: 'Please accept the terms and conditions of sale to continue.',
       trustPayment: 'Secure payment by SumUp. Your card details are never kept by So You.',
-      trustMade: 'Handmade in Geneva — shipped within 2 to 4 business days.',
+      trustMade: 'Shipped within 2 to 4 business days.',
       trustContact: 'A question? 022 556 69 92 — 3 av. Pictet-De-Rochemont, 1207 Geneva.',
     },
     product: {
@@ -1236,6 +1238,7 @@ const translations = {
       emptyCart: 'Ihr Warenkorb ist leer',
       emptyFav: 'Noch keine Favoriten',
       order: 'Zur Kasse',
+      continueShopping: 'Weiter einkaufen',
       productFallback: 'Produkt',
       removeLine: 'Diesen Artikel entfernen',
       decrease: 'Menge verringern',
@@ -1262,7 +1265,7 @@ const translations = {
       acceptTermsLink: 'Allgemeinen Geschäftsbedingungen',
       termsRequired: 'Bitte akzeptieren Sie die Allgemeinen Geschäftsbedingungen, um fortzufahren.',
       trustPayment: 'Sichere Zahlung über SumUp. Ihre Kartendaten werden von So You nie gespeichert.',
-      trustMade: 'Handgefertigt in Genf — Versand innerhalb von 2 bis 4 Werktagen.',
+      trustMade: 'Versand innerhalb von 2 bis 4 Werktagen.',
       trustContact: 'Eine Frage? 022 556 69 92 — 3 av. Pictet-De-Rochemont, 1207 Genf.',
     },
     product: {

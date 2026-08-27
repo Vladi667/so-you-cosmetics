@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useId } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { getShipping, shippingCostFor, exigeAdresse, getGiftWrap, modeAutorise } from '../services/shop';
 import { totalPanier, nombreArticles } from '../services/panier';
+import { lireCaisse, ecrireCaisse, oublierCaisse } from '../services/caisse';
 import { Link } from 'react-router-dom';
 import useVerrouDefilement from '../hooks/useVerrouDefilement';
 
@@ -11,7 +12,13 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
   const { t } = useLanguage();
   const title = type === 'cart' ? t('drawer.cartTitle') : t('drawer.favTitle');
   const [isCheckoutMode, setIsCheckoutMode] = useState(false);
-  const [checkoutForm, setCheckoutForm] = useState({ name: '', email: '' });
+  // Repris de ce qui a deja ete tape : le tiroir se demonte en se fermant,
+  // et repartir du vide effacait le nom et l'adresse des qu'on retournait
+  // chercher un article de plus.
+  const [checkoutForm, setCheckoutForm] = useState(() => {
+    const garde = lireCaisse();
+    return { name: garde.name, email: garde.email };
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [sumupCheckoutId, setSumupCheckoutId] = useState(null);
@@ -22,7 +29,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
   // L'adresse de livraison n'etait demandee nulle part, alors que huit des neuf
   // modes d'expedition sont postaux : elle devait ecrire a chaque cliente apres
   // paiement pour savoir ou envoyer le colis.
-  const [adresse, setAdresse] = useState({ line1: '', line2: '', zip: '', city: '', country: 'CH' });
+  const [adresse, setAdresse] = useState(() => lireCaisse().adresse);
   // Decochee par defaut, et bloquante : une acceptation pre-cochee n'en est pas
   // une, et c'est le seul bouton du site qui declenche un paiement.
   const [cgvAcceptees, setCgvAcceptees] = useState(false);
@@ -98,14 +105,27 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
       setCheckoutError(null);
       setSumupCheckoutId(null);
       setOrderId(null);
-      setCheckoutForm({ name: '', email: '' });
-      setAdresse({ line1: '', line2: '', zip: '', city: '', country: 'CH' });
+      // Le nom, l'e-mail et l'adresse ne sont PLUS effaces ici. C'est cette
+      // remise a zero qui faisait perdre la saisie quand on retournait a la
+      // boutique chercher un article de plus : le geste meme qu'une boutique
+      // veut encourager. Ils sont gardes dans le navigateur, et repris au
+      // remontage du tiroir.
+      //
+      // L'acceptation des conditions, elle, retombe : une case deja cochee en
+      // revenant n'est pas une acceptation.
       setCgvAcceptees(false);
       setTentativeSansCgv(false);
       setCadeau({ destinataire: '', email: '', message: '', date: '', emballage: false });
     }, 500); // le temps de la transition de fermeture
     return () => clearTimeout(id);
   }, [isOpen]);
+
+  // Garde ce qui est tape, au fil de la frappe. Ecrire a chaque touche est sans
+  // consequence : localStorage est synchrone et le volume tient en quelques
+  // centaines d'octets.
+  useEffect(() => {
+    ecrireCaisse({ name: checkoutForm.name, email: checkoutForm.email, adresse });
+  }, [checkoutForm.name, checkoutForm.email, adresse]);
 
   const getImageUrl = (product) => {
     if (product.imageUrl) return product.imageUrl;
@@ -124,6 +144,10 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
           if (type === 'success') {
             setCheckoutSuccess(true);
             setSumupCheckoutId(null);
+            // La commande est enregistree cote serveur : garder nom, e-mail et
+            // adresse dans le navigateur n'a plus d'utilite, et ce sont des
+            // donnees personnelles.
+            oublierCaisse();
             // Tell the shop straight away rather than waiting on SumUp's
             // webhook. The server does not take our word for it — it asks
             // SumUp — so this only shortens the delay, it cannot fake a
@@ -772,6 +796,17 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
               className="press w-full py-4 bg-slate-stone text-white font-sans uppercase tracking-[0.3em] text-xs rounded-full hover:bg-slate-stone/90 shadow-lg hover:shadow-xl"
             >
               {t('drawer.order')}
+            </button>
+            {/* Demande par la cliente : depuis le panier, rien ne ramenait a la
+                boutique. Fermer le tiroir suffit — on est deja sur le site —
+                encore fallait-il qu'un bouton le dise. En retrait par rapport a
+                « Commander », qui reste l'action principale. */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="press w-full mt-3 py-3 font-sans uppercase tracking-[0.2em] text-[11px] text-stone-gray hover:text-slate-stone transition-colors"
+            >
+              {t('drawer.continueShopping')}
             </button>
           </div>
         )}
