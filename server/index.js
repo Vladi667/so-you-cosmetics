@@ -120,7 +120,25 @@ function baliseshtmlProduit(produit, urlPage) {
   if (!produit || !produit.name) return { titre: '', balises: '' };
   const titre = `${produit.name} — So You Cosmetics`;
   const description = resumerTexte(produit.description);
-  const image = Array.isArray(produit.images) && produit.images[0] ? String(produit.images[0]) : '';
+  // Open Graph exige une adresse absolue. Les photos reprises de Wix en sont
+  // déjà, mais celles qu'elle téléverse elle-même sont enregistrées en
+  // « /uploads/… » : le robot qui fabrique l'aperçu n'a aucun moyen de les
+  // résoudre, et la vignette reste vide. Ce sont justement les fiches les plus
+  // récentes, et leur nombre grandit à chaque photo qu'elle remplace.
+  let image = Array.isArray(produit.images) && produit.images[0] ? String(produit.images[0]) : '';
+  if (image && !/^https?:\/\//i.test(image)) {
+    try {
+      // Contre l'origine, pas contre l'adresse de la fiche : un chemin stocké
+      // sans barre oblique initiale se résoudrait sinon en
+      // « /product/uploads/… ». Aucun n'est dans ce cas aujourd'hui, mais rien
+      // ne l'empêche, et la photo serait alors silencieusement introuvable.
+      image = new URL(image, new URL(urlPage).origin).href;
+    } catch (err) {
+      // Un chemin illisible ne vaut pas une balise cassée : mieux vaut aucune
+      // image qu'une adresse que personne ne peut ouvrir.
+      image = '';
+    }
+  }
 
   const meta = (attribut, cle, valeur) => (valeur
     ? `<meta ${attribut}="${cle}" content="${escapeHtml(String(valeur))}" data-pose="app">`
