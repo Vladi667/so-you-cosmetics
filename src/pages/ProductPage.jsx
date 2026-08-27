@@ -759,7 +759,13 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
           ne peut pas se produire.
           `env(safe-area-inset-bottom)` : sans lui, le bouton passe sous la
           barre d'accueil des iPhone recents. */}
-      {!boutonVisible && product.inStock !== false && (
+      {/* La garde de prix manquait ici, alors que le bouton principal l'a
+          (ligne 467) et propose « Demander un devis ». Sur les quatre fiches à
+          CHF 0.00, la page disait donc « Sur devis » et « Demander un devis »
+          en haut, et « Ajouter au panier » dans la barre du bas. Comme elle est
+          en lg:hidden, le défaut ne se voyait que sur mobile — l'appareil sur
+          lequel on achète le plus — et menait à une commande à zéro franc. */}
+      {!boutonVisible && product.inStock !== false && Number(product.price) > 0 && (
         <div
           className="fixed inset-x-0 bottom-0 z-[80] border-t border-slate-stone/10 bg-ivory/95 backdrop-blur-md lg:hidden"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
