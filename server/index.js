@@ -71,9 +71,9 @@ app.use((req, res, next) => {
       `script-src 'self' 'nonce-${res.locals.cspNonce}' https://gateway.sumup.com`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
-      "img-src 'self' data: blob: https://static.wixstatic.com https://gateway.sumup.com",
+      "img-src 'self' data: blob: https://static.wixstatic.com https://*.sumup.com",
       "media-src 'self'",
-      "connect-src 'self' https://gateway.sumup.com https://api.sumup.com",
+      "connect-src 'self' https://*.sumup.com",
       // Le plan d'acces de la page « Nous trouver » : maps.google.com
       // redirige vers www.google.com, il faut donc les deux. Trouve par la
       // mise en observation — imposee, la politique aurait fait disparaitre
