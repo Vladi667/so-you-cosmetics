@@ -8,6 +8,7 @@ const morgan = require('morgan');
 const apiRouter = require('./routes');
 const { ensureUploadsDir } = require('./uploads');
 const db = require('./db');
+const seo = require('./seo');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -115,6 +116,29 @@ app.use('/.well-known', express.static(acmeRoot, { dotfiles: 'allow', fallthroug
 // API endpoints mounted on /api
 app.use('/api', apiRouter);
 
+// Le plan du site, construit à la demande depuis la base : elle ajoute un
+// produit, il y est. Un fichier écrit au moment du build serait faux le jour
+// même, et le catalogue change depuis l'administration.
+//
+// Posé ici, avant express.static et avant le catch-all : sans cela une panne de
+// génération ferait répondre le catch-all, c'est-à-dire du HTML en 200 là où
+// Google attend du XML — ce qu'il signale comme un plan illisible plutôt que
+// comme un plan absent, et c'est bien plus difficile à diagnostiquer.
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    // Sans « trust proxy », req.protocol dit « http » derrière le proxy qui
+    // termine le TLS : on lit d'abord ce que le proxy annonce.
+    const schema = req.get('x-forwarded-proto') || req.protocol || 'https';
+    const base = `${schema}://${req.get('host')}`;
+    res.type('application/xml').send(await seo.construireSitemap(base, db));
+  } catch (err) {
+    // Un plan absent vaut mieux qu'un plan faux : on ne sert pas une liste
+    // tronquée que Google prendrait pour la vérité sur l'étendue du site.
+    console.error('sitemap.xml indisponible :', err.message);
+    res.status(500).type('text/plain').send('sitemap indisponible');
+  }
+});
+
 // Serve static built files from React in production
 const buildPath = path.join(__dirname, '../dist');
 // index: false is load-bearing. express.static answers a directory request with
@@ -136,102 +160,6 @@ function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
-// Les balises de partage d'une fiche produit, écrites par le serveur.
-//
-// Le hook du navigateur pose déjà ces balises, et cela suffit à Google, qui
-// exécute le JavaScript avant de lire la page. Mais les robots qui fabriquent
-// l'aperçu d'un lien — WhatsApp, Facebook, Signal, Slack, LinkedIn — ne
-// l'exécutent pas : ils lisent le HTML tel qu'il arrive et repartent. Un lien
-// de produit envoyé à une cliente s'affichait donc en URL nue, sans titre, sans
-// photo, sans un mot. Pour une boutique dont c'est le geste commercial le plus
-// courant, c'est le lien lui-même qui ne vend pas.
-//
-// Les balises portent data-pose="app" : le hook les reprend alors comme les
-// siennes et les nettoie en quittant la page, au lieu de laisser le titre d'un
-// produit sur la page suivante.
-
-// Le résumé, côté serveur, sans DOM pour décoder les entités.
-// Les descriptions viennent de l'import Wix : &nbsp; y est partout, et
-// « pour&nbsp;parfaire » partirait tel quel dans l'aperçu.
-const ENTITES = {
-  nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'",
-  eacute: 'é', egrave: 'è', ecirc: 'ê', agrave: 'à', acirc: 'â',
-  ccedil: 'ç', ocirc: 'ô', ugrave: 'ù', ucirc: 'û', icirc: 'î',
-  iuml: 'ï', euml: 'ë', laquo: '«', raquo: '»', hellip: '…',
-  rsquo: '’', lsquo: '‘', ldquo: '“', rdquo: '”',
-  ndash: '–', mdash: '—', deg: '°', eur: '€',
-};
-
-function decoderEntites(texte) {
-  return String(texte || '')
-    .replace(/&#(\d+);/g, (_, n) => {
-      const code = parseInt(n, 10);
-      return Number.isFinite(code) && code > 0 && code < 1114112 ? String.fromCodePoint(code) : ' ';
-    })
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => {
-      const code = parseInt(n, 16);
-      return Number.isFinite(code) && code > 0 && code < 1114112 ? String.fromCodePoint(code) : ' ';
-    })
-    .replace(/&([a-z]+);/gi, (tout, nom) => {
-      const v = ENTITES[String(nom).toLowerCase()];
-      return v === undefined ? tout : v;
-    });
-}
-
-function resumerTexte(texte, limite = 160) {
-  const propre = decoderEntites(String(texte || '').replace(/<[^>]*>/g, ' '))
-    .replace(/\u00A0/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (propre.length <= limite) return propre;
-  const coupe = propre.slice(0, limite);
-  const dernier = Math.max(coupe.lastIndexOf('. '), coupe.lastIndexOf(' '));
-  return (dernier > limite * 0.5 ? coupe.slice(0, dernier) : coupe).trim() + '…';
-}
-
-// Rend les balises, ou une chaîne vide si le produit ne dit rien d'utile.
-function baliseshtmlProduit(produit, urlPage) {
-  if (!produit || !produit.name) return { titre: '', balises: '' };
-  const titre = `${produit.name} — So You Cosmetics`;
-  const description = resumerTexte(produit.description);
-  // Open Graph exige une adresse absolue. Les photos reprises de Wix en sont
-  // déjà, mais celles qu'elle téléverse elle-même sont enregistrées en
-  // « /uploads/… » : le robot qui fabrique l'aperçu n'a aucun moyen de les
-  // résoudre, et la vignette reste vide. Ce sont justement les fiches les plus
-  // récentes, et leur nombre grandit à chaque photo qu'elle remplace.
-  let image = Array.isArray(produit.images) && produit.images[0] ? String(produit.images[0]) : '';
-  if (image && !/^https?:\/\//i.test(image)) {
-    try {
-      // Contre l'origine, pas contre l'adresse de la fiche : un chemin stocké
-      // sans barre oblique initiale se résoudrait sinon en
-      // « /product/uploads/… ». Aucun n'est dans ce cas aujourd'hui, mais rien
-      // ne l'empêche, et la photo serait alors silencieusement introuvable.
-      image = new URL(image, new URL(urlPage).origin).href;
-    } catch (err) {
-      // Un chemin illisible ne vaut pas une balise cassée : mieux vaut aucune
-      // image qu'une adresse que personne ne peut ouvrir.
-      image = '';
-    }
-  }
-
-  const meta = (attribut, cle, valeur) => (valeur
-    ? `<meta ${attribut}="${cle}" content="${escapeHtml(String(valeur))}" data-pose="app">`
-    : '');
-
-  const balises = [
-    meta('name', 'description', description),
-    meta('property', 'og:type', 'product'),
-    meta('property', 'og:site_name', 'So You Cosmetics'),
-    meta('property', 'og:title', titre),
-    meta('property', 'og:description', description),
-    meta('property', 'og:image', image),
-    meta('property', 'og:url', urlPage),
-    meta('name', 'twitter:card', image ? 'summary_large_image' : 'summary'),
-  ].join('');
-
-  return { titre, balises };
 }
 
 // Ce que la page publique a le droit de connaître des réglages.
@@ -306,38 +234,96 @@ app.get('*', async (req, res, next) => {
 
     let html = fs.readFileSync(indexPath, 'utf8');
     const content = db.readContent();
-    let tag = `<script nonce="${res.locals.cspNonce}">window.__CONTENT__=${serialiseContent(content)};` +
-              `window.__SHOP__=${serialiseContent(reglagesPublics(shop))}</script>`;
+    // Le script de données est assemblé plus bas, une fois connu ce que le
+    // serveur a su dire de la page : window.__SEO__ en fait partie.
+    let tag = '';
+    let seoClient = null;
     // If </head> is somehow absent, fall through to the untouched file rather
     // than guessing where to put the tag.
     if (!html.includes('</head>')) return res.sendFile(indexPath);
 
-    // Une fiche produit part souvent par message : c'est le geste commercial le
-    // plus courant de la boutique. Les robots qui en fabriquent l'apercu ne
-    // lisent que le HTML recu, d'ou ces balises posees ici plutot que par le
-    // navigateur.
-    const fiche = req.path.match(/^\/product\/([^/]+)$/);
-    if (fiche) {
-      try {
-        const produit = await db.getProductById(decodeURIComponent(fiche[1]));
-        // Sans « trust proxy », req.protocol dit « http » derriere le proxy qui
-        // termine le TLS : on lit d'abord ce que le proxy annonce.
-        const schema = req.get('x-forwarded-proto') || req.protocol || 'https';
-        const urlPage = `${schema}://${req.get('host')}${req.path}`;
-        const { titre, balises } = baliseshtmlProduit(produit, urlPage);
-        if (titre) {
-          html = html.replace(/<title>[\s\S]*?<\/title>/i,
-            `<title data-pose="app">${escapeHtml(titre)}</title>`);
-          tag = balises + tag;
-        }
-      } catch (err) {
-        // Une reference inconnue ou une base muette ne doit pas empecher la
-        // page de s'afficher : on sert alors le document generique, comme avant.
-        console.error('Balises de partage non posees :', err.message);
+    // Le titre, la description, l'adresse canonique et les données structurées
+    // de la page demandée — quelle qu'elle soit.
+    //
+    // Ce bloc ne traitait que les fiches produit. Les robots qui fabriquent
+    // l'aperçu d'un lien — WhatsApp, Facebook, LinkedIn, Signal, Slack — ne
+    // lisent que le HTML reçu et ne l'exécutent pas : un lien vers l'accueil,
+    // une rubrique, un atelier ou un article partait donc en adresse nue, sans
+    // titre ni photo. Pour une boutique dont le geste commercial le plus
+    // courant est d'envoyer un lien, c'était le lien lui-même qui ne vendait
+    // pas. Les moteurs autres que Google sont dans le même cas.
+    //
+    // Sans « trust proxy », req.protocol dit « http » derrière le proxy qui
+    // termine le TLS : on lit d'abord ce que le proxy annonce.
+    const schema = req.get('x-forwarded-proto') || req.protocol || 'https';
+    const base = `${schema}://${req.get('host')}`;
+    // L'adresse canonique est donnée sans la chaîne de requête : la même page
+    // partagée avec un ?utm_source ne doit pas devenir un doublon d'elle-même.
+    const urlPage = `${base}${req.path}`;
+    let statut = 200;
+
+    try {
+      const meta = await seo.metadonneesDeRoute(req.path, urlPage, base, db, shop);
+
+      if (meta === null || !seo.routeConnue(req.path)) {
+        // La ressource n'existe pas : une référence inconnue, un atelier
+        // supprimé, un brouillon, ou une adresse qui ne correspond à aucune
+        // route. Le site répondait 200 à tout, y compris à cela — chaque
+        // adresse morte devenait donc une page indexable de plus, vide et
+        // indistinguable des vraies. On dit maintenant ce qui est.
+        //
+        // Le corps reste la même application : elle affiche déjà ses propres
+        // messages « introuvable ». Seuls le statut et le « noindex » changent.
+        statut = 404;
+        const avant = html;
+        html = html.replace(
+          /<meta\s+name="robots"[^>]*>/i,
+          '<meta name="robots" content="noindex, follow">'
+        );
+        // Si index.html ne portait pas la balise — elle y est aujourd'hui, mais
+        // rien ne le garantit demain — on la pose plutôt que de servir un 404
+        // sans consigne. Deux balises « robots » qui se contredisent seraient
+        // pires que pas de balise du tout, d'où le remplacement d'abord.
+        if (html === avant) tag = '<meta name="robots" content="noindex, follow">' + tag;
+      } else if (meta) {
+        html = html.replace(/<title>[\s\S]*?<\/title>/i,
+          `<title data-pose="app">${seo.escapeHtml(meta.titre)}</title>`);
+        // Le plancher d'index.html s'efface devant celle de la route. Sans ce
+        // retrait la page porterait deux balises « description » : Google en
+        // choisirait une au hasard, et le hook du navigateur — qui prend la
+        // première venue — mettrait à jour l'autre. Une seule, toujours.
+        html = html.replace(/<meta\s+name="description"[^>]*>/i, '');
+        tag = seo.baliseshtml(meta, urlPage, res.locals.cspNonce) + tag;
+        // Ce que le serveur vient de poser, laissé à portée du navigateur.
+        //
+        // Sans cela le hook du navigateur écrase le titre du serveur au montage
+        // par le sien, qui est plus pauvre : « Savons » remplaçait « Savons
+        // artisanaux faits main à Genève ». Google exécute le JavaScript avant
+        // de lire la page — c'est donc la version écrasée qu'il indexe, et tout
+        // le travail fait ici était perdu à la seconde près.
+        //
+        // Le chemin sert de garde : dès que le visiteur navigue ailleurs, il ne
+        // correspond plus et le hook reprend la main, comme avant.
+        seoClient = { chemin: req.path, titre: meta.titre, description: meta.description };
       }
+      // meta === undefined : route connue mais volontairement muette
+      // (l'administration, la recherche). La page part telle quelle.
+    } catch (err) {
+      // Une base muette ne doit pas empêcher la page de s'afficher : on sert
+      // alors le document générique, comme avant. Répondre 404 sur une panne
+      // serait pire que le défaut qu'on corrige — cela désindexerait des pages
+      // qui existent.
+      console.error('Balises de partage non posees :', err.message);
     }
 
-    res.type('html').send(html.replace('</head>', `${tag}</head>`));
+    // Le script de données vient en dernier, après les balises : ainsi le
+    // titre et la description sont lisibles par un robot qui s'arrête au
+    // premier kilo-octet, et window.__SEO__ y porte ce que le serveur a posé.
+    tag += `<script nonce="${res.locals.cspNonce}">window.__CONTENT__=${serialiseContent(content)};` +
+           `window.__SHOP__=${serialiseContent(reglagesPublics(shop))};` +
+           `window.__SEO__=${serialiseContent(seoClient)}</script>`;
+
+    res.status(statut).type('html').send(html.replace('</head>', `${tag}</head>`));
   } catch (err) {
     // The site must survive a failure here: worst case it serves the page with
     // its coded defaults, which is exactly how it behaved before this existed.

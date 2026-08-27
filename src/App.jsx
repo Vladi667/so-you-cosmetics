@@ -29,6 +29,7 @@ import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
+import NotFoundPage from './pages/NotFoundPage';
 
 function App() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('adminToken'));
@@ -227,8 +228,11 @@ function App() {
               ) : (
                 <AdminLogin onLoginSuccess={() => setIsAdminLoggedIn(true)} />
               )
-            } 
+            }
           />
+          {/* Tout le reste. Sans cette route, une adresse inconnue rendait un
+              <main> vide entre la barre et le pied de page. */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
 

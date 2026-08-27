@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n/LanguageContext';
+import useMetadonnees from '../hooks/useMetadonnees';
 
 // One page per workshop. She asked for "un lien direct vers la page détaillée de
 // chaque atelier depuis le menu déroulant" — until now a workshop was a card in
@@ -29,6 +30,22 @@ const WorkshopDetailPage = () => {
       .catch(() => { if (active) setState('missing'); });
     return () => { active = false; };
   }, [id]);
+
+  // Cette page était la seule route publique sans métadonnées : chaque atelier
+  // portait le titre générique du site, sans description ni adresse canonique.
+  // Le serveur les pose désormais à la réception (server/seo.js), ce qui suffit
+  // aux robots ; l'appel ici est pour la navigation interne, où le serveur n'est
+  // pas consulté et où le titre resterait sinon celui de la page précédente.
+  //
+  // Appelé avant les retours anticipés : un hook ne peut pas être conditionnel.
+  // Le mot « Genève » est dans le titre parce que « atelier savon Genève » est
+  // la requête, et qu'aucun texte de cette page ne la contenait.
+  useMetadonnees({
+    titre: workshop ? `${workshop.title} — Atelier à Genève` : '',
+    description: workshop ? workshop.description : '',
+    image: workshop && workshop.image_url ? workshop.image_url : '',
+    type: 'article',
+  });
 
   if (state === 'loading') {
     return (

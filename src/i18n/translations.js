@@ -272,6 +272,14 @@ const translations = {
     },
     category: { home: 'Accueil' },
     search: { home: 'Accueil', label: 'Recherche :' },
+    // La page servie quand l'adresse ne correspond à rien. Le serveur répond
+    // alors un vrai 404 ; ceci en est le visage.
+    notFound: {
+      title: 'Cette page n’existe pas',
+      text: 'Le lien a peut-être changé, ou l’adresse comporte une erreur. La boutique, elle, est toujours là.',
+      shop: 'Voir la boutique',
+      home: 'Retour à l’accueil',
+    },
     legal: {
       brand: 'So You Cosmetics',
       lastUpdatedLabel: 'Dernière mise à jour :',
@@ -784,6 +792,12 @@ const translations = {
     },
     category: { home: 'Home' },
     search: { home: 'Home', label: 'Search:' },
+    notFound: {
+      title: 'This page does not exist',
+      text: 'The link may have changed, or the address contains a mistake. The shop is still here.',
+      shop: 'Browse the shop',
+      home: 'Back to home',
+    },
     legal: {
       brand: 'So You Cosmetics',
       lastUpdatedLabel: 'Last updated:',
@@ -1296,6 +1310,12 @@ const translations = {
     },
     category: { home: 'Startseite' },
     search: { home: 'Startseite', label: 'Suche:' },
+    notFound: {
+      title: 'Diese Seite existiert nicht',
+      text: 'Der Link hat sich möglicherweise geändert, oder die Adresse enthält einen Fehler. Die Boutique ist weiterhin für Sie da.',
+      shop: 'Zur Boutique',
+      home: 'Zurück zur Startseite',
+    },
     legal: {
       brand: 'So You Cosmetics',
       lastUpdatedLabel: 'Letzte Aktualisierung:',

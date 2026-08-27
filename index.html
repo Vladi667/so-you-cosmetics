@@ -10,11 +10,30 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>So You Cosmetics — Cosmétiques naturels faits main à Genève</title>
+    <!-- Le plancher, pour le cas où le serveur n'a rien à dire de la page.
+         Il n'y avait aucune description ici : une page dont le serveur ne
+         connaît pas la route arrivait donc sans un mot, et Google en
+         fabriquait une depuis un corps vide. Le serveur remplace celle-ci par
+         la sienne quand il en a une (voir server/seo.js) ; le hook du
+         navigateur ne touche qu'aux balises portant data-pose="app", si bien
+         que celle-ci survit comme repli. -->
+    <meta name="description" content="Cosmétiques naturels faits main à Genève : savons saponifiés à froid, soins visage et corps, ateliers. Boutique au 3 av. Pictet-De-Rochemont." />
     <!-- La boutique est ouverte au public depuis le 27 août 2026. La balise
          « noindex, nofollow » qui vivait ici, et le « Disallow: / » de
          public/robots.txt, ont été retirés ce jour-là. -->
     <meta name="robots" content="index, follow" />
-    <script src="https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js"></script>
+    <!-- Les polices viennent de Google, les photos du catalogue de Wix. Ces
+         trois liens ouvrent la connexion pendant que le navigateur lit encore
+         le document, au lieu de la découvrir au moment d'en avoir besoin. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://static.wixstatic.com" />
+    <!-- « defer » : ce script bloquait l'analyse du document sur les vingt
+         routes, alors qu'il ne sert qu'à la caisse. Il reste exécuté avant
+         DOMContentLoaded et donc bien avant que quiconque atteigne le
+         paiement — SideDrawer ne lit window.SumUpCard qu'après un aller-retour
+         réseau déclenché par un clic. -->
+    <script defer src="https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js"></script>
   </head>
   <body>
     <div id="root"></div>
