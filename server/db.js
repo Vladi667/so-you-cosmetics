@@ -913,6 +913,13 @@ async function createOrder(order) {
           emballage: !!order.cadeau.emballage,
         }
       : null,
+    // L'acceptation des conditions générales, datée.
+    //
+    // La case existait à l'écran et bloquait le bouton, mais rien n'en restait :
+    // une commande contestée se défend avec une trace, pas avec le souvenir
+    // d'une case cochée. La date est celle de l'enregistrement — c'est-à-dire
+    // le moment où la commande a été validée avec la case cochée.
+    cgv: { acceptees: true, date: new Date().toISOString() },
     status: 'Pending',
     created_at: new Date().toISOString()
   };

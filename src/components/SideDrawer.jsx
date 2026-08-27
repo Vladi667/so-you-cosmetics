@@ -198,6 +198,9 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
       // meme controle — le navigateur ne decide pas de ce qui est exigible.
       address: exigeAdresse(shippingId) ? adresse : null,
       cadeau: (contientBonCadeau || cadeau.emballage) ? cadeau : null,
+      // Le serveur refait le contrôle et date l'acceptation dans la commande :
+      // la case ci-dessus bloque le bouton, elle ne prouve rien à elle seule.
+      cgvAcceptees: true,
       items: items.map(item => ({
         id: item.id,
         name: getName(item),

@@ -455,9 +455,21 @@ router.get('/refill-count', async (req, res) => {
 });
 
 router.post('/orders', async (req, res) => {
-  const { name, email, items, shippingId, address, cadeau } = req.body;
+  const { name, email, items, shippingId, address, cadeau, cgvAcceptees } = req.body;
   if (!name || !email || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Missing required order details' });
+  }
+
+  // Accepter les conditions générales conditionne la vente, pas seulement le
+  // bouton. La case bloquait l'envoi dans le navigateur et rien d'autre : le
+  // serveur acceptait une commande sans savoir si elle avait été cochée, et
+  // n'en gardait aucune trace. Vérifié ici, et daté dans la commande — c'est
+  // ce qu'on présente si une commande est contestée.
+  if (cgvAcceptees !== true) {
+    return res.status(400).json({
+      error: "Merci d'accepter les conditions générales de vente pour valider la commande.",
+      champs: ['cgv'],
+    });
   }
 
   try {
