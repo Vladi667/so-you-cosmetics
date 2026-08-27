@@ -25,7 +25,23 @@ const normalizeText = normaliserTexte;
 // Remove HTML tags from descriptions so we match words, not markup.
 const stripHtml = (s) => (s || '').toString().replace(/<[^>]*>/g, ' ');
 
-function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, toggleFavorite, favorites, searchQuery = '' }) {
+// Le nombre de fiches montrées en aperçu sur l'accueil.
+//
+// Huit : deux rangées pleines sur les grilles de quatre, quatre sur celles de
+// deux. Aucune rangée ne reste bancale, quelle que soit la largeur.
+const APERCU = 8;
+
+// `apercu` : l'accueil montre un échantillon, pas la boutique.
+//
+// Le catalogue complet y était monté tel quel, avec son défilement infini —
+// un observateur qui ajoute douze fiches dès qu'on atteint le bas. Sur 178
+// produits, la page d'accueil ne se terminait donc jamais, et tout ce qui
+// vient après (les engagements, les ateliers, le pied de page) était en
+// pratique hors d'atteinte : on n'y arrivait qu'en épuisant le catalogue.
+//
+// En aperçu, le nombre est fixe, l'observateur n'est pas posé, et le pied
+// renvoie à la boutique au lieu d'en charger davantage.
+function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, toggleFavorite, favorites, searchQuery = '', apercu = false }) {
   const { t, tCategory } = useLanguage();
   const [productsList, setProductsList] = useState([]);
   const [activeCategory, setActiveCategory] = useState(globalActiveCategory);
@@ -78,7 +94,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
       .catch(() => {});
     return () => { actif = false; };
   }, []);
-  const [visibleCount, setVisibleCount] = useState(12);
+  const [visibleCount, setVisibleCount] = useState(apercu ? APERCU : 12);
   const scrollRef = useRef(null);
   const isSearching = searchQuery.trim().length > 0;
 
@@ -181,7 +197,7 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
   const [selectionPeinte, setSelectionPeinte] = useState(selection);
   if (selectionPeinte !== selection) {
     setSelectionPeinte(selection);
-    setVisibleCount(12);
+    setVisibleCount(apercu ? APERCU : 12);
   }
 
 
@@ -198,14 +214,14 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
   const sentinelleRef = useRef(null);
   useEffect(() => {
     const cible = sentinelleRef.current;
-    if (!cible) return undefined;
+    if (apercu || !cible) return undefined;
     const observateur = new IntersectionObserver(
       ([entree]) => { if (entree.isIntersecting) setVisibleCount((n) => n + PAS); },
       { rootMargin: '400px 0px' } // on charge avant d'arriver au bout
     );
     observateur.observe(cible);
     return () => observateur.disconnect();
-  }, [displayedProducts.length, visibleCount]);
+  }, [displayedProducts.length, visibleCount, apercu]);
 
   // Le ruban de rubriques, tire a la souris.
   //
@@ -568,10 +584,22 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
           <div ref={sentinelleRef} aria-hidden="true" className="h-px w-full" />
         )}
 
-        {/* Load More */}
-        {visibleCount < displayedProducts.length && (
+        {/* En aperçu, le pied renvoie à la boutique : c'est ce qui donne une
+            fin à la page d'accueil. Ailleurs, il charge la suite. */}
+        {apercu && visibleCount < displayedProducts.length && (
           <div className="mt-16 text-center">
-            <button 
+            <Link
+              to="/category/All"
+              className="inline-block border-b border-slate-stone text-slate-stone tracking-widest uppercase text-sm pb-1 hover:text-slate-stone/70 hover:border-slate-stone/70 press"
+            >
+              {t('catalog.seeAll')}
+            </Link>
+          </div>
+        )}
+
+        {!apercu && visibleCount < displayedProducts.length && (
+          <div className="mt-16 text-center">
+            <button
               onClick={loadMore}
               className="inline-block border-b border-slate-stone text-slate-stone tracking-widest uppercase text-sm pb-1 hover:text-slate-stone/70 hover:border-slate-stone/70 press"
             >

@@ -21,12 +21,15 @@ const Home = ({ addToCart, toggleFavorite, favorites }) => {
       <BrandEssence />
       <SignatureProducts addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />
       <HandmadeGeneva />
-      <Catalog 
-        globalActiveCategory="All" 
+      {/* En aperçu : la boutique entière était montée ici, défilement infini
+          compris, et la page d'accueil ne se terminait donc jamais. */}
+      <Catalog
+        apercu
+        globalActiveCategory="All"
         setGlobalCategory={() => {}} // No-op on home page since top nav handles routing now
-        addToCart={addToCart} 
-        toggleFavorite={toggleFavorite} 
-        favorites={favorites} 
+        addToCart={addToCart}
+        toggleFavorite={toggleFavorite}
+        favorites={favorites}
       />
       <Ingredients />
       <Workshops />

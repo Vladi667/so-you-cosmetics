@@ -100,6 +100,7 @@ const translations = {
       emptySearch: 'Aucun résultat pour « {q} ».',
       emptyCategory: 'Aucun produit dans cette catégorie.',
       loadMore: 'Voir plus',
+      seeAll: 'Voir toute la boutique',
       // La barre d’outils du catalogue.
       countProducts: '{n} produits',
       countProduct: '{n} produit',
@@ -617,6 +618,7 @@ const translations = {
       emptySearch: 'No results for “{q}”.',
       emptyCategory: 'No products found in this category.',
       loadMore: 'Load More',
+      seeAll: 'See the whole shop',
       countProducts: '{n} products',
       countProduct: '{n} product',
       sortLabel: 'Sort',
@@ -1128,6 +1130,7 @@ const translations = {
       emptySearch: 'Keine Ergebnisse für „{q}“.',
       emptyCategory: 'Keine Produkte in dieser Kategorie.',
       loadMore: 'Mehr anzeigen',
+      seeAll: 'Alle Produkte ansehen',
       countProducts: '{n} Produkte',
       countProduct: '{n} Produkt',
       sortLabel: 'Sortieren',
