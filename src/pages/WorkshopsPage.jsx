@@ -56,23 +56,27 @@ const WorkshopsPage = () => {
       {/* Hero Section */}
       <section className="relative h-[70vh] md:h-[85vh] flex items-center justify-center">
         <div className="absolute inset-0 bg-slate-stone overflow-hidden">
+          {/* Le même étalonnage que la vidéo de l'accueil.
+              Celle-ci était posée en mix-blend-overlay SUR le fond brun du
+              parent, à 85 % d'opacité : la couleur de la vidéo était mélangée
+              au brun avant même les voiles, d'où l'aspect boueux. Elle est
+              maintenant opaque, et c'est le voile travertin qui la réchauffe —
+              comme sur l'accueil. La vignette passe du noir pur au charbon de
+              la marque, et les bandes haut/bas de 70/60 % à 35/25 %. */}
           <AutoPlayVideo
             src="/workshop.mp4"
-            className="w-full h-full object-cover opacity-85 brightness-125 contrast-95 mix-blend-overlay scale-105 sepia-[.03]"
+            className="w-full h-full object-cover sepia-[.04] saturate-[.92] brightness-105 scale-105"
           />
-          {/* Vignette */}
-          <div className="absolute inset-0 z-10" style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.45) 100%)' }}></div>
-          {/* Warm amber whisper */}
-          <div className="absolute inset-0 z-10 bg-amber-900/[0.04]"></div>
-          {/* Top/bottom gradient */}
-          <div className="absolute inset-0 z-10 bg-gradient-to-b from-slate-stone/70 via-transparent to-slate-stone/60"></div>
+          <div className="absolute inset-0 z-10" style={{ background: 'radial-gradient(ellipse at center, rgba(58,51,43,0.08) 0%, rgba(58,51,43,0.06) 45%, rgba(58,51,43,0.42) 100%)' }}></div>
+          <div className="absolute inset-0 z-10 bg-[#B9A891]/[0.10] mix-blend-soft-light"></div>
+          <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/35 via-transparent to-black/25"></div>
         </div>
         <div className="relative z-20 container mx-auto px-6 text-center reveal mt-20">
-          <p className="text-white/80 caps-label text-[10px] md:text-xs mb-6 md:mb-8 font-sans font-bold">{t('workshopsPage.eyebrow')}</p>
-          <h1 className=" font-serif text-4xl sm:text-6xl md:text-8xl text-white max-w-5xl mx-auto" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
+          <p className="text-ivory/80 caps-label text-[10px] md:text-xs mb-6 md:mb-8 font-sans font-bold">{t('workshopsPage.eyebrow')}</p>
+          <h1 className=" font-serif text-4xl sm:text-6xl md:text-8xl text-ivory max-w-5xl mx-auto" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}>
             {t('workshopsPage.title')}
           </h1>
-          <p className="text-white/90 font-serif italic text-lg sm:text-xl md:text-3xl mt-6 md:mt-8 max-w-3xl mx-auto opacity-80" style={{ textShadow: '0 1px 12px rgba(0,0,0,0.4)' }}>
+          <p className="text-ivory/85 font-serif italic text-lg sm:text-xl md:text-3xl mt-6 md:mt-8 max-w-3xl mx-auto" style={{ textShadow: '0 1px 12px rgba(0,0,0,0.4)' }}>
             {t('workshopsPage.quote')}
           </p>
         </div>
