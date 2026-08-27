@@ -69,7 +69,7 @@ const translations = {
       ],
     },
     ingredients: {
-      eyebrow: "Le choix est à vous",
+      eyebrow: "Nos engagements",
       titleLine1: "Le choix",
       titleLine2: "est à vous",
       intro: "La beauté n’a pas à suivre une seule routine. Choisissez les produits, les gestes et les plaisirs qui vous ressemblent.",
@@ -150,7 +150,7 @@ const translations = {
       'Soin des cheveux': 'Soin des cheveux',
     },
     journal: {
-      eyebrow: "Le Journal",
+      eyebrow: "Conseils & coulisses",
       title: "Journal",
       intro: "Nos conseils, nos coulisses et nos réflexions autour de la beauté naturelle.",
       empty: "Les premiers articles arrivent bientôt.",
@@ -586,7 +586,7 @@ const translations = {
       ],
     },
     ingredients: {
-      eyebrow: "The Choice Is Yours",
+      eyebrow: "Our Commitments",
       titleLine1: "The Choice",
       titleLine2: "Is Yours",
       intro: "Beauty doesn’t have to follow a single routine. Choose the products, rituals and little pleasures that feel like you.",
@@ -666,7 +666,7 @@ const translations = {
       'Soin des cheveux': 'Hair Care',
     },
     journal: {
-      eyebrow: "The Journal",
+      eyebrow: "Advice & Behind the Scenes",
       title: "Journal",
       intro: "Our advice, our behind-the-scenes and our thoughts on natural beauty.",
       empty: "The first articles are coming soon.",
@@ -1097,7 +1097,7 @@ const translations = {
       ],
     },
     ingredients: {
-      eyebrow: "Die Wahl liegt bei Ihnen",
+      eyebrow: "Unsere Grundsätze",
       titleLine1: "Die Wahl",
       titleLine2: "liegt bei Ihnen",
       intro: "Schönheit muss keiner einzigen Routine folgen. Wählen Sie die Produkte, Rituale und kleinen Freuden, die zu Ihnen passen.",
@@ -1177,7 +1177,7 @@ const translations = {
       'Soin des cheveux': 'Haarpflege',
     },
     journal: {
-      eyebrow: "Das Journal",
+      eyebrow: "Tipps & Einblicke",
       title: "Journal",
       intro: "Unsere Tipps, unsere Einblicke und unsere Gedanken zu natürlicher Schönheit.",
       empty: "Die ersten Beiträge folgen in Kürze.",
