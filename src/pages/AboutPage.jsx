@@ -15,15 +15,22 @@ const AboutPage = () => {
       <section className="relative h-[85vh] flex items-center justify-center">
         <div className="absolute inset-0 bg-slate-stone overflow-hidden">
           {/* The water-and-lavender footage, moved here from the home page at her
-              request. Graded brighter with the pebbles pulled towards off-white
-              rather than grey: brightness lifts, saturation drops so the stones
-              lose their cool cast, and a travertine wash warms what remains. */}
+              request. La désaturation reste : elle enlève la teinte froide des
+              galets, et c'est elle qui les garde chauds plutôt que gris.
+              L'éclaircissement, lui, était monté à 1.22 et lavait l'image —
+              ramené à 1.06, le niveau des deux autres héros.
+
+              La vignette manquait ici alors que l'accueil et les ateliers l'ont
+              tous deux : c'est elle qui pose le sujet au centre au lieu de
+              laisser l'image plate d'un bord à l'autre. Même valeur qu'ailleurs,
+              au charbon de la marque. */}
           <AutoPlayVideo
             src="/Water_rippling_over_river_stones_202605070445.mp4"
             className="absolute inset-0 w-full h-full object-cover
-                       brightness-[1.22] contrast-[0.94] saturate-[0.72] sepia-[.06]
+                       brightness-[1.06] contrast-[0.94] saturate-[0.72] sepia-[.06]
                        motion-safe:animate-[heroDrift_32s_ease-in-out_infinite]"
           />
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgba(58,51,43,0.08) 0%, rgba(58,51,43,0.06) 45%, rgba(58,51,43,0.42) 100%)' }}></div>
           <div className="absolute inset-0 bg-[#B9A891]/[0.16] mix-blend-soft-light"></div>
           <div className="absolute inset-0 bg-gradient-to-b from-slate-stone/45 via-transparent to-slate-stone/35"></div>
         </div>
