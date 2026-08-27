@@ -1,6 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#3A332B"/>
-  <g transform="translate(19.365 11.480) scale(0.19000)">
-    <path d="M 54 8 L 29 18 L 11 36 L 5 55 L 9 82 L 30 105 L 98 137 L 110 156 L 109 171 L 90 193 L 63 199 L 50 197 L 31 186 L 11 156 L 0 159 L 0 166 L 29 199 L 54 208 L 78 208 L 108 197 L 125 181 L 133 162 L 132 135 L 123 119 L 107 106 L 43 78 L 30 63 L 28 45 L 41 25 L 72 17 L 96 26 L 116 54 L 120 54 L 124 46 L 116 30 L 100 16 L 83 9 Z" fill="#FDFBF7" fill-rule="evenodd"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-39.50 2.00 212.00 212.00">
+  <style>
+    /* Sur un onglet clair, l encre de la marque ; sur un onglet sombre,
+       son ivoire. Sans cela une lettre nue en charbon s efface. */
+    path { fill: #3A332B; }
+    @media (prefers-color-scheme: dark) { path { fill: #FDFBF7; } }
+  </style>
+  <path d="M 54 8 L 29 18 L 11 36 L 5 55 L 9 82 L 30 105 L 98 137 L 110 156 L 109 171 L 90 193 L 63 199 L 50 197 L 31 186 L 11 156 L 0 159 L 0 166 L 29 199 L 54 208 L 78 208 L 108 197 L 125 181 L 133 162 L 132 135 L 123 119 L 107 106 L 43 78 L 30 63 L 28 45 L 41 25 L 72 17 L 96 26 L 116 54 L 120 54 L 124 46 L 116 30 L 100 16 L 83 9 Z" fill-rule="evenodd"/>
 </svg>
