@@ -1,5 +1,6 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import Lien from './Lien';
+
 import AutoPlayVideo from './AutoPlayVideo';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -37,12 +38,12 @@ const Workshops = () => {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 justify-center">
-          <Link to="/workshops" className="inline-block px-10 py-4 bg-ivory text-slate-stone font-sans uppercase tracking-[0.3em] text-xs hover:bg-slate-stone hover:text-white rounded-full shadow-xl hover:scale-105 press transform-gpu text-center">
+          <Lien to="/workshops" className="inline-block px-10 py-4 bg-ivory text-slate-stone font-sans uppercase tracking-[0.3em] text-xs hover:bg-slate-stone hover:text-white rounded-full shadow-xl hover:scale-105 press transform-gpu text-center">
             {t('workshopsSection.cta1')}
-          </Link>
-          <Link to="/contact" className="inline-block px-10 py-4 border border-white/40 text-white font-sans uppercase tracking-[0.3em] text-xs hover:bg-white/10 hover:border-white rounded-full backdrop-blur-sm press transform-gpu text-center">
+          </Lien>
+          <Lien to="/contact" className="inline-block px-10 py-4 border border-white/40 text-white font-sans uppercase tracking-[0.3em] text-xs hover:bg-white/10 hover:border-white rounded-full backdrop-blur-sm press transform-gpu text-center">
             {t('workshopsSection.cta2')}
-          </Link>
+          </Lien>
         </div>
       </div>
     </section>

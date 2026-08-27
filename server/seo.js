@@ -19,6 +19,54 @@
 const SITE_NOM = 'So You Cosmetics';
 const TITRE_DEFAUT = 'So You Cosmetics — Cosmétiques naturels faits main à Genève';
 
+// La langue est dans l'adresse. Le français reste à la racine — aucune adresse
+// existante ne change — et l'anglais et l'allemand prennent un préfixe.
+//
+// Le miroir exact de src/i18n/routes.js, en CommonJS. Deux copies d'une règle
+// aussi courte valent mieux qu'un module partagé entre un paquet ESM destiné au
+// navigateur et un serveur qui, lui, n'est pas transpilé.
+const LANGUE_DEFAUT = 'fr';
+const LANGUES_PREFIXEES = ['en', 'de'];
+const LANGUES = [LANGUE_DEFAUT, ...LANGUES_PREFIXEES];
+
+// Le code complet, pour hreflang et og:locale. « fr-CH » plutôt que « fr » :
+// la boutique est à Genève, ses prix sont en francs, et la variante suisse est
+// ce qui la distingue d'un site français aux yeux d'un moteur.
+const LOCALES = { fr: 'fr-CH', en: 'en', de: 'de-CH' };
+const OG_LOCALES = { fr: 'fr_CH', en: 'en_GB', de: 'de_CH' };
+
+function separerLangue(pathname) {
+  const chemin = String(pathname || '/');
+  for (const langue of LANGUES_PREFIXEES) {
+    // La barre oblique qui suit distingue le préfixe « /de » d'une page dont le
+    // nom commencerait par ces deux lettres.
+    if (chemin === `/${langue}`) return { langue, chemin: '/' };
+    if (chemin.startsWith(`/${langue}/`)) return { langue, chemin: chemin.slice(langue.length + 1) };
+  }
+  return { langue: LANGUE_DEFAUT, chemin };
+}
+
+function avecLangue(chemin, langue) {
+  const nu = separerLangue(chemin).chemin;
+  if (!LANGUES_PREFIXEES.includes(langue)) return nu;
+  return nu === '/' ? `/${langue}` : `/${langue}${nu}`;
+}
+
+// Les trois adresses d'une même page, pour hreflang et pour le plan du site.
+//
+// C'est ce qui dit à un moteur que /about, /en/about et /de/about sont la même
+// page en trois langues, et non trois pages qui se ressemblent — la différence
+// entre trois résultats servis au bon public et trois pages qui se
+// cannibalisent.
+function alternatives(chemin, base = '') {
+  const nu = separerLangue(chemin).chemin;
+  return LANGUES.map((langue) => ({
+    langue,
+    locale: LOCALES[langue],
+    href: `${base}${avecLangue(nu, langue)}`,
+  }));
+}
+
 // L'identité de la boutique, en un seul endroit.
 //
 // Elle était jusqu'ici dispersée entre le pied de page, la page « Nous
@@ -234,7 +282,7 @@ function schemaSite(base) {
 // Le fil d'Ariane, qui est déjà affiché sur les fiches et les rubriques mais
 // que rien ne disait à la machine. C'est lui qui remplace l'adresse nue par un
 // chemin lisible sous le titre, dans les résultats.
-function schemaFilAriane(base, elements) {
+function schemaFilAriane(base, elements, langue) {
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -242,7 +290,7 @@ function schemaFilAriane(base, elements) {
       '@type': 'ListItem',
       position: i + 1,
       name: el.nom,
-      item: `${base}${el.chemin}`,
+      item: `${base}${avecLangue(el.chemin, langue)}`,
     })),
   };
 }
@@ -383,6 +431,102 @@ function schemaArticle(article, urlPage, base) {
 // résultat de recherche ne s'écrit pas comme un paragraphe de page : elle a
 // 155 caractères pour donner une raison de cliquer. Ce sont deux textes
 // différents, et les confondre était le défaut.
+//
+// L'anglais et l'allemand ne sont pas traités de la même façon, et c'est
+// délibéré. Genève compte des dizaines de milliers d'anglophones à fort pouvoir
+// d'achat, et la recherche « soap making workshop Geneva » ne remonte
+// aujourd'hui aucune offre commerciale locale : c'est le trou le plus rentable
+// du marché, et les pages anglaises visent celui-là — l'atelier, l'histoire, la
+// boutique. L'allemand, lui, sert la courtoisie : personne à Genève ne cherche
+// « Naturkosmetik Genf » en volume utile, et le terrain alémanique
+// (« Naturseife », « handgemachte Seife ») est tenu par des savonneries
+// établies depuis des années. Traduire, oui ; en attendre du trafic, non.
+const PAGES_EN = {
+  '/': {
+    titre: 'So You Cosmetics — Natural handmade cosmetics in Geneva',
+    description: 'Cold-process soaps, face and body care, workshops. Natural cosmetics made by hand in Geneva, in our Eaux-Vives boutique.',
+    image: '/premium_product_stone.png',
+  },
+  '/about': {
+    titre: 'Our story — handmade cosmetics in Geneva',
+    description: 'One maker, a Geneva workshop, short vegan formulas. The story behind So You Cosmetics and how each soap is actually made.',
+    image: '/workshop_crafting.png',
+  },
+  '/workshops': {
+    titre: 'Soap and cosmetics workshops in Geneva',
+    description: 'Learn to make your own soap and skincare in our Geneva workshop. Private sessions, solo or for two, by appointment. English spoken.',
+    image: '/workshop_ingredients.png',
+  },
+  '/journal': {
+    titre: 'Journal — ingredients, recipes and craft',
+    description: 'Cold saponification, hydrosols, ayurvedic powders, switching to solid bars: what we have learned at the bench, plainly explained.',
+    image: '/botanical_flatlay.png',
+  },
+  '/contact': {
+    titre: 'Our natural cosmetics boutique in Geneva',
+    description: 'So You Cosmetics — 3 av. Pictet-De-Rochemont, 1207 Geneva, Eaux-Vives. Opening hours, directions, phone, and free in-store pickup.',
+    image: '/boutique_exterior.png',
+  },
+  '/personnalisation': {
+    titre: 'Personalised soaps — corporate, wedding, new baby',
+    description: 'Custom soaps and cosmetics made in Geneva: corporate gifts, weddings, christenings, baby showers. By quotation, three months’ notice.',
+    image: '/artisanal_soap_crafting.png',
+  },
+  '/terms': {
+    titre: 'Terms and conditions of sale',
+    description: 'So You Cosmetics terms of sale: orders, prices in Swiss francs, delivery, right of withdrawal and warranty.',
+    image: '',
+  },
+  '/privacy': {
+    titre: 'Privacy policy',
+    description: 'How So You Cosmetics collects, uses and protects your personal data, in accordance with the Swiss revised FADP.',
+    image: '',
+  },
+};
+
+const PAGES_DE = {
+  '/': {
+    titre: 'So You Cosmetics — Handgemachte Naturkosmetik aus Genf',
+    description: 'Kaltgerührte Seifen, Gesichts- und Körperpflege, Kurse. Handgemachte Naturkosmetik aus Genf, in unserer Boutique in den Eaux-Vives.',
+    image: '/premium_product_stone.png',
+  },
+  '/about': {
+    titre: 'Unsere Geschichte — handgemachte Kosmetik aus Genf',
+    description: 'Eine Handwerkerin, ein Genfer Atelier, kurze vegane Rezepturen. Die Geschichte von So You Cosmetics und wie jede Seife entsteht.',
+    image: '/workshop_crafting.png',
+  },
+  '/workshops': {
+    titre: 'Seifen- und Kosmetikkurse in Genf',
+    description: 'Stellen Sie Ihre eigenen Seifen und Pflegeprodukte in unserem Genfer Atelier her. Private Kurse, allein oder zu zweit, nach Vereinbarung.',
+    image: '/workshop_ingredients.png',
+  },
+  '/journal': {
+    titre: 'Journal — Zutaten, Rezepte und Handwerk',
+    description: 'Kaltverseifung, Hydrolate, ayurvedische Pulver, der Wechsel zu fester Pflege: was wir im Atelier gelernt haben, einfach erklärt.',
+    image: '/botanical_flatlay.png',
+  },
+  '/contact': {
+    titre: 'Unsere Naturkosmetik-Boutique in Genf',
+    description: 'So You Cosmetics — 3 av. Pictet-De-Rochemont, 1207 Genf, Eaux-Vives. Öffnungszeiten, Anfahrt, Telefon und kostenlose Abholung.',
+    image: '/boutique_exterior.png',
+  },
+  '/personnalisation': {
+    titre: 'Personalisierte Seifen — Firma, Hochzeit, Geburt',
+    description: 'Individuelle Seifen und Kosmetik aus Genf: Firmengeschenke, Hochzeiten, Taufen, Baby-Partys. Auf Anfrage, drei Monate Vorlauf.',
+    image: '/artisanal_soap_crafting.png',
+  },
+  '/terms': {
+    titre: 'Allgemeine Geschäftsbedingungen',
+    description: 'Verkaufsbedingungen von So You Cosmetics: Bestellungen, Preise in Schweizer Franken, Lieferung, Widerrufsrecht und Garantie.',
+    image: '',
+  },
+  '/privacy': {
+    titre: 'Datenschutzerklärung',
+    description: 'Wie So You Cosmetics Ihre personenbezogenen Daten erhebt, verwendet und schützt, gemäss dem revidierten Schweizer DSG.',
+    image: '',
+  },
+};
+
 const PAGES = {
   '/': {
     titre: TITRE_DEFAUT,
@@ -532,6 +676,42 @@ const RUBRIQUES = {
   },
 };
 
+function pagesPourLangue(langue) {
+  if (langue === 'en') return PAGES_EN;
+  if (langue === 'de') return PAGES_DE;
+  return PAGES;
+}
+
+// Les rubriques gardent leur nom français dans les trois langues.
+//
+// C'est une décision de la boutique, pas un oubli : « Savons », « Soins de la
+// peau » sont les noms sous lesquels elle range son catalogue, et les fiches
+// elles-mêmes ne sont écrites qu'en français. Seul l'habillage de la phrase est
+// traduit, autour d'un nom qui ne l'est pas. Une page à moitié traduite qui le
+// dit vaut mieux qu'une traduction qui promet ce qu'il n'y a pas derrière.
+function rubriquePourLangue(nom, langue) {
+  if (langue === 'en') {
+    return {
+      titre: `${nom} — natural cosmetics handmade in Geneva`,
+      description: `${nom}: natural, vegan cosmetics made by hand in our Geneva workshop. Free pickup at our Eaux-Vives boutique, delivery across Switzerland.`,
+    };
+  }
+  if (langue === 'de') {
+    return {
+      titre: `${nom} — handgemachte Naturkosmetik aus Genf`,
+      description: `${nom}: vegane Naturkosmetik, handgemacht in unserem Genfer Atelier. Kostenlose Abholung in der Boutique, Versand in der ganzen Schweiz.`,
+    };
+  }
+  const textes = RUBRIQUES[nom];
+  if (textes) return textes;
+  // Une rubrique qu'elle a créée depuis l'administration n'est pas dans la
+  // table : on compose alors un titre honnête à partir de son nom.
+  return {
+    titre: `${nom} — cosmétiques naturels à Genève`,
+    description: `${nom} : cosmétiques naturels faits main à Genève par So You Cosmetics. Retrait gratuit en boutique aux Eaux-Vives.`,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Le routeur
 // ---------------------------------------------------------------------------
@@ -547,7 +727,10 @@ const ROUTES_DYNAMIQUES = [
   /^\/search\/[^/]+$/,
 ];
 
-function routeConnue(chemin) {
+function routeConnue(cheminComplet) {
+  // Le préfixe de langue d'abord : « /en/about » est la même route qu'« /about »,
+  // et sans ce retrait toute la version anglaise répondrait 404.
+  const { chemin } = separerLangue(cheminComplet);
   if (Object.prototype.hasOwnProperty.call(PAGES, chemin)) return true;
   if (chemin === '/workshops' || chemin === '/journal') return true;
   if (chemin === '/admin' || chemin.startsWith('/admin/')) return true;
@@ -560,17 +743,24 @@ function routeConnue(chemin) {
 // « undefined » est un troisième cas, distinct des deux autres : la route est
 // connue mais nous n'avons rien de particulier à en dire (l'administration, la
 // recherche). La page part alors telle quelle, sans balises et sans 404.
-async function metadonneesDeRoute(chemin, urlPage, base, db, shop) {
+async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
+  // La langue sort de l'adresse, et le reste du travail se fait sur le chemin
+  // nu : une seule table de routes pour les trois versions du site.
+  const { langue, chemin } = separerLangue(cheminComplet);
+  // Ce que toute page doit porter : sa langue, et l'adresse de ses sœurs.
+  const commun = { langue, alternatives: alternatives(chemin, base) };
+
   // L'administration et la recherche : connues, volontairement muettes.
   // public/robots.txt les interdit déjà, il n'y a rien à leur écrire.
   if (chemin === '/admin' || chemin.startsWith('/admin/')) return undefined;
   if (/^\/search\//.test(chemin)) return undefined;
 
-  const fixe = PAGES[chemin];
+  const fixe = pagesPourLangue(langue)[chemin];
   if (fixe) {
     const jsonLd = [schemaEtablissement(base, shop)];
     if (chemin === '/') jsonLd.push(schemaSite(base));
     return {
+      ...commun,
       titre: fixe.titre,
       description: fixe.description,
       image: absolutiser(fixe.image, base),
@@ -592,8 +782,9 @@ async function metadonneesDeRoute(chemin, urlPage, base, db, shop) {
       { nom: 'Accueil', chemin: '/' },
       ...(rubrique ? [{ nom: rubrique, chemin: `/category/${encodeURIComponent(rubrique)}` }] : []),
       { nom: produit.name, chemin: `/product/${encodeURIComponent(produit.id)}` },
-    ]));
+    ], langue));
     return {
+      ...commun,
       titre: `${produit.name} — ${SITE_NOM}`,
       description,
       image: absolutiser((produit.images || [])[0], base),
@@ -612,17 +803,11 @@ async function metadonneesDeRoute(chemin, urlPage, base, db, shop) {
       // rubrique n'existe alors pas : c'est un 404, pas une erreur serveur.
       return null;
     }
-    const textes = RUBRIQUES[nom];
-    // Une rubrique qu'elle a créée depuis l'administration n'est pas dans la
-    // table ci-dessus, et c'est normal : on compose alors un titre honnête à
-    // partir de son nom plutôt que de refuser la page.
-    const titre = textes ? textes.titre : `${nom} — cosmétiques naturels à Genève`;
-    const description = textes
-      ? textes.description
-      : `${nom} : cosmétiques naturels faits main à Genève par So You Cosmetics. Retrait gratuit en boutique aux Eaux-Vives.`;
+    const textes = rubriquePourLangue(nom, langue);
     return {
-      titre: `${titre} — ${SITE_NOM}`,
-      description,
+      ...commun,
+      titre: `${textes.titre} — ${SITE_NOM}`,
+      description: textes.description,
       image: absolutiser('/premium_product_stone.png', base),
       type: 'website',
       jsonLd: [
@@ -630,7 +815,7 @@ async function metadonneesDeRoute(chemin, urlPage, base, db, shop) {
         schemaFilAriane(base, [
           { nom: 'Accueil', chemin: '/' },
           { nom: nom === 'All' ? 'La boutique' : nom, chemin: `/category/${encodeURIComponent(nom)}` },
-        ]),
+        ], langue),
       ],
     };
   }
@@ -641,8 +826,10 @@ async function metadonneesDeRoute(chemin, urlPage, base, db, shop) {
     const ateliers = await db.getWorkshops();
     const trouve = (Array.isArray(ateliers) ? ateliers : []).find((w) => String(w.id) === id);
     if (!trouve) return null;
+    const suffixe = { fr: 'Atelier à Genève', en: 'Workshop in Geneva', de: 'Kurs in Genf' }[langue];
     return {
-      titre: `${trouve.title} — Atelier à Genève — ${SITE_NOM}`,
+      ...commun,
+      titre: `${trouve.title} — ${suffixe} — ${SITE_NOM}`,
       description: resumerTexte(trouve.description),
       image: absolutiser(trouve.image_url, base),
       type: 'article',
@@ -653,7 +840,7 @@ async function metadonneesDeRoute(chemin, urlPage, base, db, shop) {
           { nom: 'Accueil', chemin: '/' },
           { nom: 'Ateliers', chemin: '/workshops' },
           { nom: trouve.title, chemin: `/workshops/${encodeURIComponent(trouve.id)}` },
-        ]),
+        ], langue),
       ],
     };
   }
@@ -664,6 +851,7 @@ async function metadonneesDeRoute(chemin, urlPage, base, db, shop) {
     // Un brouillon n'est pas une page : il ne doit ni s'indexer ni répondre 200.
     if (!trouve || !trouve.published) return null;
     return {
+      ...commun,
       titre: `${trouve.title} — Journal — ${SITE_NOM}`,
       description: resumerTexte(trouve.excerpt || trouve.body),
       image: absolutiser(trouve.image_url, base),
@@ -675,7 +863,7 @@ async function metadonneesDeRoute(chemin, urlPage, base, db, shop) {
           { nom: 'Accueil', chemin: '/' },
           { nom: 'Journal', chemin: '/journal' },
           { nom: trouve.title, chemin: `/journal/${encodeURIComponent(trouve.slug)}` },
-        ]),
+        ], langue),
       ],
     };
   }
@@ -698,13 +886,32 @@ function baliseshtml(meta, urlPage, nonce) {
     baliseMeta('property', 'og:description', meta.description),
     baliseMeta('property', 'og:image', meta.image),
     baliseMeta('property', 'og:url', urlPage),
-    baliseMeta('property', 'og:locale', 'fr_CH'),
+    baliseMeta('property', 'og:locale', OG_LOCALES[meta.langue] || OG_LOCALES.fr),
+    // Les deux autres versions, annoncées à l'aperçu de lien comme au moteur.
+    ...(meta.alternatives || [])
+      .filter((a) => a.langue !== meta.langue)
+      .map((a) => baliseMeta('property', 'og:locale:alternate', OG_LOCALES[a.langue])),
     baliseMeta('name', 'twitter:card', meta.image ? 'summary_large_image' : 'summary'),
     // L'adresse canonique, que rien n'écrivait dans le HTML reçu : le hook du
     // navigateur la pose, mais seulement après React. Elle est donnée sans
     // paramètres — une même page partagée avec un ?utm_source ne doit pas
     // devenir un doublon.
     `<link rel="canonical" href="${escapeHtml(urlPage)}" data-pose="app">`,
+    // hreflang : ce qui dit à un moteur que ces trois adresses sont la même
+    // page en trois langues, et non trois pages qui se ressemblent. Sans elles,
+    // les versions se cannibalisent au lieu d'être servies chacune à son public.
+    //
+    // Chaque page se cite elle-même dans la liste — la règle est que l'ensemble
+    // soit réflexif, sans quoi Google ignore le groupe entier.
+    ...(meta.alternatives || []).map((a) =>
+      `<link rel="alternate" hreflang="${a.locale}" href="${escapeHtml(a.href)}" data-pose="app">`),
+    // « x-default » désigne la version servie à qui ne correspond à aucune
+    // langue déclarée : le français, qui est celle de la boutique.
+    ...((meta.alternatives || []).length
+      ? [`<link rel="alternate" hreflang="x-default" href="${escapeHtml(
+          (meta.alternatives.find((a) => a.langue === LANGUE_DEFAUT) || meta.alternatives[0]).href
+        )}" data-pose="app">`]
+      : []),
   ].join('');
 
   const donnees = (meta.jsonLd || [])
@@ -732,8 +939,26 @@ async function construireSitemap(base, db) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 
-  const url = (loc, priorite, frequence) =>
-    `<url><loc>${esc(loc)}</loc><changefreq>${frequence}</changefreq><priority>${priorite}</priority></url>`;
+  // Une entrée par langue, chacune déclarant les trois adresses du groupe.
+  //
+  // C'est la forme que Google demande : chaque URL du groupe doit lister toutes
+  // les autres, elle-même comprise. Le plan du site est le seul endroit où
+  // porter cela sans alourdir chaque page de trois balises supplémentaires —
+  // sauf qu'on les pose aussi dans le <head>, parce que les autres moteurs ne
+  // lisent que celui-là.
+  const url = (chemin, priorite, frequence) => {
+    const groupe = alternatives(chemin, base);
+    const liens = groupe
+      .map((a) => `<xhtml:link rel="alternate" hreflang="${a.locale}" href="${esc(a.href)}"/>`)
+      .join('') +
+      `<xhtml:link rel="alternate" hreflang="x-default" href="${esc(
+        (groupe.find((a) => a.langue === LANGUE_DEFAUT) || groupe[0]).href
+      )}"/>`;
+    return groupe
+      .map((a) => `<url><loc>${esc(a.href)}</loc>${liens}` +
+        `<changefreq>${frequence}</changefreq><priority>${priorite}</priority></url>`)
+      .join('');
+  };
 
   const [produits, ateliers] = await Promise.all([db.getProducts(), db.getWorkshops()]);
   // getArticles est synchrone, contrairement aux deux précédentes.
@@ -742,35 +967,45 @@ async function construireSitemap(base, db) {
   const listeProduits = Array.isArray(produits) ? produits : [];
   const rubriques = [...new Set(listeProduits.flatMap((p) => p.collections || []))];
 
+  // Les chemins sont nus : url() se charge d'en produire les trois langues.
   const entrees = [
-    url(`${base}/`, '1.0', 'weekly'),
-    url(`${base}/category/All`, '0.9', 'weekly'),
-    ...rubriques.map((c) => url(`${base}/category/${encodeURIComponent(c)}`, '0.8', 'weekly')),
+    url('/', '1.0', 'weekly'),
+    url('/category/All', '0.9', 'weekly'),
+    ...rubriques.map((c) => url(`/category/${encodeURIComponent(c)}`, '0.8', 'weekly')),
     ...listeProduits
       .filter((p) => p && p.id)
-      .map((p) => url(`${base}/product/${encodeURIComponent(p.id)}`, '0.7', 'weekly')),
-    url(`${base}/workshops`, '0.8', 'monthly'),
+      .map((p) => url(`/product/${encodeURIComponent(p.id)}`, '0.7', 'weekly')),
+    url('/workshops', '0.8', 'monthly'),
     ...(Array.isArray(ateliers) ? ateliers : [])
       .filter((w) => w && w.id)
-      .map((w) => url(`${base}/workshops/${encodeURIComponent(w.id)}`, '0.6', 'monthly')),
-    url(`${base}/personnalisation`, '0.7', 'monthly'),
-    url(`${base}/about`, '0.6', 'monthly'),
-    url(`${base}/contact`, '0.7', 'monthly'),
-    url(`${base}/journal`, '0.5', 'weekly'),
+      .map((w) => url(`/workshops/${encodeURIComponent(w.id)}`, '0.6', 'monthly')),
+    url('/personnalisation', '0.7', 'monthly'),
+    url('/about', '0.6', 'monthly'),
+    url('/contact', '0.7', 'monthly'),
+    url('/journal', '0.5', 'weekly'),
     ...(Array.isArray(articles) ? articles : [])
       .filter((a) => a && a.slug)
-      .map((a) => url(`${base}/journal/${encodeURIComponent(a.slug)}`, '0.5', 'monthly')),
-    url(`${base}/terms`, '0.2', 'yearly'),
-    url(`${base}/privacy`, '0.2', 'yearly'),
+      .map((a) => url(`/journal/${encodeURIComponent(a.slug)}`, '0.5', 'monthly')),
+    url('/terms', '0.2', 'yearly'),
+    url('/privacy', '0.2', 'yearly'),
   ].join('');
 
+  // L'espace de noms xhtml est ce qui rend les <xhtml:link> lisibles : sans sa
+  // déclaration, le plan est un XML invalide et Google le rejette en bloc.
   return `<?xml version="1.0" encoding="UTF-8"?>` +
-    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entrees}</urlset>`;
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" ` +
+    `xmlns:xhtml="http://www.w3.org/1999/xhtml">${entrees}</urlset>`;
 }
 
 module.exports = {
   SITE_NOM,
   TITRE_DEFAUT,
+  LANGUES,
+  LANGUE_DEFAUT,
+  LOCALES,
+  separerLangue,
+  avecLangue,
+  alternatives,
   BOUTIQUE,
   escapeHtml,
   resumerTexte,

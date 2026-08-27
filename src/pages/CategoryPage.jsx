@@ -1,5 +1,6 @@
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import Lien from '../components/Lien';
+import { useParams } from 'react-router-dom';
 import Catalog from '../components/Catalog';
 import { useLanguage } from '../i18n/LanguageContext';
 import useMetadonnees from '../hooks/useMetadonnees';
@@ -23,7 +24,7 @@ const CategoryPage = ({ addToCart, toggleFavorite, favorites }) => {
       <div className="flex-grow">
         <div className="container mx-auto px-6 pt-12 pb-4">
           <div className="flex items-center gap-4 text-xs tracking-widest uppercase text-stone-gray mb-8">
-            <Link to="/" className="hover:text-slate-stone transition-colors">{t('category.home')}</Link>
+            <Lien to="/" className="hover:text-slate-stone transition-colors">{t('category.home')}</Lien>
             <span>/</span>
             <span className="text-slate-stone font-medium">{tCategory(decodedCategory)}</span>
           </div>

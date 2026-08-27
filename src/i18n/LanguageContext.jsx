@@ -1,23 +1,29 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import translations, { DEFAULT_LANGUAGE, LANGUAGES } from './translations';
+import { separerLangue, avecLangue } from './routes';
 
 const STORAGE_KEY = 'soyou-lang';
 const SUPPORTED = LANGUAGES.map((l) => l.code);
 
 const LanguageContext = createContext(null);
 
-const getInitialLanguage = () => {
-  if (typeof window === 'undefined') return DEFAULT_LANGUAGE;
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored && SUPPORTED.includes(stored)) return stored;
-    const browser = (navigator.language || '').slice(0, 2).toLowerCase();
-    if (SUPPORTED.includes(browser)) return browser;
-  } catch {
-    // localStorage unavailable (private mode etc.) — fall through to default
-  }
-  return DEFAULT_LANGUAGE;
-};
+// La langue vient de l'adresse, et de nulle part ailleurs.
+//
+// Elle venait de localStorage, puis de navigator.language. Trois conséquences,
+// dont la dernière est la plus coûteuse :
+//
+//   · les trois langues partageaient une seule URL par page, donc un moteur ne
+//     pouvait en indexer qu'une, et il n'existait aucune adresse anglaise ou
+//     allemande à faire remonter ;
+//   · aucune balise hreflang n'était possible — elle désigne des URL ;
+//   · le navigateur d'exploration de Google part d'un profil vierge et annonce
+//     l'anglais. Il rendait donc le site en anglais : d'une boutique genevoise
+//     dont la clientèle écrit en français, ce sont les pages françaises qui
+//     n'étaient pas indexées.
+//
+// Le lien envoyé à quelqu'un porte maintenant la langue dans laquelle on l'a
+// lu, ce qui était déjà le comportement que tout le monde supposait.
 
 // Resolve a dot-path ("nav.home") against an object, returning undefined if any
 // segment is missing.
@@ -43,10 +49,16 @@ const override = (lang, key) => {
 };
 
 export const LanguageProvider = ({ children }) => {
-  const [language, setLanguageState] = useState(getInitialLanguage);
+  const { pathname, search, hash } = useLocation();
+  const navigate = useNavigate();
+  const language = separerLangue(pathname).langue;
 
   useEffect(() => {
     try {
+      // Conservée pour que le sélecteur retrouve son choix, jamais pour décider
+      // à la place de l'adresse : rediriger un visiteur d'après ce qu'il a
+      // choisi la dernière fois ferait à nouveau servir deux contenus sous la
+      // même URL, ce qu'on vient précisément de défaire.
       localStorage.setItem(STORAGE_KEY, language);
     } catch {
       /* ignore persistence failures */
@@ -56,9 +68,13 @@ export const LanguageProvider = ({ children }) => {
     }
   }, [language]);
 
+  // Changer de langue, c'est changer d'adresse — la même page, ailleurs. Le
+  // remplacement plutôt que l'empilement : revenir en arrière après avoir
+  // changé de langue doit ramener à la page précédente, pas à sa traduction.
   const setLanguage = useCallback((code) => {
-    if (SUPPORTED.includes(code)) setLanguageState(code);
-  }, []);
+    if (!SUPPORTED.includes(code) || code === language) return;
+    navigate(`${avecLangue(pathname, code)}${search}${hash}`, { replace: true });
+  }, [language, navigate, pathname, search, hash]);
 
   // t('nav.home') -> string. Missing keys fall back to French, then to the key
   // itself. Values may also be arrays or objects (e.g. legal sections); callers

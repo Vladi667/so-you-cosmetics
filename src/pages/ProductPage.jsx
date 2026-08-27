@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import Lien from '../components/Lien';
+import { useParams } from 'react-router-dom';
 import { getProducts, imageUrl } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
 import ProductPlaceholder from '../components/ProductPlaceholder';
@@ -12,7 +13,6 @@ import { ouvrirPanier } from '../services/panier';
 import ImageProduit from '../components/ImageProduit';
 import VisionneuseImage from '../components/VisionneuseImage';
 import useMetadonnees from '../hooks/useMetadonnees';
-
 
 
 // Ce qu'on montre pendant que la fiche arrive.
@@ -229,12 +229,12 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
           <p className="font-sans font-light text-stone-gray leading-relaxed">
             {t('product.introuvableText')}
           </p>
-          <Link
+          <Lien
             to="/category/All"
             className="inline-block mt-8 px-8 py-3 bg-slate-stone text-white rounded-full text-xs uppercase tracking-widest hover:bg-slate-stone/90 transition-colors press"
           >
             {t('product.introuvableBack')}
-          </Link>
+          </Lien>
         </div>
       </div>
     );
@@ -264,18 +264,17 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
     setAjoute(true);
   };
 
-
   return (
     <div className="pt-24 min-h-screen bg-mist-white flex flex-col">
       <div className="flex-grow pb-24">
         {/* Breadcrumb */}
         <div className="container mx-auto px-6 pt-12 pb-8">
           <div className="flex flex-wrap items-center gap-3 text-xs tracking-widest uppercase text-stone-gray">
-            <Link to="/" className="hover:text-slate-stone transition-colors">{t('product.home')}</Link>
+            <Lien to="/" className="hover:text-slate-stone transition-colors">{t('product.home')}</Lien>
             <span>/</span>
-            <Link to={cheminRubrique(product.collections[0] || 'All')} className="hover:text-slate-stone transition-colors">
+            <Lien to={cheminRubrique(product.collections[0] || 'All')} className="hover:text-slate-stone transition-colors">
               {product.collections[0] ? tCategory(product.collections[0]) : t('product.shopFallback')}
-            </Link>
+            </Lien>
             <span>/</span>
             <span className="text-slate-stone font-medium truncate max-w-[200px] sm:max-w-xs">{product.name}</span>
           </div>
@@ -348,13 +347,13 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
               <div className="mb-8">
                 <div className="flex flex-wrap gap-2 mb-4">
                   {product.collections.map((cat, idx) => (
-                    <Link
+                    <Lien
                       key={idx}
                       to={cheminRubrique(cat)}
                       className="text-[10px] tracking-widest uppercase text-stone-gray hover:text-slate-stone transition-colors bg-ivory px-3 py-1 rounded-full border border-slate-stone/10"
                     >
                       {tCategory(cat)}
-                    </Link>
+                    </Lien>
                   ))}
                 </div>
                 <h1 className=" font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-slate-stone mb-4 md:mb-6">
@@ -430,7 +429,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                     {senteurs.map((v) => {
                       const active = v.id === product.id;
                       return (
-                        <Link
+                        <Lien
                           key={v.id}
                           to={`/product/${v.id}`}
                           aria-current={active}
@@ -444,7 +443,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                           <span className={`ml-2 tabular-nums ${active ? 'text-white/70' : 'text-stone-gray/60'}`}>
                             {Number(v.price).toFixed(2)}
                           </span>
-                        </Link>
+                        </Lien>
                       );
                     })}
                   </div>
@@ -455,12 +454,12 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   propose ce qui a du sens, une demande de devis. */}
               {Number(product.price) <= 0 && (
                 <div ref={blocAchatRef}>
-                  <Link
+                  <Lien
                     to="/personnalisation"
                     className="press inline-block rounded-full bg-slate-stone px-8 py-4 font-sans text-xs uppercase tracking-[0.2em] text-white"
                   >
                     {t('catalog.askForQuote')}
-                  </Link>
+                  </Lien>
                 </div>
               )}
 
@@ -527,12 +526,12 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                     <a href="tel:+41225566992" className="text-slate-stone underline underline-offset-2">022 556 69 92</a>
                   </p>
                   {relatedProducts[0] && (
-                    <Link
+                    <Lien
                       to={`/product/${relatedProducts[0].id}`}
                       className="press mt-4 inline-block rounded-full border border-slate-stone/25 px-5 py-2 font-sans text-[10px] uppercase tracking-[0.18em] text-slate-stone hover:border-slate-stone/60"
                     >
                       {t('product.outOfStockNearest', { name: relatedProducts[0].name })}
-                    </Link>
+                    </Lien>
                   )}
                 </div>
               )}
@@ -661,10 +660,10 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                       {etape.rituel.etape || i + 1}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <Link to={`/product/${etape.id}`}
+                      <Lien to={`/product/${etape.id}`}
                         className={`font-sans text-sm hover:text-stone-gray transition-colors ${etape.id === product.id ? 'font-medium text-slate-stone' : 'text-slate-stone'}`}>
                         {etape.name}
-                      </Link>
+                      </Lien>
                       {etape.rituel.geste && (
                         <p className="font-sans text-xs font-light text-stone-gray leading-relaxed mt-0.5">
                           {etape.rituel.geste}
@@ -713,7 +712,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 const isFav = favorites.some(fav => fav.id === p.id);
                 return (
                   <div key={p.id} className="group relative flex flex-col bg-ivory rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-250">
-                    <Link to={`/product/${p.id}`} className="aspect-[4/5] w-full overflow-hidden bg-lake-mist relative block">
+                    <Lien to={`/product/${p.id}`} className="aspect-[4/5] w-full overflow-hidden bg-lake-mist relative block">
                       {img ? (
                         <img src={imageUrl(img, 800)} alt={p.name} loading="lazy" className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-in-out" />
                       ) : <ProductPlaceholder />}
@@ -722,12 +721,12 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                           <ProductBadge ribbon={p.ribbon} />
                         </div>
                       )}
-                    </Link>
+                    </Lien>
                     <div className="p-3 sm:p-6 flex flex-col flex-grow">
-                      <Link to={`/product/${p.id}`} className="block">
+                      <Lien to={`/product/${p.id}`} className="block">
                         <p className="font-sans text-[9px] sm:text-[10px] tracking-[0.2em] uppercase text-stone-gray mb-1 sm:mb-2">{p.collections[0] ? tCategory(p.collections[0]) : 'So You'}</p>
                         <h3 className="font-serif text-sm sm:text-xl text-slate-stone mb-2 sm:mb-3 line-clamp-2 group-hover:text-stone-gray transition-colors">{p.name}</h3>
-                      </Link>
+                      </Lien>
                       <div className="mt-auto flex items-center justify-between pt-2 sm:pt-4 border-t border-slate-stone/10">
                         <span className="font-sans text-xs sm:text-sm text-stone-gray">CHF {p.price.toFixed(2)}</span>
                         <div className="flex gap-1.5 sm:gap-2">

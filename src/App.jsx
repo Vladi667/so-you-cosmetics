@@ -14,6 +14,7 @@ import Footer from './components/Footer';
 import PageLoader from './components/PageLoader';
 import SideDrawer from './components/SideDrawer';
 import { Routes, Route, useLocation } from 'react-router-dom';
+import { separerLangue } from './i18n/routes';
 import ScrollToTop from './components/ScrollToTop';
 import PersonnalisationPage from './pages/PersonnalisationPage';
 import Home from './pages/Home';
@@ -87,11 +88,14 @@ function App() {
   }, []);
 
   const location = useLocation();
-  const isAdminPage = location.pathname.startsWith('/admin');
+  // Le préfixe de langue est retiré d'abord : sans cela « /en/admin » ne serait
+  // pas reconnu comme l'administration, et la barre, le pied de page et les
+  // tiroirs reviendraient se poser par-dessus.
+  const isAdminPage = separerLangue(location.pathname).chemin.startsWith('/admin');
 
   // handleCategorySelect vivait ici : la barre et le menu mobile lui passaient
   // une clef de rubrique et il appelait navigate(). Les deux émettent
-  // maintenant de vrais <Link>, dont l'adresse est la destination — il n'y a
+  // maintenant de vrais liens, dont l'adresse est la destination — il n'y a
   // plus de traduction à faire entre les deux, ni de gestionnaire à exécuter
   // pour qu'un robot sache où mène une entrée de menu.
 
@@ -179,6 +183,44 @@ function App() {
     };
   }, []);
 
+  // L'arbre des pages, déclaré une fois et monté sous chacune des trois
+  // langues. Les chemins sont relatifs au préfixe : « about » et non
+  // « /about », sans quoi ils ne se résoudraient que sous la racine.
+  const pages = (
+    <Routes>
+      <Route index element={<Home addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
+      <Route path="about" element={<AboutPage />} />
+      <Route path="workshops" element={<WorkshopsPage />} />
+      <Route path="workshops/:id" element={<WorkshopDetailPage />} />
+      <Route path="journal" element={<JournalPage />} />
+      <Route path="journal/:slug" element={<JournalPage />} />
+      <Route path="contact" element={<ContactPage />} />
+      <Route path="personnalisation" element={<PersonnalisationPage />} />
+      <Route path="category/:categoryName" element={<CategoryPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
+      <Route path="product/:id" element={<ProductPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
+      <Route path="search/:query" element={<SearchPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
+      <Route path="terms" element={<TermsPage />} />
+      <Route path="privacy" element={<PrivacyPage />} />
+      <Route
+        path="admin"
+        element={
+          // Le morceau arrive par le reseau : sans Suspense, React leve.
+          // L'attente est le fond du site, pas un ecran blanc.
+          <Suspense fallback={<div className="min-h-screen bg-mist-white" />}>
+            {isAdminLoggedIn ? (
+              <AdminDashboard onLogout={() => { localStorage.removeItem('adminToken'); setIsAdminLoggedIn(false); }} />
+            ) : (
+              <AdminLogin onLoginSuccess={() => setIsAdminLoggedIn(true)} />
+            )}
+          </Suspense>
+        }
+      />
+      {/* Tout le reste. Sans cette route, une adresse inconnue rendait un
+          <main> vide entre la barre et le pied de page. */}
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
+  );
+
   return (
     <div className="font-sans antialiased text-stone-gray bg-mist-white min-h-screen flex flex-col overflow-x-hidden">
       <ScrollToTop />
@@ -198,37 +240,15 @@ function App() {
       )}
       
       <main className="flex-grow">
+        {/* Les mêmes pages, sous trois adresses.
+            Le français reste à la racine — aucune adresse existante ne change —
+            et l'anglais et l'allemand prennent un préfixe. Les chemins internes
+            sont relatifs : c'est ce qui permet de déclarer l'arbre une seule
+            fois pour les trois langues. */}
         <Routes>
-          <Route path="/" element={<Home addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/workshops" element={<WorkshopsPage />} />
-          <Route path="/workshops/:id" element={<WorkshopDetailPage />} />
-          <Route path="/journal" element={<JournalPage />} />
-          <Route path="/journal/:slug" element={<JournalPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/personnalisation" element={<PersonnalisationPage />} />
-          <Route path="/category/:categoryName" element={<CategoryPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
-          <Route path="/product/:id" element={<ProductPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
-          <Route path="/search/:query" element={<SearchPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route
-            path="/admin"
-            element={
-              // Le morceau arrive par le reseau : sans Suspense, React leve.
-              // L'attente est le fond du site, pas un ecran blanc.
-              <Suspense fallback={<div className="min-h-screen bg-mist-white" />}>
-                {isAdminLoggedIn ? (
-                  <AdminDashboard onLogout={() => { localStorage.removeItem('adminToken'); setIsAdminLoggedIn(false); }} />
-                ) : (
-                  <AdminLogin onLoginSuccess={() => setIsAdminLoggedIn(true)} />
-                )}
-              </Suspense>
-            }
-          />
-          {/* Tout le reste. Sans cette route, une adresse inconnue rendait un
-              <main> vide entre la barre et le pied de page. */}
-          <Route path="*" element={<NotFoundPage />} />
+          <Route path="/en/*" element={pages} />
+          <Route path="/de/*" element={pages} />
+          <Route path="/*" element={pages} />
         </Routes>
       </main>
 

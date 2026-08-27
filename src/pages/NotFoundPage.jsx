@@ -1,5 +1,6 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import Lien from '../components/Lien';
+
 import { useLanguage } from '../i18n/LanguageContext';
 import useMetadonnees from '../hooks/useMetadonnees';
 
@@ -24,18 +25,18 @@ const NotFoundPage = () => {
           {t('notFound.text')}
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Link
+          <Lien
             to="/category/All"
             className="inline-block px-8 py-3 bg-slate-stone text-white rounded-full text-xs uppercase tracking-widest hover:bg-slate-stone/90 transition-colors press"
           >
             {t('notFound.shop')}
-          </Link>
-          <Link
+          </Lien>
+          <Lien
             to="/"
             className="inline-block px-8 py-3 border border-slate-stone/20 text-slate-stone rounded-full text-xs uppercase tracking-widest hover:border-slate-stone/40 transition-colors press"
           >
             {t('notFound.home')}
-          </Link>
+          </Lien>
         </div>
       </div>
     </div>

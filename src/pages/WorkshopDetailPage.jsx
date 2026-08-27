@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import Lien from '../components/Lien';
+import useLienLangue from '../i18n/useLienLangue';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n/LanguageContext';
 import useMetadonnees from '../hooks/useMetadonnees';
 
@@ -14,6 +16,7 @@ const WorkshopDetailPage = () => {
   const { id } = useParams();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const lien = useLienLangue();
   const [workshop, setWorkshop] = useState(null);
   const [state, setState] = useState('loading');
 
@@ -63,12 +66,12 @@ const WorkshopDetailPage = () => {
         <div className="text-center max-w-md">
           <h1 className="font-serif text-3xl text-slate-stone mb-4">{t('workshopsPage.notFoundTitle')}</h1>
           <p className="font-sans text-sm text-stone-gray mb-8">{t('workshopsPage.notFoundText')}</p>
-          <Link
+          <Lien
             to="/workshops"
             className="inline-block px-8 py-3 bg-slate-stone text-white rounded-full text-xs uppercase tracking-widest hover:bg-slate-stone/90 transition-colors"
           >
             {t('workshopsPage.backToList')}
-          </Link>
+          </Lien>
         </div>
       </div>
     );
@@ -77,12 +80,12 @@ const WorkshopDetailPage = () => {
   return (
     <div className="min-h-screen bg-mist-white pt-28 sm:pt-36 pb-20">
       <div className="container mx-auto px-6 md:px-12 max-w-4xl">
-        <Link
+        <Lien
           to="/workshops"
           className="inline-block font-sans text-xs uppercase tracking-widest text-stone-gray hover:text-slate-stone transition-colors mb-8"
         >
           ← {t('workshopsPage.backToList')}
-        </Link>
+        </Lien>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-14 items-start">
           <div className="relative aspect-[4/5] rounded-3xl overflow-hidden bg-ivory border border-slate-stone/[0.07] shadow-sm">
@@ -131,7 +134,7 @@ const WorkshopDetailPage = () => {
 
             <button
               type="button"
-              onClick={() => navigate('/contact', {
+              onClick={() => navigate(lien('/contact'), {
                 state: { subject: t('workshopsPage.reservationSubject', { title: workshop.title }) },
               })}
               className="px-8 py-3.5 bg-slate-stone text-white rounded-full font-sans uppercase tracking-[0.2em] text-[10px] sm:text-xs hover:bg-slate-stone/90 press"

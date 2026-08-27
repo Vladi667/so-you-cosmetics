@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import Lien from './Lien';
+
 import SectionHeader from './SectionHeader';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -263,14 +264,14 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                       hover gradient that follows, so the overlay stays clean. */}
                   <div className="absolute inset-0 bg-[#B9A891]/[0.12] mix-blend-soft-light pointer-events-none" />
 
-                  <Link
+                  <Lien
                     to={`/product/${product.id}`}
                     tabIndex={isDuplicate ? -1 : undefined}
                     className="absolute inset-0 z-0 bg-gradient-to-t from-slate-stone/40 via-transparent to-transparent
                                opacity-0 group-hover/card:opacity-100 transition-opacity duration-300"
                   >
                     <span className="sr-only">{product.name}</span>
-                  </Link>
+                  </Lien>
 
                   <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10 flex space-x-3
                                   md:translate-y-8 md:opacity-0 md:group-hover/card:translate-y-0 md:group-hover/card:opacity-100
@@ -318,11 +319,11 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                   <p className="text-xs uppercase tracking-widest text-mist-blue mb-2 font-medium">
                     {product.collections?.[0] ? tCategory(product.collections[0]) : t('catalog.cosmeticsFallback')}
                   </p>
-                  <Link to={`/product/${product.id}`} tabIndex={isDuplicate ? -1 : undefined}>
+                  <Lien to={`/product/${product.id}`} tabIndex={isDuplicate ? -1 : undefined}>
                     <h3 className="font-serif text-base sm:text-lg md:text-xl text-slate-stone mb-1 line-clamp-1 px-4 hover:text-stone-gray transition-colors">
                       {product.name}
                     </h3>
-                  </Link>
+                  </Lien>
                   <p className="font-sans text-sm text-stone-gray">CHF {Number(product.price || 0).toFixed(2)}</p>
                 </div>
               </div>

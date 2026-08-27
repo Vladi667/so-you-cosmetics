@@ -286,6 +286,11 @@ app.get('*', async (req, res, next) => {
         // pires que pas de balise du tout, d'où le remplacement d'abord.
         if (html === avant) tag = '<meta name="robots" content="noindex, follow">' + tag;
       } else if (meta) {
+        // index.html déclare lang="fr" en dur. Une page anglaise servie avec
+        // cette déclaration se contredit elle-même : le moteur lit « français »
+        // dans le document et de l'anglais dedans, et les lecteurs d'écran
+        // prononcent le texte avec la mauvaise phonétique.
+        html = html.replace(/<html([^>]*)\slang="[^"]*"/i, `<html$1 lang="${meta.langue}"`);
         html = html.replace(/<title>[\s\S]*?<\/title>/i,
           `<title data-pose="app">${seo.escapeHtml(meta.titre)}</title>`);
         // Le plancher d'index.html s'efface devant celle de la route. Sans ce

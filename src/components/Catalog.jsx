@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import Lien from './Lien';
+import { useSearchParams } from 'react-router-dom';
 import SectionHeader from './SectionHeader';
 import { getProducts, imageUrl } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -10,7 +11,6 @@ import { grouperParRecette } from '../data/recettes';
 import { normaliserTexte } from '../data/texte';
 import ProductBadge from './ProductBadge';
 import ProductPlaceholder from './ProductPlaceholder';
-
 
 
 // Chaque tranche porte son libelle traduit ; la regle de bornes, elle, vit
@@ -200,7 +200,6 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
     setVisibleCount(apercu ? APERCU : 12);
   }
 
-
   const PAS = 24;
   const loadMore = () => setVisibleCount((prev) => prev + PAS);
 
@@ -305,7 +304,7 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
                 part, sauf du fil d'Ariane d'une fiche, elle-même atteignable
                 seulement depuis une rubrique. */}
             {categories.map((category) => (
-              <Link
+              <Lien
                 key={category}
                 to={cheminRubrique(category)}
                 onClick={(e) => {
@@ -323,7 +322,7 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
                 }`}
               >
                 {tCategory(category)}
-              </Link>
+              </Lien>
             ))}
           </div>
           {/* Subtle gradient fades for scroll indication */}
@@ -468,11 +467,11 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
                     </div>
                   )}
                   {/* Hover Overlay — on mobile the card image is directly tappable */}
-                  <Link to={lien} className="absolute inset-0 bg-slate-stone/10 opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center md:backdrop-blur-[2px]">
+                  <Lien to={lien} className="absolute inset-0 bg-slate-stone/10 opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center md:backdrop-blur-[2px]">
                     <span className="transform translate-y-4 md:group-hover:translate-y-0 opacity-0 md:group-hover:opacity-100 transition-all duration-250 bg-ivory text-slate-stone px-8 py-3 rounded-full font-medium tracking-wide shadow-lg hover:bg-slate-stone hover:text-white hidden md:inline">
                       {t('catalog.viewDetails')}
                     </span>
-                  </Link>
+                  </Lien>
                 </div>
                 
                 <div className="p-3 sm:p-6 flex flex-col flex-grow">
@@ -480,11 +479,11 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
                     <p className="text-[9px] sm:text-xs text-slate-stone/60 uppercase tracking-widest mb-0.5 sm:mb-1 truncate">
                       {product.collections[0] ? tCategory(product.collections[0]) : t('catalog.cosmeticsFallback')}
                     </p>
-                    <Link to={lien}>
+                    <Lien to={lien}>
                       <h3 className="text-sm sm:text-lg font-serif text-slate-stone leading-tight line-clamp-2 hover:text-stone-gray transition-colors">
                         {product.name}
                       </h3>
-                    </Link>
+                    </Lien>
                     {/* Le nombre de senteurs, pas la liste : sur une carte de
                         catalogue, quinze noms de parfums ne se lisent pas. */}
                     {product.estRecette && (
@@ -596,12 +595,12 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
             fin à la page d'accueil. Ailleurs, il charge la suite. */}
         {apercu && visibleCount < displayedProducts.length && (
           <div className="mt-16 text-center">
-            <Link
+            <Lien
               to="/category/All"
               className="inline-block border-b border-slate-stone text-slate-stone tracking-widest uppercase text-sm pb-1 hover:text-slate-stone/70 hover:border-slate-stone/70 press"
             >
               {t('catalog.seeAll')}
-            </Link>
+            </Lien>
           </div>
         )}
 
