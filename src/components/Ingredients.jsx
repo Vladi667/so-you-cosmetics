@@ -31,10 +31,15 @@ const Ingredients = () => {
         {/* 4 Commitment Cards — 2x2 Grid */}
         <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:gap-8 max-w-4xl mx-auto">
           {commitments.map((item, index) => {
-            // Un nombre impair d'engagements laisse la derniere carte seule sur
-            // sa ligne. Elle restait calee a gauche, sous une colonne vide : on
-            // lisait un trou plutot qu'une fin. Elle occupe desormais la largeur
-            // de la ligne et se centre, en gardant la largeur d'une colonne.
+            // Un nombre impair d'engagements laisse la dernière carte seule sur
+            // sa ligne. Elle restait calée à gauche, sous une colonne vide : on
+            // lisait un trou plutôt qu'une fin.
+            //
+            // Elle a d'abord été centrée en gardant la largeur d'une colonne,
+            // ce qui laissait deux vides au lieu d'un. Elle prend maintenant
+            // toute la largeur de la rangée : c'est la seule façon de finir un
+            // nombre impair sans vide du tout, et c'est aussi la carte au texte
+            // le plus long — celui qui a le plus besoin de la place.
             const seuleSurSaLigne = index === commitments.length - 1 && commitments.length % 2 === 1;
             return (
             <div
@@ -46,7 +51,7 @@ const Ingredients = () => {
               // au-dessus et en dessous, et l'icone garde son alignement sur le
               // titre parce qu'elle vit dans le bloc interieur.
               className={`group flex flex-col justify-center bg-ivory rounded-[20px] sm:rounded-[30px] p-4 sm:p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgb(0,0,0,0.1)] hover:-translate-y-2 transition-[opacity,transform,box-shadow] duration-300 reveal border border-slate-stone/5${
-                seuleSurSaLigne ? ' col-span-2 sm:w-[calc(50%-1rem)] lg:w-[calc(50%-1.5rem)] justify-self-center' : ''
+                seuleSurSaLigne ? ' col-span-2' : ''
               }`}
             >
               <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-6">
