@@ -8,14 +8,26 @@ import { IconeSimple } from './IconeEngagement';
 // It replaces the "100% fait main à Genève" video block — that footage moves to
 // the Notre-histoire page, where she asked for it.
 //
-// The four frames are staged from photography she already owns. Each drifts on
-// its own slow cycle so the band breathes without anything visibly moving; the
-// offsets are deliberately co-prime so they never fall into step.
+// Trois plans, pris dans les photographies qu'elle possède déjà. Chacun dérive
+// sur son propre cycle lent pour que la bande respire sans que rien ne bouge
+// visiblement ; les décalages sont premiers entre eux, donc ils ne tombent
+// jamais en cadence.
+//
+// Il y en avait quatre. Le quatrième — un flacon fini posé sur une pierre dans
+// une rivière d'hiver — sortait deux fois du rang. Sur la couleur : les trois
+// autres ont un écart rouge-bleu de +16 à +21 et une clarté de 170 à 188,
+// lui était à -29, dominante bleue, et à 139. Un voile chaud avait été posé
+// sur la bande pour rattraper l'écart, mais 14 % ne réchauffent pas une image
+// froide, ils la ternissent. Sur le sujet, surtout : les trois autres sont des
+// plans d'ingrédients et de fabrication, lui est un produit fini dans un
+// paysage — ce n'est pas la même bande.
+//
+// Trois valent mieux qu'un quatrième mal assorti, et la bande compte
+// désormais autant de plans que de piliers en dessous.
 const FRAMES = [
   { src: '/botanical_flatlay.png',        alt: '',              delay: '0s',    duration: '26s' },
   { src: '/artisanal_soap_crafting.png',  alt: '',              delay: '-7s',   duration: '31s' },
   { src: '/workshop_ingredients.png',     alt: '',              delay: '-13s',  duration: '29s' },
-  { src: '/premium_product_stone.png',    alt: '',              delay: '-19s',  duration: '34s' },
 ];
 
 const HandmadeGeneva = () => {
@@ -51,7 +63,9 @@ const HandmadeGeneva = () => {
       </div>
 
       {/* Botanical band */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-alpine-silver/60">
+      {/* Trois colonnes à toutes les tailles : en deux colonnes, trois plans
+          laissent un orphelin sur la seconde ligne. */}
+      <div className="grid grid-cols-3 gap-px bg-alpine-silver/60">
         {FRAMES.map((frame, i) => (
           <div key={i} className="relative aspect-[3/4] sm:aspect-[4/5] overflow-hidden bg-lake-mist reveal"
                style={{ transitionDelay: `${i * 90}ms` }}>
