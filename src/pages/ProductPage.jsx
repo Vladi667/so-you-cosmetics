@@ -7,6 +7,7 @@ import ProductBadge from '../components/ProductBadge';
 import { IconeSimple } from '../components/IconeEngagement';
 import { descriptionToHtml } from '../utils/description';
 import { lireRecette } from '../data/recettes';
+import { cheminRubrique } from '../data/categories';
 import { ouvrirPanier } from '../services/panier';
 import ImageProduit from '../components/ImageProduit';
 import VisionneuseImage from '../components/VisionneuseImage';
@@ -272,7 +273,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
           <div className="flex flex-wrap items-center gap-3 text-xs tracking-widest uppercase text-stone-gray">
             <Link to="/" className="hover:text-slate-stone transition-colors">{t('product.home')}</Link>
             <span>/</span>
-            <Link to={`/category/${product.collections[0] || 'All'}`} className="hover:text-slate-stone transition-colors">
+            <Link to={cheminRubrique(product.collections[0] || 'All')} className="hover:text-slate-stone transition-colors">
               {product.collections[0] ? tCategory(product.collections[0]) : t('product.shopFallback')}
             </Link>
             <span>/</span>
@@ -349,7 +350,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   {product.collections.map((cat, idx) => (
                     <Link
                       key={idx}
-                      to={`/category/${cat}`}
+                      to={cheminRubrique(cat)}
                       className="text-[10px] tracking-widest uppercase text-stone-gray hover:text-slate-stone transition-colors bg-ivory px-3 py-1 rounded-full border border-slate-stone/10"
                     >
                       {tCategory(cat)}

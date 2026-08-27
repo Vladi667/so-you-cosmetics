@@ -9,8 +9,14 @@ const Workshops = () => {
     <section id="workshops" className="relative py-24 md:py-48 flex items-center justify-center overflow-hidden">
       
       {/* Full-width video background */}
+      {/* « none » : ce bloc est bien plus bas que l'ecran, et sa video partait
+          pourtant en meme temps que celle du haut — 1,55 Mo pris sur la bande
+          passante de la seule chose que le visiteur regarde encore. Rien n'est
+          demande tant qu'on n'arrive pas ici. */}
       <AutoPlayVideo
         src="/workshop.mp4"
+        poster="/workshop-poster.jpg"
+        preload="none"
         className="absolute inset-0 w-full h-full object-cover sepia-[.03]"
       />
 

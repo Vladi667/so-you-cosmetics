@@ -31,7 +31,6 @@ const CategoryPage = ({ addToCart, toggleFavorite, favorites }) => {
         
         <Catalog 
           globalActiveCategory={decodedCategory} 
-          setGlobalCategory={() => {}} // Controlled by URL now
           addToCart={addToCart} 
           toggleFavorite={toggleFavorite} 
           favorites={favorites} 

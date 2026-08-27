@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import SectionHeader from './SectionHeader';
 import { getProducts, imageUrl } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
-import { visibleCategories } from '../data/categories';
+import { visibleCategories, cheminRubrique } from '../data/categories';
 import { ouvrirPanier, sursautPanier } from '../services/panier';
 import { TRANCHES_PRIX, dansLaTranche, trier, TRIS } from '../data/tri';
 import { grouperParRecette } from '../data/recettes';
@@ -41,7 +41,7 @@ const APERCU = 8;
 //
 // En aperçu, le nombre est fixe, l'observateur n'est pas posé, et le pied
 // renvoie à la boutique au lieu d'en charger davantage.
-function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, toggleFavorite, favorites, searchQuery = '', apercu = false }) {
+function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favorites, searchQuery = '', apercu = false }) {
   const { t, tCategory } = useLanguage();
   const [productsList, setProductsList] = useState([]);
   const [activeCategory, setActiveCategory] = useState(globalActiveCategory);
@@ -295,27 +295,35 @@ function Catalog({ globalActiveCategory = 'All', setGlobalCategory, addToCart, t
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
           >
+            {/* Les pastilles changent l'adresse, elles ne filtrent plus sur
+                place.
+                Avant, cliquer « Savons » sur /category/All remplaçait la grille
+                sans toucher à l'adresse : la rubrique n'avait donc aucune URL
+                qu'on puisse partager, mettre en favori, ou atteindre depuis un
+                lien — et /category/All servait treize contenus différents selon
+                un état invisible. Les treize rubriques n'étaient liées de nulle
+                part, sauf du fil d'Ariane d'une fiche, elle-même atteignable
+                seulement depuis une rubrique. */}
             {categories.map((category) => (
-              <button
+              <Link
                 key={category}
-                onClick={() => {
+                to={cheminRubrique(category)}
+                onClick={(e) => {
                   // On vient de faire defiler le ruban : ce relachement n'est
                   // pas un choix de rubrique.
                   if (glissementRecent.current) {
                     glissementRecent.current = false;
-                    return;
+                    e.preventDefault();
                   }
-                  setActiveCategory(category);
-                  if (setGlobalCategory) setGlobalCategory(category);
                 }}
                 className={`whitespace-nowrap px-6 py-3 rounded-full text-sm tracking-widest uppercase transition-all duration-300 border ${
-                  activeCategory === category 
-                  ? 'bg-slate-stone text-white border-slate-stone shadow-lg' 
+                  activeCategory === category
+                  ? 'bg-slate-stone text-white border-slate-stone shadow-lg'
                   : 'bg-transparent text-slate-stone border-slate-stone/20 hover:border-slate-stone/50 hover:bg-slate-stone/5'
                 }`}
               >
                 {tCategory(category)}
-              </button>
+              </Link>
             ))}
           </div>
           {/* Subtle gradient fades for scroll indication */}

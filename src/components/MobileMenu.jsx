@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Logo from './Logo';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '../i18n/LanguageContext';
-import { visibleCategories } from '../data/categories';
+import { visibleCategories, cheminRubrique } from '../data/categories';
 import { getProducts } from '../services/products';
 
-const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
+const MobileMenu = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { t, tCategory } = useLanguage();
@@ -52,10 +52,10 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
   }, []);
   const categories = visibleCategories(products);
 
-  const handleNav = (category) => {
-    onClose();
-    onCategorySelect(category);
-  };
+  // Les entrées du menu sont des liens, plus des boutons : un robot lit un
+  // href, il ne clique pas. Le tiroir se referme au clic, comme avant.
+  const NAV_PATHS = { Home: '/', 'About Us': '/about', Workshops: '/workshops', Journal: '/journal', Contact: '/contact' };
+  const lienNav = (item) => NAV_PATHS[item];
 
   return (
     <>
@@ -118,8 +118,9 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                 }`}
                 style={{ transitionDelay: isOpen ? '100ms' : '0ms' }}
               >
-                <button
-                  onClick={() => handleNav('Home')}
+                <Link
+                  to={lienNav('Home')}
+                  onClick={onClose}
                   className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase flex items-center justify-between press border-l-2 pl-4 -ml-4 transform-gpu ${
                     isLinkActive('Home') 
                       ? 'text-white border-white font-medium' 
@@ -127,7 +128,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                   }`}
                 >
                   {t('nav.home')}
-                </button>
+                </Link>
               </li>
 
               {/* Shop (expandable) */}
@@ -169,9 +170,10 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                 {shopExpanded && (
                   <div className="grid grid-cols-2 gap-2 pb-4 pt-2 apparait">
                     {categories.map((cat) => (
-                      <button
+                      <Link
                         key={cat}
-                        onClick={() => handleNav(cat)}
+                        to={cheminRubrique(cat)}
+                        onClick={onClose}
                         className={`text-left px-4 py-3 font-sans text-xs tracking-[0.15em] uppercase rounded-xl press border transform-gpu ${
                           isCategoryActive(cat)
                             ? 'text-white bg-white/20 border-white/20 font-medium'
@@ -179,7 +181,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                         }`}
                       >
                         {tCategory(cat)}
-                      </button>
+                      </Link>
                     ))}
                   </div>
                 )}
@@ -192,8 +194,9 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                 }`}
                 style={{ transitionDelay: isOpen ? '200ms' : '0ms' }}
               >
-                <button
-                  onClick={() => handleNav('About Us')}
+                <Link
+                  to={lienNav('About Us')}
+                  onClick={onClose}
                   className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase flex items-center justify-between press border-l-2 pl-4 -ml-4 transform-gpu ${
                     isLinkActive('About Us') 
                       ? 'text-white border-white font-medium' 
@@ -201,7 +204,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                   }`}
                 >
                   {t('nav.about')}
-                </button>
+                </Link>
               </li>
 
               {/* Workshops */}
@@ -211,8 +214,9 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                 }`}
                 style={{ transitionDelay: isOpen ? '250ms' : '0ms' }}
               >
-                <button
-                  onClick={() => handleNav('Workshops')}
+                <Link
+                  to={lienNav('Workshops')}
+                  onClick={onClose}
                   className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase flex items-center justify-between press border-l-2 pl-4 -ml-4 transform-gpu ${
                     isLinkActive('Workshops') 
                       ? 'text-white border-white font-medium' 
@@ -220,7 +224,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                   }`}
                 >
                   {t('nav.workshops')}
-                </button>
+                </Link>
               </li>
 
               {/* Journal */}
@@ -230,8 +234,9 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                 }`}
                 style={{ transitionDelay: isOpen ? '275ms' : '0ms' }}
               >
-                <button
-                  onClick={() => handleNav('Journal')}
+                <Link
+                  to={lienNav('Journal')}
+                  onClick={onClose}
                   className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase flex items-center justify-between press border-l-2 pl-4 -ml-4 transform-gpu ${
                     isLinkActive('Journal')
                       ? 'text-white border-white font-medium'
@@ -239,7 +244,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                   }`}
                 >
                   {t('nav.journal')}
-                </button>
+                </Link>
               </li>
 
               {/* Contact */}
@@ -249,8 +254,9 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                 }`}
                 style={{ transitionDelay: isOpen ? '300ms' : '0ms' }}
               >
-                <button
-                  onClick={() => handleNav('Contact')}
+                <Link
+                  to={lienNav('Contact')}
+                  onClick={onClose}
                   className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase flex items-center justify-between press border-l-2 pl-4 -ml-4 transform-gpu ${
                     isLinkActive('Contact') 
                       ? 'text-white border-white font-medium' 
@@ -258,7 +264,7 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                   }`}
                 >
                   {t('nav.contact')}
-                </button>
+                </Link>
               </li>
             </ul>
           </nav>

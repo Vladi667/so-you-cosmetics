@@ -8,17 +8,45 @@ import React, { useRef, useEffect, useState } from 'react';
  * shows a subtle tap-to-play overlay so the user can start it
  * with a gesture (which always succeeds).
  */
-const AutoPlayVideo = ({ src, className = '', poster = '' }) => {
+// Ce que le visiteur a demandé sans le dire.
+//
+// « Économiseur de données » est un réglage explicite du navigateur ; le
+// mouvement réduit en est un du système. Dans les deux cas, télécharger deux à
+// trois mégaoctets de vidéo décorative va contre ce qui a été demandé. L'affiche
+// reste affichée et le bouton de lecture permet d'en décider autrement.
+function lectureNonSouhaitee() {
+  if (typeof window === 'undefined') return false;
+  try {
+    const connexion = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (connexion && connexion.saveData) return true;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
+// `preload` par defaut a « metadata » : la page d'accueil telechargeait 3,84 Mo
+// de video avant le moindre defilement, dont 1,55 Mo pour un bloc situe bien
+// plus bas que l'ecran. L'attribut `autoPlay` a disparu pour la meme raison —
+// il declenche le telechargement des que l'element existe, quelle que soit la
+// valeur de `preload`. C'est l'observateur ci-dessous qui lance la lecture, et
+// il ne tire que lorsque la video entre dans le champ.
+const AutoPlayVideo = ({ src, className = '', poster = '', preload = 'metadata' }) => {
   const videoRef = useRef(null);
-  const [needsTap, setNeedsTap] = useState(false);
+  // Lu une fois, a l'initialisation : le reglage ne change pas en cours de
+  // visite, et le poser ici plutot que dans l'effet evite un rendu en cascade —
+  // l'effet n'aurait servi qu'a redire ce qu'on savait deja avant de peindre.
+  const [refusAutoplay] = useState(lectureNonSouhaitee);
+  const [needsTap, setNeedsTap] = useState(refusAutoplay);
   const [hasPlayed, setHasPlayed] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || refusAutoplay) return;
 
     let retryCount = 0;
     const maxRetries = 3;
+    let minuterie = null;
 
     const attemptPlay = () => {
       if (hasPlayed) return;
@@ -26,29 +54,28 @@ const AutoPlayVideo = ({ src, className = '', poster = '' }) => {
       // Ensure muted is set before playing
       video.muted = true;
 
-      if (video.readyState >= 2) {
-        // Small delay helps iOS Safari in some cases
-        setTimeout(() => {
-          const playPromise = video.play();
-          if (playPromise !== undefined) {
-            playPromise
-              .then(() => {
-                setHasPlayed(true);
-                setNeedsTap(false);
-              })
-              .catch((error) => {
-                console.log(`Autoplay attempt ${retryCount + 1} failed:`, error);
-                if (retryCount < maxRetries) {
-                  retryCount++;
-                  setTimeout(attemptPlay, 1000); // Wait 1s and try again
-                } else {
-                  setNeedsTap(true);
-                }
-              });
-          }
-        }, 150);
-      } else {
-        video.addEventListener('canplay', attemptPlay, { once: true });
+      // Appel direct : play() declenche lui-meme le chargement, y compris avec
+      // preload="none". L'ancien code n'appelait play() qu'a partir de
+      // readyState >= 2 et attendait « canplay » sinon — un evenement qui,
+      // sans preload, n'arrive jamais puisque rien n'a ete demande.
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setHasPlayed(true);
+            setNeedsTap(false);
+          })
+          .catch(() => {
+            // iOS en mode economie d'energie, onglet en arriere-plan, politique
+            // du navigateur : on reessaie trois fois, puis on propose la
+            // lecture au doigt, qui elle n'echoue jamais.
+            if (retryCount < maxRetries) {
+              retryCount++;
+              minuterie = setTimeout(attemptPlay, 1000);
+            } else {
+              setNeedsTap(true);
+            }
+          });
       }
     };
 
@@ -65,18 +92,44 @@ const AutoPlayVideo = ({ src, className = '', poster = '' }) => {
 
     observer.observe(video);
 
-    // Initial attempt
-    if (video.readyState >= 2) {
-      attemptPlay();
-    } else {
-      video.addEventListener('canplay', attemptPlay, { once: true });
-    }
+    // La meme question, posee autrement : cet element est-il dans le champ ?
+    //
+    // L'ancienne version lancait une tentative sans condition — c'est elle qui
+    // faisait telecharger la video du bas de page en meme temps que celle du
+    // haut. Mais s'en remettre au seul observateur ne suffit pas : il ne tire
+    // pas dans un onglet qui ne compose rien, et la video restait alors sur son
+    // affiche sans que rien ne l'explique. Constate en verifiant precisement
+    // cela, sur les deux videos.
+    //
+    // Mesurer le rectangle ne depend d'aucun ordonnancement. L'observateur
+    // reste : il est plus economique et repond le premier dans le cas normal.
+    // Celui-ci est le filet, et il se retire des que la lecture a commence.
+    const dansLeChamp = () => {
+      const rect = video.getBoundingClientRect();
+      return rect.height > 0 && rect.top < window.innerHeight && rect.bottom > 0;
+    };
+
+    let planifie = false;
+    const auDefilement = () => {
+      if (planifie) return;
+      planifie = true;
+      requestAnimationFrame(() => {
+        planifie = false;
+        if (dansLeChamp()) attemptPlay();
+      });
+    };
+
+    if (dansLeChamp()) attemptPlay();
+    window.addEventListener('scroll', auDefilement, { passive: true });
+    window.addEventListener('resize', auDefilement, { passive: true });
 
     return () => {
       observer.disconnect();
-      video.removeEventListener('canplay', attemptPlay);
+      window.removeEventListener('scroll', auDefilement);
+      window.removeEventListener('resize', auDefilement);
+      if (minuterie) clearTimeout(minuterie);
     };
-  }, [hasPlayed]);
+  }, [hasPlayed, refusAutoplay]);
 
   const handleTap = () => {
     const video = videoRef.current;
@@ -98,11 +151,10 @@ const AutoPlayVideo = ({ src, className = '', poster = '' }) => {
     <div className="absolute inset-0 bg-slate-stone/10">
       <video
         ref={videoRef}
-        autoPlay
         loop
         muted
         playsInline
-        preload="auto"
+        preload={preload}
         poster={poster}
         className={className}
         style={{ pointerEvents: 'none' }}

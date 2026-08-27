@@ -1,5 +1,3 @@
-import productsData from '../data/products.json';
-
 // Module-level cache so the product list is fetched at most once per session.
 // On any network failure we fall back to the bundled static JSON.
 let cachedPromise = null;
@@ -14,7 +12,14 @@ export function getProducts() {
     })
     .catch(err => {
       console.warn('API error fetching products, falling back to local static JSON:', err);
-      return productsData.products;
+      // Le repli est charge a la demande, pas au chargement de la page.
+      //
+      // Il etait importe en haut de ce fichier : 444 Ko de JSON — le catalogue
+      // entier, formate — entraient donc dans le paquet principal que chaque
+      // visiteur telecharge, pour ne servir que le jour ou l'API ne repond
+      // pas. Un import() en fait un morceau separe, demande seulement dans ce
+      // cas-la, c'est-a-dire presque jamais.
+      return import('../data/products.json').then((m) => (m.default || m).products);
     });
 
   return cachedPromise;

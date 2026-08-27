@@ -2,6 +2,14 @@
 //
 // Une seule source : le menu de bureau et le menu mobile listaient chacun les
 // catégories en dur, ce qui garantissait qu'un jour les deux divergent.
+// L'adresse d'une rubrique, en un seul endroit.
+//
+// Elle s'écrivait à la main partout où un lien en avait besoin, et pas toujours
+// de la même façon : ProductPage la construisait sans encodeURIComponent, si
+// bien que « Bain & Bien-être » produisait une seconde adresse, différente de
+// celle des menus, qui répondait elle aussi — deux URL pour une rubrique.
+export const cheminRubrique = (nom) => `/category/${encodeURIComponent(nom)}`;
+
 export const SHOP_CATEGORIES = [
   'Soins Visage',
   'Soins Corps',

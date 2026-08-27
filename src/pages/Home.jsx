@@ -26,7 +26,6 @@ const Home = ({ addToCart, toggleFavorite, favorites }) => {
       <Catalog
         apercu
         globalActiveCategory="All"
-        setGlobalCategory={() => {}} // No-op on home page since top nav handles routing now
         addToCart={addToCart}
         toggleFavorite={toggleFavorite}
         favorites={favorites}

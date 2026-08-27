@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import Navbar from './components/Navbar';
 import { lirePanier, lireFavoris, ecrirePanier, ecrireFavoris, resoudre, ajouter, fixerQuantite, nombreArticles, sursautPanier, EVT_OUVRIR_PANIER } from './services/panier';
 import { getProducts } from './services/products';
@@ -13,7 +13,7 @@ import Workshops from './components/Workshops';
 import Footer from './components/Footer';
 import PageLoader from './components/PageLoader';
 import SideDrawer from './components/SideDrawer';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
 import PersonnalisationPage from './pages/PersonnalisationPage';
 import Home from './pages/Home';
@@ -27,8 +27,13 @@ import ProductPage from './pages/ProductPage';
 import SearchPage from './pages/SearchPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
-import AdminLogin from './pages/AdminLogin';
-import AdminDashboard from './pages/AdminDashboard';
+// L'administration est chargee a la demande.
+//
+// Les deux ecrans pesaient 188 Ko de source dans le paquet principal, telecharge
+// par chaque cliente alors qu'elle seule s'y connecte. React.lazy en fait des
+// morceaux separes, demandes au moment ou /admin est ouvert.
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 import NotFoundPage from './pages/NotFoundPage';
 
 function App() {
@@ -66,7 +71,6 @@ function App() {
   // client-side. Latency on the interaction path is the fastest way to make an
   // interface feel unresponsive, so both timers are gone.
   const [isLoading, setIsLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState('All');
   const [cartOpen, setCartOpen] = useState(false);
   const [favOpen, setFavOpen] = useState(false);
 
@@ -82,25 +86,14 @@ function App() {
     return () => { cancelAnimationFrame(raf); clearTimeout(fallback); };
   }, []);
 
-  const navigate = useNavigate();
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith('/admin');
 
-  const handleCategorySelect = (category) => {
-    if (category === 'All' || category === 'Home') {
-      navigate('/');
-    } else if (category === 'About Us') {
-      navigate('/about');
-    } else if (category === 'Workshops') {
-      navigate('/workshops');
-    } else if (category === 'Journal') {
-      navigate('/journal');
-    } else if (category === 'Contact') {
-      navigate('/contact');
-    } else {
-      navigate(`/category/${encodeURIComponent(category)}`);
-    }
-  };
+  // handleCategorySelect vivait ici : la barre et le menu mobile lui passaient
+  // une clef de rubrique et il appelait navigate(). Les deux émettent
+  // maintenant de vrais <Link>, dont l'adresse est la destination — il n'y a
+  // plus de traduction à faire entre les deux, ni de gestionnaire à exécuter
+  // pour qu'un robot sache où mène une entrée de menu.
 
   const addToCart = (product, quantite = 1) => {
     // Fusionne les quantités : six savons font une ligne « ×6 », pas six lignes.
@@ -199,7 +192,6 @@ function App() {
         <Navbar 
           cartCount={nombreArticles(cart)} 
           favCount={favorites.length} 
-          onCategorySelect={handleCategorySelect}
           onCartClick={() => { setFavOpen(false); setCartOpen(true); }}
           onFavClick={() => { setCartOpen(false); setFavOpen(true); }}
         />
@@ -220,14 +212,18 @@ function App() {
           <Route path="/search/:query" element={<SearchPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
-          <Route 
-            path="/admin" 
+          <Route
+            path="/admin"
             element={
-              isAdminLoggedIn ? (
-                <AdminDashboard onLogout={() => { localStorage.removeItem('adminToken'); setIsAdminLoggedIn(false); }} />
-              ) : (
-                <AdminLogin onLoginSuccess={() => setIsAdminLoggedIn(true)} />
-              )
+              // Le morceau arrive par le reseau : sans Suspense, React leve.
+              // L'attente est le fond du site, pas un ecran blanc.
+              <Suspense fallback={<div className="min-h-screen bg-mist-white" />}>
+                {isAdminLoggedIn ? (
+                  <AdminDashboard onLogout={() => { localStorage.removeItem('adminToken'); setIsAdminLoggedIn(false); }} />
+                ) : (
+                  <AdminLogin onLoginSuccess={() => setIsAdminLoggedIn(true)} />
+                )}
+              </Suspense>
             }
           />
           {/* Tout le reste. Sans cette route, une adresse inconnue rendait un

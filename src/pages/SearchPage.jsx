@@ -26,7 +26,6 @@ const SearchPage = ({ addToCart, toggleFavorite, favorites }) => {
 
         <Catalog
           globalActiveCategory="All"
-          setGlobalCategory={() => {}}
           searchQuery={decoded}
           addToCart={addToCart}
           toggleFavorite={toggleFavorite}
