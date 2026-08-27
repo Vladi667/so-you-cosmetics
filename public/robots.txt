@@ -1,4 +1,15 @@
-# The shop is not finished yet — keep it out of search results until launch.
-# Remove this file (or replace with "Allow: /") on the day it goes live.
+# La boutique est ouverte au public depuis le 27 août 2026.
+# Ce fichier disait « Disallow: / » jusque-là.
+
 User-agent: *
-Disallow: /
+Allow: /
+
+# L'administration et l'API n'ont rien à faire dans un index de moteur.
+# Ce n'est pas une protection — elles sont déjà derrière une authentification —
+# mais une page de connexion dans les résultats de recherche n'aide personne.
+Disallow: /admin
+Disallow: /api/
+
+# Les pages de résultats de recherche : autant de variantes qu'il y a de
+# requêtes, aucune n'ayant de contenu propre.
+Disallow: /search/
