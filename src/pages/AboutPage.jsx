@@ -35,12 +35,34 @@ const AboutPage = () => {
           <div className="absolute inset-0 bg-gradient-to-b from-slate-stone/45 via-transparent to-slate-stone/35"></div>
         </div>
         <div className="relative z-10 container mx-auto px-6 text-center reveal mt-20">
-          <p className="text-white/80 caps-label text-[10px] md:text-xs mb-8 font-sans font-bold">{t('about.eyebrow')}</p>
-          <h1 className=" font-serif text-4xl sm:text-6xl md:text-8xl text-white max-w-6xl mx-auto drop-shadow-2xl">
+          {/* Aligné sur les deux autres héros.
+              Trois écarts, pas un : le blanc pur au lieu de l'ivoire de la
+              marque, qui tire au froid sur une image chaude ; la citation qui
+              cumulait text-white/90 et opacity-80, soit 72 %, alors qu'une
+              seule atténuation suffit ; et `drop-shadow`, un flou porté sur la
+              boîte entière, remplacé par le text-shadow employé ailleurs, qui
+              suit le tracé des lettres au lieu d'empâter le bloc.
+
+              Le surtitre en gagne une qu'il n'avait pas du tout : en petites
+              capitales fines sur de l'eau claire, il n'avait rien pour se
+              détacher. */}
+          <p
+            className="text-ivory/80 caps-label text-[10px] md:text-xs mb-8 font-sans font-bold"
+            style={{ textShadow: '0 1px 10px rgba(0,0,0,0.45), 0 1px 3px rgba(0,0,0,0.3)' }}
+          >
+            {t('about.eyebrow')}
+          </p>
+          <h1
+            className=" font-serif text-4xl sm:text-6xl md:text-8xl text-ivory max-w-6xl mx-auto"
+            style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3)' }}
+          >
             {t('about.title')}
           </h1>
           {t('about.quote') && (
-            <p className="text-white/90 font-serif italic text-lg sm:text-2xl md:text-3xl mt-8 max-w-3xl mx-auto drop-shadow-lg opacity-80">
+            <p
+              className="text-ivory/85 font-serif italic text-lg sm:text-2xl md:text-3xl mt-8 max-w-3xl mx-auto"
+              style={{ textShadow: '0 1px 12px rgba(0,0,0,0.4)' }}
+            >
               {t('about.quote')}
             </p>
           )}
