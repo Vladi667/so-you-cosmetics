@@ -3,11 +3,42 @@ import ContentEditor from './admin/ContentEditor';
 import ShopSettings from './admin/ShopSettings';
 import RichTextEditor from './admin/RichTextEditor';
 import JournalEditor from './admin/JournalEditor';
+import { SHOP_CATEGORIES } from '../data/categories';
 
 // Order status has been written in mixed case over the life of the shop
 // ('paid' from the payment paths, 'Paid' from the admin dropdown). Compare on
 // a folded key so a paid order is never displayed as "En attente".
 const statusKey = (s) => String(s || '').toLowerCase();
+
+// Le marqueur qui remonte un produit en page d'accueil. Ce n'est pas une
+// rubrique — il se range avec les catégories parce qu'il se saisit au même
+// endroit, mais il est présenté à part pour qu'on ne le confonde pas.
+const COUP_DE_COEUR = 'Coup de cœur';
+
+// Les rubriques d'une fiche, telles qu'elle les a tapées.
+const listeCategories = (texte) =>
+  String(texte || '').split(',').map((s) => s.trim()).filter(Boolean);
+
+// La comparaison ignore la casse, les accents et la ligature : « maquillage »,
+// « Maquillage » et « MAQUILLAGE » désignent la même rubrique, et « Coup de
+// coeur » vaut « Coup de cœur ».
+const plier = (v) =>
+  String(v || '').trim().toLowerCase()
+    .replace(/œ/g, 'oe').replace(/æ/g, 'ae')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+const aLaCategorie = (texte, nom) =>
+  listeCategories(texte).some((c) => plier(c) === plier(nom));
+
+// Ajoute ou retire, en écrivant toujours la forme exacte de la liste de
+// référence : c'est tout l'intérêt du bouton par rapport à la saisie.
+const basculerCategorie = (texte, nom) => {
+  const liste = listeCategories(texte);
+  const i = liste.findIndex((c) => plier(c) === plier(nom));
+  if (i >= 0) liste.splice(i, 1);
+  else liste.push(nom);
+  return liste.join(', ');
+};
 
 const AdminDashboard = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState('orders');
@@ -969,8 +1000,46 @@ const AdminDashboard = ({ onLogout }) => {
                 </div>
                 <div>
                   <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Catégories</label>
+                  {/* Le champ était libre, sans aucune liste sous les yeux :
+                      « maquillage » au lieu de « Maquillage » créait une
+                      rubrique distincte, non traduite, rangée en fin de menu
+                      au lieu de sa place — sans erreur ni avertissement.
+                      Les boutons écrivent la forme exacte ; le champ reste
+                      ouvert pour les rubriques qu'elle invente. */}
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {SHOP_CATEGORIES.map((cat) => {
+                      const active = aLaCategorie(productForm.collectionsText, cat);
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => setProductForm({ ...productForm, collectionsText: basculerCategorie(productForm.collectionsText, cat) })}
+                          className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                            active
+                              ? 'bg-slate-stone text-white border-slate-stone'
+                              : 'bg-white text-stone-gray border-gray-300 hover:border-slate-stone'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      aria-pressed={aLaCategorie(productForm.collectionsText, COUP_DE_COEUR)}
+                      onClick={() => setProductForm({ ...productForm, collectionsText: basculerCategorie(productForm.collectionsText, COUP_DE_COEUR) })}
+                      className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                        aLaCategorie(productForm.collectionsText, COUP_DE_COEUR)
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-white text-amber-700 border-amber-300 hover:border-amber-600'
+                      }`}
+                    >
+                      ♥ {COUP_DE_COEUR}
+                    </button>
+                  </div>
                   <input type="text" placeholder="Séparées par des virgules" value={productForm.collectionsText} onChange={e => setProductForm({...productForm, collectionsText: e.target.value})} className="px-4 py-2 border rounded w-full" />
-                  <p className="text-xs text-stone-gray mt-1">Ajoutez <strong>Coup de cœur</strong> pour afficher le produit dans la section « Nos coups de cœur » de la page d'accueil.</p>
+                  <p className="text-xs text-stone-gray mt-1">Cliquez une rubrique pour l’ajouter ou la retirer. <strong>{COUP_DE_COEUR}</strong> affiche le produit sur la page d’accueil. Vous pouvez aussi taper une rubrique à vous : elle apparaîtra dans le menu.</p>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Images</label>
@@ -1721,6 +1790,24 @@ const AdminDashboard = ({ onLogout }) => {
                 ) : selectedOrder.shipping && selectedOrder.shipping.id === 'pickup' ? (
                   <p className="mt-3 text-xs text-stone-gray">À retirer à la boutique — pas d'adresse à saisir.</p>
                 ) : null}
+
+                {/* L'acceptation des conditions générales, datée. Une preuve
+                    qu'on ne peut pas produire ne sert à rien : elle est écrite
+                    ici pour être lue le jour où une commande est contestée.
+                    Les commandes antérieures à cette trace ne l'ont pas — on
+                    le dit plutôt que de laisser croire à un refus. */}
+                {selectedOrder.cgv && selectedOrder.cgv.acceptees ? (
+                  <p className="text-xs text-stone-gray mt-2">
+                    Conditions générales acceptées le{' '}
+                    <span className="text-slate-stone">
+                      {new Date(selectedOrder.cgv.date).toLocaleString('fr-CH', { dateStyle: 'long', timeStyle: 'short' })}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-xs text-stone-gray/60 mt-2">
+                    Acceptation des conditions non enregistrée (commande antérieure au suivi).
+                  </p>
+                )}
               </div>
 
               <div>
