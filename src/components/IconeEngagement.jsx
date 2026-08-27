@@ -34,17 +34,17 @@ const CHEMINS = [
     <path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0l-7.2-7.2A2 2 0 0 1 2.8 12V4.8A2 2 0 0 1 4.8 2.8H12a2 2 0 0 1 1.4.6l7.2 7.2a2 2 0 0 1 0 2.8Z" />
     <circle cx="7.5" cy="7.5" r="1.3" />
   </>,
-  // 3 · Certaines choses ne peuvent pas être précipitées — la saponification à froid.
-  <>
-    <path d="M6.5 3h11M6.5 21h11" />
-    <path d="M8 3v3.2c0 1.5 1.2 2.6 2.4 3.5.9.6.9 1.9 0 2.6C9.2 13.2 8 14.3 8 15.8V21" />
-    <path d="M16 3v3.2c0 1.5-1.2 2.6-2.4 3.5-.9.6-.9 1.9 0 2.6 1.2.9 2.4 2 2.4 3.5V21" />
-  </>,
-  // 4 · Local par choix — le relief genevois.
+  // 3 · Local par choix — le relief genevois.
   <>
     <path d="M2.5 19h19" />
     <path d="M2.5 19 9 8l4 6.2 2.2-3.2L21.5 19" />
     <path d="M9 8l1.9 3.2" />
+  </>,
+  // 4 · Certaines choses ne peuvent pas être précipitées — la saponification à froid.
+  <>
+    <path d="M6.5 3h11M6.5 21h11" />
+    <path d="M8 3v3.2c0 1.5 1.2 2.6 2.4 3.5.9.6.9 1.9 0 2.6C9.2 13.2 8 14.3 8 15.8V21" />
+    <path d="M16 3v3.2c0 1.5-1.2 2.6-2.4 3.5-.9.6-.9 1.9 0 2.6 1.2.9 2.4 2 2.4 3.5V21" />
   </>,
 ];
 
