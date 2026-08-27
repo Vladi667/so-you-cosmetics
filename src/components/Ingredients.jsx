@@ -72,15 +72,16 @@ const Ingredients = () => {
           })}
         </div>
 
-        {/* Le saviez-vous callout */}
-        <div className="max-w-3xl mx-auto mt-16 reveal">
-          <div className="bg-ivory rounded-[30px] p-10 md:p-12 border border-slate-stone/5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center">
-            <p className="font-sans text-xs tracking-[0.3em] uppercase text-slate-stone/40 font-bold mb-4">{t('ingredients.didYouKnowLabel')}</p>
-            <p className="font-serif text-xl md:text-2xl text-slate-stone leading-relaxed italic">
-              {t('ingredients.didYouKnowText')}
-            </p>
-          </div>
-        </div>
+        {/* Le bloc « Le saviez-vous » a été retiré à sa demande : il ajoutait
+            une troisième carte isolée sous cinq autres, et la section se
+            terminait deux fois.
+
+            Ses deux textes restent dans translations.js — ingredients
+            .didYouKnowLabel et .didYouKnowText, dans les trois langues. Ils ne
+            sont plus appelés nulle part, mais l'affirmation qu'ils portent
+            (aucune émission, emballages recyclables) est une allégation
+            environnementale qu'elle voudra peut-être replacer ailleurs. Les
+            supprimer obligerait à les réécrire et à les faire retraduire. */}
 
       </div>
     </section>
