@@ -690,15 +690,89 @@ function blocAdresseEmail(order) {
     <p style="margin:0;line-height:1.5;">${lignes.join('<br>')}</p>`;
 }
 
+// La photo de chaque article, à côté de son nom.
+//
+// Sa demande : « sur les alertes commandes reçues en interne — tableau de bord
+// et courriel — les images des produits à côté des noms. » Une commande de six
+// lignes se lit d'un coup d'œil quand elle est illustrée ; en liste de noms,
+// il faut la déchiffrer.
+//
+// L'image N'EST PAS prise dans la commande : le navigateur n'envoie que
+// l'identifiant, le nom, la quantité et le prix. Elle est cherchée dans le
+// catalogue par identifiant, comme le serveur le fait déjà pour recalculer les
+// prix — le navigateur ne décide pas de ce qui s'affiche dans son courrier.
+//
+// Conséquence utile : les commandes déjà enregistrées s'illustrent aussi,
+// sans migration.
+// Le catalogue indexe par identifiant. Sorti a part pour qu'une LISTE de
+// commandes le lise une seule fois : le relire par commande faisait cinquante
+// lectures de fichier pour afficher un tableau de bord.
+async function catalogueParId() {
+  try {
+    const catalogue = await db.getProducts();
+    return new Map((catalogue || []).map((p) => [String(p.id), p]));
+  } catch (err) {
+    // Un catalogue illisible ne doit pas empêcher l'alerte de partir : mieux
+    // vaut une commande sans vignette qu'une commande dont on n'est pas averti.
+    console.error('Vignettes de commande : catalogue illisible —', err.message);
+    return new Map();
+  }
+}
+
+async function vignettesParArticle(order, indexFourni) {
+  const lignes = Array.isArray(order && order.items) ? order.items : [];
+  if (lignes.length === 0) return new Map();
+
+  const parId = indexFourni || await catalogueParId();
+  const sortie = new Map();
+  for (const ligne of lignes) {
+    const p = parId.get(String(ligne && ligne.id));
+    if (!p) continue;
+    const brut = (Array.isArray(p.images) && p.images[0]) || p.image || '';
+    if (!brut) continue;
+    // Une messagerie n'a pas de page de référence : un « /uploads/… » n'y
+    // résout pas. Même règle que pour les aperçus de partage.
+    sortie.set(String(ligne.id), /^https?:\/\//i.test(brut)
+      ? brut
+      : publicBaseUrl() + (brut.startsWith('/') ? brut : '/' + brut));
+  }
+  return sortie;
+}
+
+// Une ligne d'article pour un courriel.
+//
+// En tableau et non en flex : Outlook ne connaît pas la mise en page moderne,
+// et c'est encore la messagerie de bien des commerçants.
+//
+// La vignette est décorative — alt vide, le nom est juste à côté en texte. La
+// plupart des messageries bloquent les images distantes par défaut : la ligne
+// doit rester lisible sans elles, et elle l'est.
+function ligneArticleEmail(ligne, urlImage) {
+  const qte = Math.max(1, parseInt(ligne.qty, 10) || 1);
+  const nom = escapeForEmail(ligne.name || ligne.id || '');
+  const vignette = urlImage
+    ? `<img src="${escapeForEmail(urlImage)}" alt="" width="44" height="44"
+           style="display:block;width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #DED3C4;">`
+    : `<div style="width:44px;height:44px;border-radius:6px;background:#F7F3EC;border:1px solid #DED3C4;"></div>`;
+
+  return `
+    <tr>
+      <td width="44" style="padding:6px 12px 6px 0;vertical-align:middle;">${vignette}</td>
+      <td style="padding:6px 0;vertical-align:middle;font-size:14px;color:#3A332B;">
+        <strong>${qte} ×</strong> ${nom}
+      </td>
+    </tr>`;
+}
+
 async function avertirNouvelleCommande(order) {
   const { alerts } = db.getShopSettings();
   const destinataire = db.adresseAlerte();
   if (!alerts.onNewOrder || !destinataire) return;
 
-  const lignes = (order.items || []).map((it) => {
-    const qte = Math.max(1, parseInt(it.qty, 10) || 1);
-    return `<li>${qte} × ${escapeForEmail(it.name || it.id || '')}</li>`;
-  }).join('');
+  const vignettes = await vignettesParArticle(order);
+  const lignes = (order.items || [])
+    .map((it) => ligneArticleEmail(it, vignettes.get(String(it.id))))
+    .join('');
 
   const livraison = order.shipping
     ? `<p><strong>Expédition :</strong> ${escapeForEmail(order.shipping.label || '')}${
@@ -713,7 +787,8 @@ async function avertirNouvelleCommande(order) {
         <div style="font-family:sans-serif;color:#3A332B;max-width:600px;margin:0 auto;padding:24px;">
           <h2 style="font-family:serif;font-weight:400;">Commande ${escapeForEmail(order.id)}</h2>
           <p><strong>${escapeForEmail(order.customer_name || '')}</strong> — ${escapeForEmail(order.customer_email || '')}</p>
-          <ul>${lignes}</ul>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"
+                 style="width:100%;border-collapse:collapse;margin:16px 0;">${lignes}</table>
           ${livraison}
           ${blocAdresseEmail(order)}
           <p style="font-size:17px;"><strong>Total encaissé : CHF ${Number(order.total).toFixed(2)}</strong></p>
@@ -1561,7 +1636,26 @@ router.post('/admin/change-password', requireAdmin, async (req, res) => {
 router.get('/admin/orders', requireAdmin, async (req, res) => {
   try {
     const orders = await db.getOrders();
-    res.json(orders);
+    // Chaque ligne recoit la photo de son produit, cherchee au catalogue par
+    // identifiant. Le tableau de bord et le courriel d'alerte lisent ainsi la
+    // meme source : une commande illustree se lit d'un coup d'oeil, une liste
+    // de noms se dechiffre.
+    //
+    // Les commandes deja enregistrees en profitent aussi : rien n'est stocke,
+    // tout est resolu a la lecture.
+    const index = await catalogueParId();
+    const illustrees = [];
+    for (const order of orders || []) {
+      const vignettes = await vignettesParArticle(order, index);
+      illustrees.push(vignettes.size === 0 ? order : {
+        ...order,
+        items: (order.items || []).map((it) => ({
+          ...it,
+          image: vignettes.get(String(it.id)) || null,
+        })),
+      });
+    }
+    res.json(illustrees);
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve admin orders list' });
   }

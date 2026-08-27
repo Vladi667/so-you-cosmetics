@@ -1845,9 +1845,27 @@ const AdminDashboard = ({ onLogout }) => {
             <h4 className="font-sans text-xs tracking-widest uppercase font-bold text-stone-gray/60 mb-4">Articles achetés</h4>
             <div className="space-y-4 mb-6 max-h-56 overflow-y-auto">
               {selectedOrder.items && selectedOrder.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-center text-sm font-light">
-                  <span className="font-medium">{item.name}</span>
-                  <span className="font-mono text-stone-gray">CHF {parseFloat(item.price).toFixed(2)}</span>
+                <div key={idx} className="flex justify-between items-center gap-3 text-sm font-light">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* La photo vient du serveur, cherchée au catalogue par
+                        identifiant — la commande, elle, ne l'enregistre pas.
+                        Un cadre neutre quand le produit n'a pas de photo ou
+                        n'existe plus : mieux qu'une image cassée. */}
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt=""
+                        className="w-11 h-11 rounded-lg object-cover border border-slate-stone/10 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-11 h-11 rounded-lg bg-mist-white border border-slate-stone/10 shrink-0" />
+                    )}
+                    <span className="font-medium truncate">
+                      {item.qty > 1 && <span className="text-stone-gray">{item.qty} × </span>}
+                      {item.name}
+                    </span>
+                  </div>
+                  <span className="font-mono text-stone-gray shrink-0">CHF {parseFloat(item.price).toFixed(2)}</span>
                 </div>
               ))}
             </div>
