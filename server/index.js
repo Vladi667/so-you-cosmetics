@@ -12,6 +12,78 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Les en-têtes de sécurité, posés avant tout le reste pour couvrir aussi bien
+// les pages que les fichiers servis en statique.
+//
+// Le site n'en avait aucun. Peu grave tant qu'il est fermé, plus visible une
+// fois ouvert au public — c'est ce qui a motivé cet ajout.
+//
+// Ce qui est IMPOSÉ ci-dessous est sans risque : ces en-têtes n'empêchent de
+// charger aucune ressource, ils restreignent des comportements du navigateur.
+//
+// La politique de contenu (CSP), elle, PEUT casser le paiement si une origine
+// manque à l'appel — et le formulaire de carte de SumUp monte un iframe qu'on
+// ne voit qu'au moment de payer. Elle est donc posée en « Report-Only » : le
+// navigateur signale les violations dans sa console sans rien bloquer. Une
+// fois une vraie commande passée sans violation, il suffira de renommer
+// l'en-tête pour l'appliquer.
+app.use((req, res, next) => {
+  // Un jeton à usage unique pour le seul script en ligne de la page : celui que
+  // le catch-all injecte plus bas avec ses contenus et ses réglages.
+  //
+  // C'est le mode Report-Only qui l'a révélé — la politique bloquait ce
+  // script-là, pas ceux de SumUp. Imposée d'emblée, elle aurait vidé
+  // window.__SHOP__ : plus d'horaires, plus de tarifs d'expédition, et le site
+  // serait retombé sur ses valeurs codées sans que rien ne le signale.
+  //
+  // Un nonce plutôt que 'unsafe-inline' : autoriser tout le code en ligne pour
+  // un seul script connu reviendrait à ouvrir la porte qu'on vient de fermer.
+  res.locals.cspNonce = require('crypto').randomBytes(16).toString('base64');
+
+  // Le site redirige déjà HTTP vers HTTPS ; ceci demande au navigateur de ne
+  // plus essayer HTTP du tout. Six mois, sans includeSubDomains ni preload :
+  // je ne connais pas l'état des sous-domaines (messagerie, webmail), et ces
+  // deux options-là sont difficiles à défaire.
+  res.setHeader('Strict-Transport-Security', 'max-age=15552000');
+  // Empêche le navigateur de deviner un type MIME différent de celui annoncé.
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  // Le site ne doit pas pouvoir être encadré par un tiers : c'est la parade au
+  // détournement de clic, où un cadre invisible recouvre le bouton d'achat.
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  // L'adresse complète n'est pas transmise aux sites tiers — seulement
+  // l'origine, et rien du tout en descendant vers HTTP.
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Ni caméra, ni micro, ni position. « payment » reste ouvert à SumUp :
+  // le fermer bloquerait Apple Pay et Google Pay le jour où ils arrivent.
+  res.setHeader(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), payment=(self "https://gateway.sumup.com")'
+  );
+
+  // Relevé sur le site en ligne : le SDK de SumUp, les photos reprises de Wix,
+  // la feuille de polices Google et ses fichiers, et le reste chez nous.
+  // `unsafe-inline` sur les styles est nécessaire tant que des attributs style
+  // subsistent dans le rendu ; il ne concerne pas les scripts.
+  res.setHeader(
+    'Content-Security-Policy-Report-Only',
+    [
+      "default-src 'self'",
+      `script-src 'self' 'nonce-${res.locals.cspNonce}' https://gateway.sumup.com`,
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com data:",
+      "img-src 'self' data: blob: https://static.wixstatic.com https://gateway.sumup.com",
+      "media-src 'self'",
+      "connect-src 'self' https://gateway.sumup.com https://api.sumup.com",
+      "frame-src https://gateway.sumup.com https://*.sumup.com",
+      "form-action 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'self'",
+    ].join('; ')
+  );
+  next();
+});
+
 // Enable CORS
 app.use(cors());
 
@@ -230,7 +302,7 @@ app.get('*', async (req, res, next) => {
 
     let html = fs.readFileSync(indexPath, 'utf8');
     const content = db.readContent();
-    let tag = `<script>window.__CONTENT__=${serialiseContent(content)};` +
+    let tag = `<script nonce="${res.locals.cspNonce}">window.__CONTENT__=${serialiseContent(content)};` +
               `window.__SHOP__=${serialiseContent(reglagesPublics(shop))}</script>`;
     // If </head> is somehow absent, fall through to the untouched file rather
     // than guessing where to put the tag.
