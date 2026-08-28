@@ -95,6 +95,34 @@ app.use(cors());
 // Log HTTP requests (Morgan)
 app.use(morgan('dev'));
 
+// La compression, mesurée sur le site en ligne plutôt que supposée.
+//
+//   curl -H 'Accept-Encoding: gzip, br' .../assets/index-….js
+//   -> 1 037 027 octets, aucun en-tête content-encoding
+//
+// Le paquet principal partait donc entier, à chaque première visite, sur un
+// site dont la clientèle est à Genève et souvent sur son téléphone. Rien devant
+// le serveur ne compressait : ni proxy, ni hébergeur. Le doute était permis
+// avant la mesure — il ne l'est plus.
+//
+// Le gain est immédiat et sans contrepartie : ce paquet tombe aux alentours de
+// 146 Ko, et translations.js de 102 à 33 Ko.
+//
+// Dans un try/catch, et c'est délibéré. Les commentaires de ce dépôt décrivent
+// un déploiement qui ne remplace que ./dist ; si node_modules n'est pas
+// réinstallé sur l'hôte, `require` échouerait au démarrage et le site entier
+// tomberait — pour une optimisation. Absent, il ne se passe rien de plus
+// qu'avant, et la ligne du journal dit quoi faire.
+try {
+  const compression = require('compression');
+  app.use(compression());
+} catch (err) {
+  console.warn(
+    'compression absent : les fichiers partent sans compression. ' +
+    'Lancer « npm install --prefix server » sur l’hôte pour l’activer.'
+  );
+}
+
 // Parse incoming JSON requests. Preserve the raw body too so /api/sumup/webhook
 // can verify SumUp's HMAC signature against the exact bytes that were signed.
 // Limit is generous because product image uploads are sent as base64 JSON.
@@ -146,7 +174,29 @@ const buildPath = path.join(__dirname, '../dist');
 // straight from disk and never reach the catch-all below, arriving without her
 // texts injected. Every other route worked, which is exactly what made this
 // worth catching with a test rather than by eye.
-app.use(express.static(buildPath, { index: false }));
+app.use(express.static(buildPath, {
+  index: false,
+  setHeaders: (res, chemin) => {
+    // Les fichiers de /assets/ portent une empreinte dans leur nom : Vite en
+    // change à chaque fois que leur contenu change. Ils sont donc immuables au
+    // sens strict — une adresse donnée ne désignera jamais un autre contenu.
+    //
+    // Le site les servait avec « max-age=0 » (relevé en ligne) : chaque visite
+    // suivante revalidait le paquet entier auprès du serveur pour s'entendre
+    // répondre qu'il n'avait pas changé. Un aller-retour réseau par fichier,
+    // pour rien.
+    //
+    // Un an et « immutable » : le navigateur ne redemande plus rien. Le
+    // déploiement suivant produit d'autres noms, donc d'autres adresses, et
+    // rien ne peut rester coincé sur une version périmée.
+    //
+    // index.html est délibérément exclu : c'est lui qui désigne les empreintes
+    // du jour, et le mettre en cache figerait le site sur son ancienne version.
+    if (/[\\/]assets[\\/]/.test(chemin)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  },
+}));
 
 // Serialise the content overrides for embedding inside a <script> tag.
 //
