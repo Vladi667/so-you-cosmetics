@@ -1,0 +1,23 @@
+# La boutique est ouverte au public depuis le 27 août 2026.
+# Ce fichier disait « Disallow: / » jusque-là.
+
+User-agent: *
+Allow: /
+
+# L'administration et l'API n'ont rien à faire dans un index de moteur.
+# Ce n'est pas une protection — elles sont déjà derrière une authentification —
+# mais une page de connexion dans les résultats de recherche n'aide personne.
+Disallow: /admin
+Disallow: /api/
+
+# Les pages de résultats de recherche : autant de variantes qu'il y a de
+# requêtes, aucune n'ayant de contenu propre.
+Disallow: /search/
+
+# Le plan du site, construit à la demande par le serveur depuis la base.
+#
+# C'est le seul chemin de découverte qui ne dépende pas des liens de la page :
+# le catalogue n'affiche que douze fiches avant de demander un défilement, et
+# les rubriques ne s'atteignent que depuis le fil d'Ariane d'une fiche. Sans ce
+# plan, la centaine de fiches qui suit n'est atteignable par aucun robot.
+Sitemap: https://soyoucosmetics.com/sitemap.xml

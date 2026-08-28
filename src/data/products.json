@@ -1,78 +1,60 @@
 {
   "categories": [
-    "Accessoires",
-    "Ambiance",
-    "Ateliers",
-    "Bien-être et détente",
-    "Bons cadeaux",
-    "Bébés",
-    "Chiens",
-    "Coffret cadeau",
-    "Contenants cosmétiques",
-    "Enfants",
-    "Féminin/Masculin",
-    "Hommes",
-    "Huiles",
-    "Hygiène mains",
-    "Ingrédients DIY",
-    "Ligne Lavande/Lavandin",
-    "Ligne Orange douce",
-    "Ligne Rose Poudrée",
-    "Made to Order",
-    "Parfum",
-    "Savon Liquide",
+    "Soins Visage",
+    "DIY",
+    "Soins Capillaires",
+    "Soins Corps",
+    "Bain & Bien-être",
     "Savons",
-    "Savons visage & corps",
-    "Shampoings",
-    "Soin des cheveux",
-    "Soin des lèvres",
-    "Soins de la peau",
-    "Soins du visage",
-    "Vegan"
+    "Accessoires",
+    "Cadeaux",
+    "Ambiance",
+    "Enfants",
+    "Personnalisation",
+    "Parfums"
   ],
   "products": [
     {
       "id": "product_16748cd3-85de-d7d0-c7ee-676bda3a72ce",
-      "name": "Eau d'aloe vera bio",
+      "name": "Eau d'aloe vera bio - 100 ml",
       "description": "<p>Pensez à toujours l'avoir avec vous!</p><p>&nbsp;</p><p><span><span><span><span><span><span><span>Eau d'aloe vera bio, un précieux allié pour&nbsp;parfaire le nettoyage de votre visage en l’appliquant &nbsp;après le nettoyage et avant votre crème. </span></span></span></span></span></span></span></p><p>&nbsp;</p><p><span><span><span><span><span><span><span>Peut-être efficace contre les peaux déshydratées, sèches, matures, grasses à tendance acnéique, irritées et sensibles. Peut aider à apaiser les coups de soleil et irritations contre le feu du rasoir. Peut-être utiliser sur la peau, le cuir chevelu et les cheveux fins sans volume, secs, cassants, abîmés et sur cuir chevelu irrité et sensible. </span></span></span></span></span></span></span></p><p>&nbsp;</p><p><span><span><span><span><span><span><span>Faites un test au préalable si première utilisation.</span></span></span></span></span></span></span></p><p>&nbsp;</p><p>Le saviez-vous? Les eaux florales ou hydrolats, naturels et chargés en principes actifs, &nbsp;remplacent idéalement les lotions&nbsp;toniques!</p><p>&nbsp;</p><p>S'utilise pour parfaire le démaquillage, nettoyage du visage, tonifier ou&nbsp;apporter un&nbsp;soin apaisant et rafraichissant&nbsp;pour le&nbsp;visage, le&nbsp;cuir&nbsp;chevelu&nbsp;et aussi pour discipliner et&nbsp;parfumer les cheveux...d'une façon saine et naturelle!!</p><p>&nbsp;</p><p>Les hydrolats (terme générique&nbsp;partie de la plante utilisée : feuilles et/ou&nbsp;tiges avec ou sans fleurs&nbsp;et/ou&nbsp;écorces et/ou&nbsp;racines)&nbsp;ou eaux florales (partie de la plante utilisée : fleurs)&nbsp;étant des résidus acqueux issus de l'extraction des huiles essentielles par distillation à la vapeur et contiennent des principes actifs précieux pour la peau et&nbsp;sont utilisés par un&nbsp;grand&nbsp;nombre de personnes&nbsp;comme une lotion tonique.</p><p>&nbsp;</p><p>Ces hydrolats conviennent à tous types de peaux selon ses besoins et envies.</p><p>Voici quelques indications générales pour vous aider à choisir :</p><p>&nbsp;</p><p><strong>Eau d'aloe vera bio&nbsp;</strong></p><p><em>Vertus attribuées: Hydratantes,&nbsp;protectrices et&nbsp;réparatrices</em></p><p>- Peaux: Déshydratées et sèches, matures, grasses&nbsp;à tendance acnéique,&nbsp;irritées,&nbsp;&nbsp;sensibles,&nbsp;coups de soleil, brûlures, feu du rasoir</p><p>- Cheveux: Fragiles, fins, sans volume,&nbsp;secs, cassants,&nbsp;abîmés, cuir chevelu irrité et&nbsp;sensible</p><p>&nbsp;</p><p><strong>Eau de rose bio&nbsp;</strong></p><p><em>Vertus atribuées: Astringentes, apaisantes, assainissantes, donne de l'éclat</em></p><p>- Peaux: Matures, sèches, réactives, irritées, sensibles&nbsp;(rougeurs et&nbsp;irritations),&nbsp;grasses&nbsp;à tendance acnéique,&nbsp;eczéma, feu du rasoir...</p><p>-&nbsp;Cuir chevelu irrité, sensible</p><p>&nbsp;</p><p><strong>Eau de fleur&nbsp;d'oranger bio&nbsp;</strong></p><p><em>Vertus attribuées: Rafraichissantes, régénérantes, tonifiantes, stimule l'éclat&nbsp;</em></p><p>- Peaux: Ternes, fatiguées, sensibles, fragiles,&nbsp;délicates (enfants),&nbsp;matures, sèches, irritées, &nbsp;</p><p>- Cheveux: Cassants,&nbsp;dévitalisés,&nbsp;fragiles, fins, sans volume,&nbsp;chevelu irrité et&nbsp;sensible</p><p>&nbsp;</p><p><strong>Hydrolat de lavande officinale bio&nbsp;</strong></p><p><em>Vertus attribuées: Purifiantes, adoucissantes, revitalisantes, apaisantes</em></p><p>- Peaux: Grasses à tendance acnéiques, eczéma, démangeaisons, fragiles, délicates (enfants), sensibles, irritées,&nbsp;rougeurs, coup de soleil, brulures, feu du rasoir</p><p>- Cheveux gras, cuir chevelu irrité et sensible</p><p>&nbsp;</p><p><strong>Hydrolat de menthe poivrée bio -&nbsp;Effet glaçon!</strong></p><p><em>Vertus attribuées: Purifiantes, stimulantes,&nbsp;rafraichissantes,&nbsp;tonifiantes&nbsp;et apaisantes&nbsp;</em></p><p>- Peaux:&nbsp;Grasses à&nbsp;tendance acnéique,&nbsp;réactives, sensibles aux rougeurs et aux irritations,&nbsp;ternes, fatiguées, irrégulières, coups de soleil, brûlures</p><p>- Cheveux: &nbsp;Gras, Cuir chevelu irrité, sensible, pellicules&nbsp;</p><p>&nbsp;</p><p><strong>Hydrolat d'hélichryse (immortelle) bio&nbsp;</strong></p><p><em>Vertus attribuées: Régénérantes, purifiantes,&nbsp;apaisantes, anti-inflammatoire&nbsp;&amp;&nbsp;raffermissantes</em>&nbsp;</p><p>- Peaux: Matures,&nbsp;acnéiques, irritées, eczéma,&nbsp;réactives, sensibles aux rougeurs,&nbsp;sèches, ternes, fatiguées,&nbsp;coups de soleil, feu du rasoir,&nbsp;</p><p>- Yeux: Cernes, poches, rides et ridules</p><p>- Cheveux ternes et cuir chevelu irrité&nbsp;et sensible</p><p>&nbsp;</p><p><strong>Hydrolat de tilleul bio&nbsp;</strong></p><p><em>Vertus attribuées : Apaisante&nbsp;et calmante</em></p><p>- Peaux: &nbsp;Fragiles et délicates (enfants),&nbsp;ternes, fatiguées,&nbsp;irritées, eczéma, gerçures, sensibles et sujettes à inconfort, coups de soleil, brûlures, feu du rasoir</p><p>- Cheveux ternes et&nbsp;sans vie</p><p>&nbsp;</p><p>Ces hydrolats sont naturels, biodégradables et non testés sur les animaux.</p>",
       "images": [
-        "https://static.wixstatic.com/media/a6901a_7b3e6d4d1aa945959f055a7af2fb7a98~mv2.jpg/v1/fill/w_800,h_1000,al_c,q_90,usm_0.66_1.00_0.01/file.jpg",
-        "https://static.wixstatic.com/media/a6901a_a8fe3498747f4fd9a9665d7a854ada35~mv2.png/v1/fill/w_800,h_1000,al_c,q_90,usm_0.66_1.00_0.01/file.jpg"
+        "/uploads/Eau_aloe_vera_bio_cosmetiques_naturels-g-1782232847644-f89dc030.jpg"
       ],
       "price": 16,
       "collections": [
-        "Soins de la peau",
-        "Savons"
+        "Soins Visage"
       ],
-      "ribbon": "Hydrolat"
+      "ribbon": "Eau d'aloe vera",
+      "inStock": true
     },
     {
       "id": "product_40c857e6-9164-e74b-6211-e04996352c34",
-      "name": "Masque Visage Argile Rouge à l'extrait d'Echinacée et de Pivoine",
-      "description": "<p>Adapté aux peaux normales, mixtes, grasses, réactives, matures et sèches et est idéale pour les peaux&nbsp;ternes, fatiguées et irritées. L'argile rouge, riche en fer, est appréciée pour ses propriétés purifiantes, détoxifiantes et revitalisantes, elle apporte un éclat naturel à la peau tout en l'adoucissant et la purifiant.</p><p>&nbsp;</p><p>Retrouvez un peau lumineuse et rayonnante &nbsp;avec notre masque visage à l'argile rouge&nbsp;illite aux extraits d'échinacée et de pivoine&nbsp;aux vertus anti-inflammatoires, apaisantes et anti-radiculaires et de&nbsp;la glycérine végétale&nbsp;pour ces vertus hydratantes et émollientes qui donnent de la souplesse à la peau.</p><p>&nbsp;</p><p>Mode d'emploi :</p><p>Appliquer le masque en fine couche sur le visage et cou préalablement nettoyés en évitant le contour des yeux. Laissez poser 10 - 15 minutes&nbsp;puis bien rincer à l'eau.</p><p>Pour de meilleurs résultats, utiliser le masque 2 fois par semaine.</p><p>&nbsp;</p><p>Astuce :</p><p>L'efficacité du masque sera meilleure sur une peau préalablement exfoliée. L'exfoliation consiste à enlever les peaux mortes fixées à la base de la peau. Celle-ci permet alors non seulement d'ouvrir les pores bouchés permettant le masque de mieux absorber les impuretés et sébum mais&nbsp;permet également la peau de gagner en douceur et en éclat. Ainsi vos produits de soins hydratants/anti-âge et autres seront mieux absorbés par la peau.&nbsp;</p><p>&nbsp;</p><p><em>Produit fait main dans l'atélier de So You à Genève. </em></p><p><em>Non testé sur les animaux et&nbsp;respectueux de la Nature.</em></p><p>&nbsp;</p><p>Ingrédients :&nbsp;Aqua (Water), Illite, Glycerin, Butylene Glycol,Kaolin, Polyacrylate Crosspolymer-6, Benzyl Alco-hol, Xanthan Gum,Salicylic Acid, Parfum(Fragrance),T-Butyl Alcohol, Sorbic Acid,Echinacea AngustifoliaExtract, PaeoniaFlower Extract, Sodium Hydroxide</p>",
+      "name": "Masque Visage Argile Rouge à l'extrait d'Echinacée et de Pivoine - 15 ml",
+      "description": "</p><p>&nbsp;</p><p>&nbsp;Masque visage à l'argile rouge </p><p>&nbsp;</p><p>&nbsp;Offrez à votre peau une parenthèse de pureté et d'éclat grâce à ce masque visage à l'argile rouge Illite, enrichi en extraits d'échinacée, de pivoine et en glycérine végétale.\n\n</p><p>&nbsp;</p><p>&nbsp;Adapté à tous les types de peaux, y compris les peaux normales, mixtes, grasses, sèches, matures et sensibles, il est particulièrement apprécié des peaux ternes, fatiguées ou en manque d'éclat.Naturellement riche en oxyde de fer, l'argile rouge Illite est reconnue pour ses propriétés purifiantes et revitalisantes. Elle aide à éliminer les impuretés, à absorber l'excès de sébum et à révéler un teint plus frais, uniforme et lumineux.</p><p>&nbsp;</p><p>&nbsp;Les extraits d'échinacée et de pivoine sont appréciés pour leurs propriétés apaisantes et antioxydantes. Ils contribuent à préserver la peau des effets visibles des agressions extérieures et du stress environnemental.La glycérine végétale aide à maintenir l'hydratation de la peau tout en lui procurant confort, douceur et souplesse.</p><p>&nbsp;</p><p>&nbsp;Résultat </p><p>&nbsp;</p><p>&nbsp;Après utilisation, la peau paraît plus nette, plus douce et visiblement plus lumineuse. Le teint retrouve fraîcheur et éclat naturel.\n</p><p>&nbsp;</p><p>&nbsp;Conseil d'utilisation </p><p>&nbsp;</p><p>&nbsp; Appliquer une fine couche sur le visage et le cou préalablement nettoyés, en évitant le contour des yeux.Laisser agir 10 à 15 minutes, puis rincer abondamment à l'eau tiède.\nPour un résultat optimal, utiliser une à deux fois par semaine.\n</p><p>&nbsp;</p><p>&nbsp;Astuce beauté </p><p>&nbsp;</p><p>&nbsp;Pour optimiser les bienfaits du masque, réalisez au préalable un gommage doux.L'exfoliation élimine les cellules mortes accumulées à la surface de la peau, affine visiblement le grain de peau et favorise une meilleure pénétration des soins appliqués par la suite. Votre peau retrouve davantage de douceur, d'éclat et de confort.\n</p><p>&nbsp;</p><p>&nbsp;Ingrédients (INCI)</p><p>&nbsp;</p><p>&nbsp;Aqua (Water), Illite, Glycerin, Butylene Glycol,Kaolin, Polyacrylate Crosspolymer-6, Benzyl Alco-hol, Xanthan Gum,Salicylic Acid, Parfum(Fragrance),T-Butyl Alcohol, Sorbic Acid,Echinacea AngustifoliaExtract, PaeoniaFlower Extract, Sodium Hydroxide</pAqua (Water), Illite, Glycerin, Butylene Glycol, Kaolin, Polyacrylate Crosspolymer-6, Benzyl Alcohol, Xanthan Gum, Salicylic Acid, Parfum (Fragrance), T-Butyl Alcohol, Sorbic Acid, Echinacea Angustifolia Extract, Paeonia Flower Extract, Sodium Hydroxide.\n</p><p>&nbsp;</p><p>&nbsp;Bon à savoir</p><p>&nbsp;</p><p>&nbsp;✓ Fabriqué artisanalement dans l'atelier So You à Genève\n✓ Jamais testé sur les animaux conformément à la réglementation en vigueur</p><p>&nbsp;</p><p>&nbsp; ",
       "images": [
-        "https://static.wixstatic.com/media/a6901a_355ae8c5ec80456c9f91e4d73c393ce3~mv2.jpg/v1/fill/w_800,h_1000,al_c,q_90,usm_0.66_1.00_0.01/file.jpg",
-        "https://static.wixstatic.com/media/a6901a_6267052671304d41b218d5c42fe5aeda~mv2.jpg/v1/fill/w_800,h_1000,al_c,q_90,usm_0.66_1.00_0.01/file.jpg"
+        "/uploads/Masque_visage_purifiant_argile_rouge_piv-1782488795349-52f6e27d.jpg"
       ],
       "price": 15,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
-      "ribbon": "Masque purifiant"
+      "ribbon": "Masque purifiant",
+      "inStock": true
     },
     {
       "id": "product_8702d09b-dedf-2bf8-c0d7-157edc5edbf7",
-      "name": "Masque Visage Argile Jaune à l'extrait de ginseng",
-      "description": "<p>Adapté aux peaux normales, mixtes, grasses, réactives et est idéale pour les peaux&nbsp;ternes, fatiguées et sensibles.</p><p>&nbsp;</p><p>Retrouvez un peau lumineuse&nbsp;avec notre masque visage à l'argile jaune illite qui est naturellement riche en minéraux et oligoéléments aux effets équilibrants et stimulants, va absorber l'excès de sébum, détoxifier et purifier la peau en profondeur. &nbsp;Alors que extrait de ginseng va apporter ses bienfaits anti-âge, la glycérine végétale&nbsp;va apporter les&nbsp;vertus hydratantes et émollientes qui donnent de la souplesse à la peau.</p><p>&nbsp;</p><p>Mode d'emploi :</p><p>Appliquer le masque en fine couche sur le visage et cou préalablement nettoyés en évitant le contour des yeux. Laissez poser 10 - 15 minutes&nbsp;puis bien rincer à l'eau.</p><p>Pour de meilleurs résultats, utiliser le masque 2 fois par semaine.</p><p>&nbsp;</p><p>Astuce :</p><p>L'efficacité du masque sera meilleure sur une peau préalablement exfoliée. L'exfoliation consiste à enlever les peaux mortes fixées à la base de la peau. Celle-ci permet alors non seulement d'ouvrir les pores bouchés permettant le masque de mieux absorber les impuretés et sébum mais&nbsp;permet également la peau de gagner en douceur et en éclat. Ainsi vos produits de soins hydratants/anti-âge et autres seront mieux absorbés par la peau.&nbsp;</p><p>&nbsp;</p><p><em>Produit fait main dans l'atélier de So You à Genève. </em></p><p><em>Non testé sur les animaux et&nbsp;respectueux de la Nature.</em></p><p>&nbsp;</p><p>Ingrédients : Aqua (Water), Illite, Butylene Glycol, Glycerin, Kaolin, Polyacrylate Crosspolymer-6, Benzyl&nbsp;alcohol, &nbsp;Xanthan Gum, Salicylic Acid, Panax&nbsp;Ginseng Root Powder, Parfum (Fragrance),T-Butyl Alcohol, Sorbic Acid, Sodium Hydroxide</p>",
+      "name": "Masque Visage Argile Jaune à l'extrait de ginseng - 15 ml",
+      "description": "<p><strong>Offrez à votre peau un véritable coup d'éclat grâce à ce masque visage à l'argile jaune Illite, enrichi en extrait de ginseng et en glycérine végétale.</strong></p>\n\n<p>Adapté aux peaux normales, mixtes, grasses et réactives, il est particulièrement recommandé pour les peaux ternes, fatiguées ou en manque d'éclat.</p>\n\n<p>Naturellement riche en minéraux et oligoéléments, l'argile jaune Illite est reconnue pour ses propriétés purifiantes et rééquilibrantes. Elle aide à absorber l'excès de sébum, à éliminer les impuretés et à révéler un teint plus frais, plus uniforme et naturellement lumineux.</p>\n\n<p>L'extrait de ginseng est apprécié pour ses propriétés revitalisantes. Il contribue à préserver l'éclat naturel de la peau, tandis que la glycérine végétale aide à maintenir son hydratation et lui apporte douceur, souplesse et confort.</p>\n\n<p><strong>Ce que votre peau va apprécier&nbsp;:</strong></p>\n\n<p>Une peau visiblement plus nette, plus douce et parfaitement confortable. Le teint paraît plus frais, plus lumineux et retrouve tout son éclat naturel.</p>\n\n<p><strong>Le rituel So You&nbsp;:</strong></p>\n\n<p>Appliquer une fine couche sur le visage et le cou préalablement nettoyés, en évitant le contour des yeux.</p>\n\n<p>Laisser agir 10&nbsp;à&nbsp;15&nbsp;minutes, puis rincer abondamment à l'eau tiède.</p>\n\n<p>Pour un résultat optimal, utiliser une à deux fois par semaine.</p>\n\n<p><strong>Le conseil So You&nbsp;:</strong></p>\n\n<p>Pour révéler tout l'éclat de votre peau, réalisez un gommage doux avant l'application du masque. L'exfoliation élimine les cellules mortes accumulées à la surface de la peau, affine visiblement son grain et favorise une meilleure pénétration des soins appliqués ensuite. Votre peau retrouve davantage de douceur, de confort et de luminosité.</p>\n\n<p><strong>Composition (INCI)&nbsp;:</strong></p>\n\n<p>Aqua (Water), Illite, Butylene Glycol, Glycerin, Kaolin, Polyacrylate Crosspolymer-6, Benzyl Alcohol, Xanthan Gum, Salicylic Acid, Panax Ginseng Root Powder, Parfum (Fragrance), T-Butyl Alcohol, Sorbic Acid, Sodium Hydroxide.</p>\n\n<p><strong>L'engagement So You&nbsp;:</strong></p>\n\n<p>✓ Fabriqué artisanalement dans notre atelier à Genève.</p>\n\n<p>✓ Testé sous contrôle dermatologique sur des volontaires humains.</p>\n\n<p>✓ Jamais testé sur les animaux conformément à la réglementation en vigueur.</p>\n\n<p>✓ Parfum sans substances CMR ni phtalates.</p>\n\n<p><strong>Précautions d'emploi&nbsp;:</strong></p>\n\n<p>Effectuer un test cutané préalable avant la première utilisation.</p>\n\n<p>Les informations relatives aux ingrédients et à leurs propriétés sont fournies à titre informatif et ne constituent pas un avis médical.</p>\n",
       "images": [
-        "https://static.wixstatic.com/media/a6901a_b486c2ed83a04bb3ae0f8e3f05c5f114~mv2.jpg/v1/fill/w_800,h_1000,al_c,q_90,usm_0.66_1.00_0.01/file.jpg",
-        "https://static.wixstatic.com/media/a6901a_f18f5ef24ac64b92972eadfe047254d2~mv2.jpg/v1/fill/w_800,h_1000,al_c,q_90,usm_0.66_1.00_0.01/file.jpg"
+        "/uploads/Masque_visage_purifiant_argile_jaune_pan-1782823678590-a7b23578.jpg"
       ],
       "price": 15,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
-      "ribbon": "Masque purifiant"
+      "ribbon": "Masque Argile Jaune Ginseng",
+      "inStock": true
     },
     {
       "id": "product_857c89bd-6eb2-8713-47b8-5327d14e7218",
@@ -83,26 +65,23 @@
       ],
       "price": 3.5,
       "collections": [
-        "Accessoires"
+        "DIY"
       ],
       "ribbon": "Flacon pet"
     },
     {
       "id": "product_a25e4d37-6e48-c16a-0a88-4b24a0b9d509",
-      "name": "Rhassoul (Ghassoul) extra fin du Maroc",
+      "name": "Rhassoul (Ghassoul) extra fin du Maroc -200g sachet ziplock",
       "description": "<p>Le Rhassoul est une poudre d'argile naturelle d’origine montagneuse extrait&nbsp;des roches du Maroc. Utilisé depuis des siècles pour nettoyer et purifier en douceur les impuretés de la peau, du cuir chevelu et des cheveux.&nbsp;Le rhassoul offre des bienfaits nettoyants, apaisants, absorbants, purifiants, assainissants, détoxifiants et régénérateurs grâce aux vitamines, minéraux et oligoéléments qu'il&nbsp;contient.</p><p>&nbsp;</p><p>Apprécié:</p><p>Par les peaux acnéiques, normales à grasses, sèches, sensibilisées, ternes, fatiguées, irrégulières et souffrant de&nbsp;&nbsp;points noirs. Utilisé en masque il nettoie, détoxifie, purifie et nourrit la peau en douceur et en profondeur en absorbant l'excès de sébum sans l'agresser et laissant la peau douce, soyeuse, éclatante et tonique.&nbsp;En gommage il élimine&nbsp;les couches de peau morte libèrant ainsi les pores et peut donc être utilisé pour gommer naturellement le visage.</p><p>&nbsp;</p><p>Par les cheveux mixtes à gras, ternes, sans vie et par les chevelus irrités et sensibles.</p><p>En masque, il agit comme un shampooing naturel, il dégraisse et purifie en absorbant et régulant l'excès de sébum et nettoie les cheveux et le cuir chevelu sans les agresser. Il&nbsp;les revitalise, redonne de l'éclat et vitalité aux cheveux.</p><p>- S'utilise comme shampoing, après shampoing, clarifiant ou détoxe, le rhassoul aide à éliminer les résidus des produits utilisés antérieurement&nbsp;&nbsp;(pose 5 à 10 minutes) ou masque (10 à 20 minutes)</p><p>&nbsp;</p><p><span><span><span><span><span>Pour le visage, prélever une quantité nécessaire de rhassoul avant de faire le mélange. Pour les cheveux, Il vous faudra en total (si mélangé à d'autres poudres)+/- de 75g pour cheveux très court. Entre +/- 100g (mi-long) et 200g voir plus selon la longueur de vos cheveux.</span></span></span></span></span></p><p>&nbsp;</p><p><span><span><span><span><strong><span>Preparation&nbsp;</span></strong><strong><span>de la pâte</span></strong></span></span></span></span></p><p><span><span><span><span><span>- Dans un récipient&nbsp;non métallique, écrasez&nbsp;bien les grumeaux avec un pinceau applicateur en plastique.&nbsp;</span></span></span></span></span></p><p><span><span><span><span><span>- Puis ajoutez&nbsp;un peu d'eau&nbsp;tiède (commencer par 50% d'eau par rapport au poids/volume). Rajoutez&nbsp;de l'eau et bien mélanger jusqu'à l'obtention d'une consistance d'un yogourt.</span></span></span></span></span></p><p><span><span><span><span><span>- &nbsp;Appliquez le mélange à l'aide d'un pinceau ou simplement avec le mains (en option avec les gants), laissez poser puis rincez à l'eau claire tout en massageant&nbsp;le cuir chevelu ou le visage afin de déloger tout résidu.</span></span></span></span></span></p><p>Suivant l'usage que vous souhaitez faire avec le rhassoul, vous pouvez remplacer ou mélanger l'eau par un hydrolat/eau florale (rose: régule l'excès de sébum, aloe: hydrate, immortel: anti-âge, fleur d'oranger: apaise, tilleul: pour l'éclat, lavande: purifie). Vous pouvez également ajouter quelques gouttes de votre huile préférée pour nourrir la peau ou cuir chevelu.</p><p>&nbsp;</p><p><strong>Avertissements</strong></p><p>Il est vivement recommandé de faire un test sur votre peau. Préparez et appliquez une petite quantité (creux de l'avant-bras ou derrière une oreille)&nbsp;et attendre 72 heures avant d'utiliser&nbsp;le produit.&nbsp;</p><p>&nbsp;</p><p>Les informations ci-dessus sont communiquées à titre informatif uniquement&nbsp;en fonction de la réputation générale des&nbsp;produits liée à&nbsp;cette fiche.&nbsp;</p><p>Ne pas manipuler le produit près d'une source de ventilation et ne pas le respirer.</p>",
       "images": [
-        "https://static.wixstatic.com/media/a6901a_4a6583b9f5e54982ad538c49b597e892~mv2.jpeg/v1/fill/w_800,h_1000,al_c,q_90,usm_0.66_1.00_0.01/file.jpg"
+        "/uploads/Rhassoul-ghassoul-du-maroc-extra-fin-cos-1782401824389-abec403e.jpg"
       ],
       "price": 15,
       "collections": [
-        "Shampoings",
-        "Soin des cheveux",
-        "Soins de la peau",
-        "Savons",
-        "Accessoires"
+        "Soins Capillaires"
       ],
-      "ribbon": "Masque et coloration végétale"
+      "ribbon": "Masque et coloration végétale",
+      "inStock": true
     },
     {
       "id": "product_2968d2f8-3e9c-635e-59fd-586dfcdb9935",
@@ -114,7 +93,7 @@
       ],
       "price": 32.5,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Crème visage"
     },
@@ -127,8 +106,7 @@
       ],
       "price": 20,
       "collections": [
-        "Soins de la peau",
-        "Savons"
+        "Soins Corps"
       ],
       "ribbon": "Gommage parfum Spicey"
     },
@@ -141,8 +119,7 @@
       ],
       "price": 20,
       "collections": [
-        "Soins de la peau",
-        "Savons"
+        "Soins Corps"
       ],
       "ribbon": "Gommage parfum Lin Blanc"
     },
@@ -155,8 +132,7 @@
       ],
       "price": 20,
       "collections": [
-        "Soins de la peau",
-        "Savons"
+        "Soins Corps"
       ],
       "ribbon": "Gommage au parfum Thé Vert"
     },
@@ -169,23 +145,23 @@
       ],
       "price": 20,
       "collections": [
-        "Soins de la peau",
-        "Savons"
+        "Soins Corps"
       ],
       "ribbon": "Gommage parfum Amaretto"
     },
     {
       "id": "product_c9dbcfcb-665d-2d97-060e-1b39aba9c869",
-      "name": "Sérum anti-âge, anti-pollution, illuminateur",
-      "description": "<p>Ce sérum original et innovant, d'une texture fluide et non gras, est l'allié des peaux fatiguées, fragilisées, sensibles, stressées (pollution, tabac etc.) et terne ainsi que les peaux sèches, déhydratées et ridées.</p><p>&nbsp;</p><p>Formulé par des professionnels en cosmétiques naturels complexes et produit avec des ingrédients sélectionnés avec soin qui permettront ce sérum&nbsp;de&nbsp;se fusionner&nbsp;lors de l'utilisation, libérant ainsi les actifs anti-âge, anti-pollution, anti UV et radicaux libres tout en apportant&nbsp;le lissage, le comblement des rides et un teint lumineux.</p><p>&nbsp;</p><p>Cette formule permet donc de lutter contre la pollution et autres agressions extérieures tout en régénérant et en hydratant l'épiderme. Elle permet également de rendre l'épiderme&nbsp;plus résistant&nbsp;aux rayons UV nocifs pour la peau&nbsp;tout en apportant un nouvel éclat.&nbsp;</p><p>&nbsp;</p><p>Ingrédients phares :</p><p><strong>Perles d’alginate</strong>: Actif anti-pollution, protectrices des agressions extérieures et de la déhydration, anti-âge, illuminatrice de teint</p><p><strong>Extrait de bambou</strong>: Naturellement riche en silice, vitamines et minéraux l'extrait de bambou apporte à la peau les bienfaits hydratants, apaisants, astringents (limite la production de sébum), matifiants et anti-âge en favorisant activement la synthèse du collagène aidant la peau à conserver sa fermeté, elasticité et jeunesse et luminosité</p><p>&nbsp;</p><p>Le gel du sérum est composé d’eau, de glycérine, de cellulose et de gélifiant également utilisé dans l'industrie agro-alimentaire.</p><p>&nbsp;</p><p>Observez&nbsp;jour après jour, les rides et ridules lissées, la peau mieux hydratée, teint unifié paraissant plus jeune et lumineuse.</p><p>&nbsp;</p><p>Convient à tous types de peaux et s'utilise jour et nuit sur&nbsp;le visage, contour des yeux et le cou. A utiliser comme base sous la crème de jour ou de nuit. A associer avec nos crèmes pour le visage:</p><p>&nbsp;</p><p><strong>Under Control:</strong> Peau grasse</p><p><strong>Consensus:</strong> Peau normale et mixte</p><p><strong>Oasis:</strong> Peau sèche</p><p><strong>Absolute:</strong> Peau mature et sèche</p><p>&nbsp;</p><p><em>Ne prenez pas au mot la description ci-dessus mais découvrez par vous même les bienfaits multiples de ce sérum sur votre visage en venant l'essayer à la boutique.&nbsp;</em></p><p>&nbsp;</p><p><span><span><span><span><span><span><span><span><span><span><span><span><span><strong>Ingredients:</strong> Aqua, glycerin, polysorbate 20, phenoxy-ethanol, propanediol, hydroxyethyl-cellulose, parfum, mica, calcium alginate, biosaccharide gum 4, titanium dioxide, gellan gum, xanthan gum, citric acid,&nbsp;</span></span></span></span></span></span></span></span></span><span><span><span><span><span><span><span><span><span>bambusa vulgaris shoot extract</span></span></span></span></span></span></span></span></span></span></span></span></span></p><p>*Testé sous contrôle dermatologique *Non testé sur les animaux</p><p>*Le parfum ne contient pas de substance CMR ni phtalate. *Ne contient pas de nanomatériau.</p><p>&nbsp;</p><p><em>Produit naturel réalisé de façon artisanale dans l'atelier de So You à Genève&nbsp;</em></p><p>&nbsp;</p><p><em>Avertissement : Toujours faire un test au préalable en cas de&nbsp;première utilisation. </em></p><p><em>Les bienfaits, propriétés, indications et mode d'utilisation sont communiqués à titre informatif en fonction de la réputation générale provenant d'ouvrages de référence et ne sauraient constituer une information médicale.</em></p><p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p>",
+      "name": "Sérum anti-âge, anti-pollution, illuminateur extrait de bambou - 30 ml",
+      "description": "Sérum Éclat & Défense\n\nCe sérum innovant à la texture légère et non grasse est spécialement conçu pour les peaux fatiguées, stressées, sensibles, déshydratées ou en manque d'éclat. Il convient également aux peaux matures souhaitant préserver leur confort et leur luminosité au quotidien.\nSa texture originale associe un gel frais à de délicates perles d'alginate qui fondent au contact de la peau lors de l'application. Cette fusion unique libère progressivement des actifs soigneusement sélectionnés qui contribuent à préserver la peau des agressions extérieures tout en lui apportant confort, hydratation et éclat.\nJour après jour, la peau paraît plus souple, plus confortable et visiblement mieux hydratée. Le teint semble plus uniforme, frais et naturellement lumineux.\n\nLes actifs phares\nPerles d'alginate\nVéritables concentrés de douceur, elles contribuent à préserver l'hydratation de la peau et à la protéger des effets visibles du stress environnemental. Elles participent également à améliorer l'apparence du teint et à révéler son éclat naturel.\n\nExtrait de bambou\nNaturellement riche en silice, vitamines et minéraux, il est apprécié pour ses propriétés hydratantes, apaisantes et reminéralisantes. Il contribue à améliorer l'apparence de la peau, à affiner visiblement le grain de peau et à préserver sa souplesse ainsi que son éclat naturel.\n\nBase gel hydratante\nLe gel du sérum est formulé à partir d'ingrédients soigneusement sélectionnés tels que l'eau, la glycérine végétale et des agents texturants doux offrant une texture fraîche, légère et agréable à l'application.\n\nConseils d'utilisation\nAppliquer matin et soir sur une peau propre et sèche du visage, du contour des yeux et du cou.\nDéposer quelques gouttes dans le creux de la main puis appliquer délicatement en massant jusqu'à absorption complète.\nUtiliser seul ou comme base avant votre crème de jour ou de nuit.\n\nPour compléter votre rituel beauté, associez-le à nos soins visage :\nUnder Control – Peaux grasses\nConsensus – Peaux normales à mixtes\nOasis – Peaux sèches\nAbsolute – Peaux matures et sèches\n\nUne expérience à découvrir\nNous vous invitons à découvrir par vous-même la texture unique de ce sérum et le confort qu'il procure à la peau. Rendez-nous visite en boutique pour un conseil personnalisé et une expérience sensorielle complète.\n\nIngrédients (INCI)\nAqua, Glycerin, Polysorbate 20, Phenoxyethanol, Propanediol, Hydroxyethyl Cellulose, Parfum (Fragrance), Mica, Calcium Alginate, Biosaccharide Gum-4, Titanium Dioxide, Gellan Gum, Xanthan Gum, Citric Acid, Bambusa Vulgaris Shoot Extract\n\nBon à savoir\n✓ Testé sous contrôle dermatologique sur des volontaires humains\n✓ Jamais testé sur les animaux conformément à la réglementation en vigueur\n✓ Parfum sans substances CMR ni phtalates\n✓ Sans nanomatériaux\n\nFabrication artisanale\nProduit naturel fabriqué artisanalement dans l'atelier So You à Genève.\n\nPrécautions d'emploi\nEffectuer un test cutané préalable avant la première utilisation.\nLes informations relatives aux ingrédients et à leurs propriétés sont fournies à titre informatif et ne constituent pas un avis médical.",
       "images": [
-        "https://static.wixstatic.com/media/a6901a_136a9fd706144cc1b6be712e1cdba549~mv2.jpg/v1/fill/w_800,h_1000,al_c,q_90,usm_0.66_1.00_0.01/file.jpg"
+        "/uploads/se-rum_caviar_anti-a-ge_anti-pollution_i-1782310909461-ec85fc8f.jpg"
       ],
       "price": 89.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
-      "ribbon": "Sérum visage"
+      "ribbon": "Sérum visage",
+      "inStock": false
     },
     {
       "id": "product_64d5442e-345a-fd98-ba48-002c87d9adfa",
@@ -196,8 +172,7 @@
       ],
       "price": 9.9,
       "collections": [
-        "Soins de la peau",
-        "Accessoires"
+        "DIY"
       ],
       "ribbon": "Ingrédients DIY"
     },
@@ -210,7 +185,8 @@
       ],
       "price": 42.5,
       "collections": [
-        "Accessoires"
+        "DIY",
+        "Bain & Bien-être"
       ],
       "ribbon": "New arrival"
     },
@@ -223,7 +199,8 @@
       ],
       "price": 49.5,
       "collections": [
-        "Accessoires"
+        "DIY",
+        "Savons"
       ],
       "ribbon": "New arrival"
     },
@@ -237,7 +214,7 @@
       ],
       "price": 5,
       "collections": [
-        "Accessoires"
+        "DIY"
       ],
       "ribbon": "New arrival"
     },
@@ -254,7 +231,8 @@
       ],
       "price": 75,
       "collections": [
-        "Accessoires"
+        "DIY",
+        "Savons"
       ],
       "ribbon": "New arrival"
     },
@@ -296,7 +274,7 @@
       ],
       "price": 32.5,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Crème visage"
     },
@@ -310,7 +288,7 @@
       ],
       "price": 25,
       "collections": [
-        "Soins de la peau",
+        "Soins Corps",
         "Accessoires"
       ],
       "ribbon": "Figue de Barbarie bio"
@@ -325,9 +303,7 @@
       ],
       "price": 6,
       "collections": [
-        "Soin des cheveux",
-        "Savons",
-        "Accessoires"
+        "Soins Capillaires"
       ],
       "ribbon": "Coloration végétale"
     },
@@ -341,25 +317,9 @@
       ],
       "price": 13,
       "collections": [
-        "Soins de la peau",
-        "Savons"
+        "Soins Visage"
       ],
       "ribbon": "Eaux florales"
-    },
-    {
-      "id": "product_d73b2b82-c0f6-339d-09cb-6892aa95722b",
-      "name": "Eau d'aloe vera bio",
-      "description": "<p>Le saviez-vous? Les eaux florales ou hydrolats, naturels et chargés en principes actifs, &nbsp;remplacent idéalement les lotions&nbsp;toniques!</p><p>&nbsp;</p><p>S'utilise pour parfaire le démaquillage, tonifier ou&nbsp;apporter un&nbsp;soin apaisant et rafraichissant&nbsp;pour le&nbsp;visage, le&nbsp;cuir&nbsp;chevelu&nbsp;et aussi pour discipliner et&nbsp;parfumer les cheveux...d'une façon saine et naturelle!!</p><p>&nbsp;</p><p>Les hydrolats (terme générique&nbsp;partie de la plante utilisée : feuilles et/ou&nbsp;tiges avec ou sans fleurs&nbsp;et/ou&nbsp;écorces et/ou&nbsp;racines)&nbsp;ou eaux florales (partie de la plante utilisée : fleurs)&nbsp;étant des résidus acqueux issus de l'extraction des huiles essentielles par distillation à la vapeur et contiennent des principes actifs précieux pour la peau et&nbsp;sont utilisés par un&nbsp;grand&nbsp;nombre de personnes&nbsp;comme une lotion tonique.</p><p>&nbsp;</p><p>Ces hydrolats conviennent à tous types de peaux selon ses besoins et envies.</p><p>Voici quelques indications générales pour vous aider à choisir :</p><p>&nbsp;</p><p><strong>Eau de rose bio&nbsp;</strong></p><p><em>Vertus atribuées: Astringentes, apaisantes, assainissantes, donne de l'éclat</em></p><p>- Peaux: Matures, sèches, réactives, irritées, sensibles&nbsp;(rougeurs et&nbsp;irritations),&nbsp;grasses&nbsp;à tendance acnéique,&nbsp;eczéma, feu du rasoir...</p><p>-&nbsp;Cuir chevelu irrité, sensible</p><p>&nbsp;</p><p><strong>Eau de fleur&nbsp;d'oranger bio&nbsp;</strong></p><p><em>Vertus attribuées: Rafraichissantes, régénérantes, tonifiantes, stimule l'éclat&nbsp;</em></p><p>- Peaux: Ternes, fatiguées, sensibles, fragiles,&nbsp;délicates (enfants),&nbsp;matures, sèches, irritées, &nbsp;</p><p>- Cheveux: Cassants,&nbsp;dévitalisés,&nbsp;fragiles, fins, sans volume,&nbsp;chevelu irrité et&nbsp;sensible</p><p>&nbsp;</p><p><strong>Hydrolat de lavande officinale bio&nbsp;</strong></p><p><em>Vertus attribuées: Purifiantes, adoucissantes, revitalisantes, apaisantes</em></p><p>- Peaux: Grasses à tendance acnéiques, eczéma, démangeaisons, fragiles, délicates (enfants), sensibles, irritées,&nbsp;rougeurs, coup de soleil, brulures, feu du rasoir</p><p>- Cheveux gras, cuir chevelu irrité et sensible</p><p>&nbsp;</p><p><strong>Hydrolat de menthe poivrée bio -&nbsp;Effet glaçon!</strong></p><p><em>Vertus attribuées: Purifiantes, stimulantes,&nbsp;rafraichissantes,&nbsp;tonifiantes&nbsp;et apaisantes&nbsp;</em></p><p>- Peaux:&nbsp;Grasses à&nbsp;tendance acnéique,&nbsp;réactives, sensibles aux rougeurs et aux irritations,&nbsp;ternes, fatiguées, irrégulières, coups de soleil, brûlures</p><p>- Cheveux: &nbsp;Gras, Cuir chevelu irrité, sensible, pellicules&nbsp;</p><p>&nbsp;</p><p><strong>Eau d'aloe vera bio concentration à 99%</strong></p><p><em>Vertus attribuées: Hydratantes,&nbsp;protectrices et&nbsp;réparatrices</em></p><p>- Peaux: Déshydratées et sèches, matures, grasses&nbsp;à tendance acnéique,&nbsp;irritées,&nbsp;&nbsp;sensibles,&nbsp;coups de soleil, brûlures, feu du rasoir</p><p>- Cheveux: Fragiles, fins, sans volume,&nbsp;secs, cassants,&nbsp;abîmés, cuir chevelu irrité et&nbsp;sensible</p><p>&nbsp;</p><p><strong>Hydrolat d'hélichryse (immortelle) bio&nbsp;</strong></p><p><em>Vertus attribuées: Régénérantes, purifiantes,&nbsp;apaisantes, anti-inflammatoire&nbsp;&amp;&nbsp;raffermissantes</em>&nbsp;</p><p>- Peaux: Matures,&nbsp;acnéiques, irritées, eczéma,&nbsp;réactives, sensibles aux rougeurs,&nbsp;sèches, ternes, fatiguées,&nbsp;coups de soleil, feu du rasoir,&nbsp;</p><p>- Yeux: Cernes, poches, rides et ridules</p><p>- Cheveux ternes et cuir chevelu irrité&nbsp;et sensible</p><p>&nbsp;</p><p><strong>Hydrolat de tilleul bio&nbsp;</strong></p><p><em>Vertus attribuées : Apaisante&nbsp;et calmante</em></p><p>- Peaux: &nbsp;Fragiles et délicates (enfants),&nbsp;ternes, fatiguées,&nbsp;irritées, eczéma, gerçures, sensibles et sujettes à inconfort, coups de soleil, brûlures, feu du rasoir</p><p>- Cheveux ternes et&nbsp;sans vie</p><p>&nbsp;</p><p>Ces hydrolats sont naturels, biodégradables et non testés sur les animaux.</p>",
-      "images": [
-        "https://static.wixstatic.com/media/a6901a_7b3e6d4d1aa945959f055a7af2fb7a98~mv2.jpg/v1/fill/w_800,h_1000,al_c,q_90,usm_0.66_1.00_0.01/file.jpg",
-        "https://static.wixstatic.com/media/a6901a_37eefa3c34ff419fbeba4c8ad8896c4f~mv2_d_2000_2000_s_2.png/v1/fill/w_800,h_1000,al_c,q_90,usm_0.66_1.00_0.01/file.jpg"
-      ],
-      "price": 16,
-      "collections": [
-        "Soins de la peau",
-        "Savons"
-      ],
-      "ribbon": "Eau d'aloe"
     },
     {
       "id": "product_edda23a8-e3a0-e42d-cc46-9f693dfba349",
@@ -370,10 +330,10 @@
       ],
       "price": 11.9,
       "collections": [
-        "Soins de la peau",
-        "Savons"
+        "Soins Visage"
       ],
-      "ribbon": "Eaux florales"
+      "ribbon": "Eaux florales",
+      "inStock": true
     },
     {
       "id": "product_485266d1-c943-ae3a-8b96-82da08a05d9e",
@@ -385,8 +345,7 @@
       ],
       "price": 11.9,
       "collections": [
-        "Soins de la peau",
-        "Savons"
+        "Soins Visage"
       ],
       "ribbon": "Eaux florales"
     },
@@ -399,7 +358,7 @@
       ],
       "price": 11.9,
       "collections": [
-        "Soins de la peau",
+        "Soins Corps",
         "Savons"
       ],
       "ribbon": "Eaux florales"
@@ -414,7 +373,7 @@
       ],
       "price": 12,
       "collections": [
-        "Soins de la peau",
+        "Soins Corps",
         "Savons"
       ],
       "ribbon": "Eaux florales"
@@ -428,7 +387,7 @@
       ],
       "price": 11.9,
       "collections": [
-        "Soins de la peau",
+        "Soins Corps",
         "Accessoires"
       ],
       "ribbon": "Ingrédients DIY"
@@ -442,7 +401,7 @@
       ],
       "price": 9.9,
       "collections": [
-        "Soins de la peau",
+        "Soins Corps",
         "Accessoires"
       ],
       "ribbon": "Ingrédients DIY"
@@ -456,7 +415,7 @@
       ],
       "price": 19.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Corps"
       ],
       "ribbon": "Déodorant naturel"
     },
@@ -469,8 +428,7 @@
       ],
       "price": 30,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon visage argan et miel bio"
     },
@@ -484,7 +442,7 @@
       "price": 27,
       "collections": [
         "Savons",
-        "Accessoires"
+        "Soins Visage"
       ],
       "ribbon": "Savon visage charbon noir"
     },
@@ -497,11 +455,9 @@
       ],
       "price": 17.5,
       "collections": [
-        "Soins de la peau",
-        "Bien-être et détente",
-        "Savons",
-        "Accessoires",
-        "Enfants"
+        "Bain & Bien-être",
+        "Soins Visage",
+        "Soins Corps"
       ],
       "ribbon": "Douche et Bain moussant"
     },
@@ -515,10 +471,9 @@
       ],
       "price": 28,
       "collections": [
-        "Soins de la peau",
-        "Bien-être et détente",
-        "Savon Liquide",
-        "Accessoires"
+        "Cadeaux",
+        "Savons",
+        "Soins Corps"
       ],
       "ribbon": "Savon liquide & lotion corps"
     },
@@ -533,9 +488,7 @@
       ],
       "price": 12.5,
       "collections": [
-        "Bien-être et détente",
-        "Enfants",
-        "Savons"
+        "Bain & Bien-être"
       ],
       "ribbon": "Bath fizz Bath bombs"
     },
@@ -550,10 +503,9 @@
       ],
       "price": 27.5,
       "collections": [
-        "Soins de la peau",
-        "Bien-être et détente",
-        "Savon Liquide",
-        "Accessoires"
+        "Cadeaux",
+        "Savons",
+        "Soins Corps"
       ],
       "ribbon": "Savon liquide & lotion corps"
     },
@@ -568,8 +520,8 @@
       ],
       "price": 12.5,
       "collections": [
-        "Accessoires",
-        "Soins de la peau"
+        "Soins Capillaires",
+        "Savons"
       ],
       "ribbon": "Pochette à savon de transport"
     },
@@ -585,8 +537,7 @@
       ],
       "price": 7.5,
       "collections": [
-        "Accessoires",
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Disque démaquillant"
     },
@@ -598,7 +549,7 @@
       "price": 5,
       "collections": [
         "Accessoires",
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Lingette démaquillante"
     },
@@ -611,11 +562,8 @@
       ],
       "price": 25,
       "collections": [
-        "Soins de la peau",
-        "Bien-être et détente",
-        "Savons",
-        "Hommes",
-        "Accessoires"
+        "Cadeaux",
+        "Savons"
       ],
       "ribbon": "Pochette découverte"
     },
@@ -629,11 +577,8 @@
       ],
       "price": 39.9,
       "collections": [
-        "Soins de la peau",
-        "Bien-être et détente",
-        "Savons",
-        "Hommes",
-        "Accessoires"
+        "Cadeaux",
+        "Savons"
       ],
       "ribbon": "Pochette découverte"
     },
@@ -646,8 +591,7 @@
       ],
       "price": 27.5,
       "collections": [
-        "Bien-être et détente",
-        "Savons"
+        "Bain & Bien-être"
       ],
       "ribbon": "Sels de bain"
     },
@@ -660,7 +604,8 @@
       ],
       "price": 50,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage",
+        "Soins Corps"
       ],
       "ribbon": "Hydratation intense"
     },
@@ -675,9 +620,7 @@
       ],
       "price": 5,
       "collections": [
-        "Soin des cheveux",
-        "Savons",
-        "Accessoires"
+        "Soins Capillaires"
       ],
       "ribbon": "Coloration végétale"
     },
@@ -691,9 +634,7 @@
       ],
       "price": 15,
       "collections": [
-        "Soin des cheveux",
-        "Savons",
-        "Accessoires"
+        "Soins Capillaires"
       ],
       "ribbon": "Coloration végétale"
     },
@@ -707,9 +648,7 @@
       ],
       "price": 15,
       "collections": [
-        "Soin des cheveux",
-        "Savons",
-        "Accessoires"
+        "Soins Capillaires"
       ],
       "ribbon": "Masque et coloration végétale"
     },
@@ -724,9 +663,7 @@
       ],
       "price": 16,
       "collections": [
-        "Soin des cheveux",
-        "Savons",
-        "Accessoires"
+        "Soins Capillaires"
       ],
       "ribbon": "Coloration végétale"
     },
@@ -739,9 +676,7 @@
       ],
       "price": 7.4,
       "collections": [
-        "Shampoings",
-        "Soin des cheveux",
-        "Savons"
+        "Soins Capillaires"
       ],
       "ribbon": "Shampoing Jojoba"
     },
@@ -755,9 +690,7 @@
       ],
       "price": 6.4,
       "collections": [
-        "Shampoings",
-        "Soin des cheveux",
-        "Savons"
+        "Soins Capillaires"
       ],
       "ribbon": "Shampoing avocat"
     },
@@ -770,9 +703,7 @@
       ],
       "price": 5.4,
       "collections": [
-        "Shampoings",
-        "Soin des cheveux",
-        "Savons"
+        "Soins Capillaires"
       ],
       "ribbon": "Shampoing Chanvre"
     },
@@ -785,9 +716,7 @@
       ],
       "price": 9,
       "collections": [
-        "Shampoings",
-        "Soin des cheveux",
-        "Savons"
+        "Soins Capillaires"
       ],
       "ribbon": "Shampoing amande"
     },
@@ -801,7 +730,7 @@
       ],
       "price": 0,
       "collections": [
-        "Bien-être et détente"
+        "Bain & Bien-être"
       ],
       "ribbon": "Thé Vert"
     },
@@ -815,7 +744,7 @@
       ],
       "price": 0,
       "collections": [
-        "Bien-être et détente"
+        "Bain & Bien-être"
       ],
       "ribbon": "Spicey"
     },
@@ -829,7 +758,7 @@
       ],
       "price": 0,
       "collections": [
-        "Bien-être et détente"
+        "Bain & Bien-être"
       ],
       "ribbon": "Fresh Linen"
     },
@@ -847,21 +776,20 @@
       ],
       "price": 27.5,
       "collections": [
-        "Soins de la peau"
+        "Soins Corps"
       ],
       "ribbon": "Lotion hydratante Macadamia"
     },
     {
       "id": "product_11e6c767-b521-c329-8c04-a729c258d943",
       "name": "Savon olive, coco, ricin, palme RSPO - Senteur Agrumes",
-      "description": "<p>&nbsp;</p><p>Senteur fraiche, amère et à la fois douce et vivifiante de taille idéale comme savon pour visiteurs.</p><p>&nbsp;</p><p>Savon naturel&nbsp;à l'huile d'olive, de coco,&nbsp;de palme (garantie sans déforestation) et de ricin d'une texture onctueuse et surgraissé pour apporter douceur et&nbsp;hydratation.&nbsp;Un&nbsp;vrai&nbsp;délice et bienfait pour&nbsp;la peau.</p><p>&nbsp;</p><p><em>Savons surgras&nbsp;naturellement glycérinés fait main et saponifiés à froid dans l'atélier de So You à Genève. </em></p><p><em>Ils sont doux, hydratants,&nbsp;biodégradables&nbsp;et conviennent à&nbsp;tous types de peaux. Ils sont bons pour la Peau, non testé sur les Animaux et respectueux de la Nature.</em></p>",
+      "description": "<p>&nbsp;</p><p>Senteur fraiche, amère et à la fois douce et vivifiante de taille idéale comme savon pour visiteurs.</p><p>&nbsp;</p><p>Savon naturel&nbsp;à l'huile d'olive, de coco,&nbsp;de palme (garantie sans déforestation) et de ricin d'une texture onctueuse et surgraissé pour apporter douceur et&nbsp;hydratation.&nbsp;Un&nbsp;vrai&nbsp;délice et bienfait pour&nbsp;la peau.</p><p>&nbsp;</p><p><em>Savons surgras&nbsp;naturellement glycérinés fait main et saponifiés à froid dans l'atélier de So You à Genève. </em></p><p><em>Ils sont doux, hydratants,&nbsp;biodégradables&nbsp;et conviennent à&nbsp;tous types de peaux. Ils sont bons pour la Peau, non testé sur les Animaux et respectueux de la Nature.</em></p",
       "images": [
-        "https://static.wixstatic.com/media/a6901a_aaadbb2e2de249f7a5c5bf2ab2727cf9~mv2.jpg/v1/fill/w_800,h_1000,al_c,q_90,usm_0.66_1.00_0.01/file.jpg"
+        "/uploads/AC94F7BE-0C46-446F-9E1F-60EC40035FB8-1780571055122-0902d1b4.jpg"
       ],
       "price": 5.2,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -874,8 +802,7 @@
       ],
       "price": 9.7,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -888,8 +815,7 @@
       ],
       "price": 11.6,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -902,8 +828,7 @@
       ],
       "price": 11,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -916,8 +841,7 @@
       ],
       "price": 9.7,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -932,8 +856,7 @@
       ],
       "price": 14.9,
       "collections": [
-        "Soin des lèvres",
-        "Savons"
+        "Soins Visage"
       ],
       "ribbon": "Stick lèvres végan"
     },
@@ -946,7 +869,7 @@
       ],
       "price": 39.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Hydratation intense"
     },
@@ -959,7 +882,7 @@
       ],
       "price": 42,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Hydratation intense"
     },
@@ -972,7 +895,7 @@
       ],
       "price": 49.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Hydratation intense"
     },
@@ -985,7 +908,7 @@
       ],
       "price": 39.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Hydratation intense"
     },
@@ -998,7 +921,7 @@
       ],
       "price": 29.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Corps"
       ],
       "ribbon": "Lait visage et corps"
     },
@@ -1012,8 +935,7 @@
       ],
       "price": 25,
       "collections": [
-        "Soins de la peau",
-        "Hommes"
+        "Soins Visage"
       ],
       "ribbon": "Peau normale mixte"
     },
@@ -1028,9 +950,7 @@
       ],
       "price": 18,
       "collections": [
-        "Soins de la peau",
-        "Hommes",
-        "Savons"
+        "Soins Capillaires"
       ],
       "ribbon": "Gel coiffant"
     },
@@ -1043,7 +963,7 @@
       ],
       "price": 19.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Sérum Flawless"
     },
@@ -1060,8 +980,8 @@
       ],
       "price": 11.9,
       "collections": [
-        "Soins de la peau",
-        "Savons"
+        "Soins Visage",
+        "Soins Corps"
       ],
       "ribbon": "Gommage"
     },
@@ -1074,9 +994,7 @@
       ],
       "price": 39.9,
       "collections": [
-        "Soins de la peau",
-        "Hommes",
-        "Savons"
+        "Soins Visage"
       ],
       "ribbon": "Peaux grasses"
     },
@@ -1090,7 +1008,7 @@
       ],
       "price": 29.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Corps"
       ],
       "ribbon": "Lait soin cellulite"
     },
@@ -1104,7 +1022,7 @@
       ],
       "price": 29.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Masque purifiant"
     },
@@ -1118,7 +1036,7 @@
       "price": 30,
       "collections": [
         "Savons",
-        "Accessoires"
+        "Soins Visage"
       ],
       "ribbon": "Savon extra doux visage"
     },
@@ -1136,10 +1054,8 @@
       ],
       "price": 15,
       "collections": [
-        "Soins de la peau",
         "Savons",
-        "Hommes",
-        "Accessoires"
+        "Soins Visage"
       ],
       "ribbon": "Savon visage argile"
     },
@@ -1165,7 +1081,7 @@
       ],
       "price": 13.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Corps"
       ],
       "ribbon": "Dentifrice gel"
     },
@@ -1180,8 +1096,7 @@
       ],
       "price": 14.5,
       "collections": [
-        "Soin des lèvres",
-        "Savons"
+        "Soins Visage"
       ],
       "ribbon": "Stick lèvres végan"
     },
@@ -1196,7 +1111,7 @@
       ],
       "price": 17.5,
       "collections": [
-        "Soins de la peau"
+        "Soins Corps"
       ],
       "ribbon": "Baume mains et corps"
     },
@@ -1211,8 +1126,8 @@
       ],
       "price": 18.75,
       "collections": [
-        "Soin des cheveux",
-        "Savons"
+        "Soins Capillaires",
+        "Soins Corps"
       ],
       "ribbon": "Baume solide cheveux"
     },
@@ -1231,9 +1146,7 @@
       ],
       "price": 6,
       "collections": [
-        "Soin des cheveux",
-        "Savons",
-        "Accessoires"
+        "Soins Capillaires"
       ],
       "ribbon": "Coloration végétale"
     },
@@ -1287,7 +1200,7 @@
       ],
       "price": 27.5,
       "collections": [
-        "Soins de la peau"
+        "Soins Corps"
       ],
       "ribbon": "Lotion multi-usages"
     },
@@ -1302,7 +1215,7 @@
       ],
       "price": 25,
       "collections": [
-        "Soin des cheveux"
+        "Soins Capillaires"
       ],
       "ribbon": "Soin cheveux"
     },
@@ -1317,7 +1230,7 @@
       ],
       "price": 13.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Dentifrice en poudre"
     },
@@ -1331,7 +1244,7 @@
       ],
       "price": 7.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Corps"
       ],
       "ribbon": "Déodorant naturel"
     },
@@ -1347,7 +1260,7 @@
       ],
       "price": 27.5,
       "collections": [
-        "Soins de la peau"
+        "Soins Corps"
       ],
       "ribbon": "Lotion hydratante"
     },
@@ -1364,7 +1277,7 @@
       ],
       "price": 27.5,
       "collections": [
-        "Soins de la peau"
+        "Soins Corps"
       ],
       "ribbon": "Lotion hydratante"
     },
@@ -1378,7 +1291,7 @@
       ],
       "price": 15.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Crème peaux grasses"
     },
@@ -1407,7 +1320,7 @@
       ],
       "price": 24.5,
       "collections": [
-        "Soins de la peau",
+        "Soins Corps",
         "Savons"
       ],
       "ribbon": "Huile corps massage"
@@ -1433,7 +1346,7 @@
       "price": 120,
       "collections": [
         "Accessoires",
-        "Bien-être et détente"
+        "Bain & Bien-être"
       ],
       "ribbon": "Atelier de fabrication"
     },
@@ -1460,8 +1373,7 @@
       ],
       "price": 295,
       "collections": [
-        "Accessoires",
-        "Bien-être et détente"
+        "Savons"
       ],
       "ribbon": "Atelier de fabrication"
     },
@@ -1475,7 +1387,6 @@
       ],
       "price": 30,
       "collections": [
-        "Hommes",
         "Ambiance"
       ],
       "ribbon": "Parfum d'ambiance"
@@ -1492,7 +1403,6 @@
       ],
       "price": 15.5,
       "collections": [
-        "Hommes",
         "Ambiance"
       ],
       "ribbon": "Parfum d'ambiance"
@@ -1508,8 +1418,7 @@
       "price": 19.9,
       "collections": [
         "Accessoires",
-        "Soins de la peau",
-        "Savons"
+        "Soins Corps"
       ],
       "ribbon": "Eponge konjac corps"
     },
@@ -1533,8 +1442,7 @@
       ],
       "price": 7.5,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon hypoallergenique"
     },
@@ -1547,9 +1455,7 @@
       ],
       "price": 9.7,
       "collections": [
-        "Savons",
-        "Accessoires",
-        "Hommes"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -1562,8 +1468,7 @@
       ],
       "price": 11.3,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -1576,8 +1481,7 @@
       ],
       "price": 9,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -1590,8 +1494,7 @@
       ],
       "price": 10.9,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -1604,8 +1507,7 @@
       ],
       "price": 10.3,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -1618,8 +1520,7 @@
       ],
       "price": 6.45,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -1632,8 +1533,7 @@
       ],
       "price": 11.6,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -1646,8 +1546,7 @@
       ],
       "price": 9,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -1660,8 +1559,7 @@
       ],
       "price": 6.45,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -1674,8 +1572,7 @@
       ],
       "price": 7.75,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -1688,8 +1585,7 @@
       ],
       "price": 10.75,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon Soin - Premium"
     },
@@ -1702,8 +1598,7 @@
       ],
       "price": 12,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon Soin - Premium"
     },
@@ -1716,8 +1611,7 @@
       ],
       "price": 13.4,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon Soin - Premium"
     },
@@ -1732,8 +1626,7 @@
       ],
       "price": 7.45,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon Soin - Premium"
     },
@@ -1746,8 +1639,7 @@
       ],
       "price": 7.45,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon Soin - Premium"
     },
@@ -1760,8 +1652,7 @@
       ],
       "price": 7.45,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon Soin - Premium"
     },
@@ -1779,7 +1670,7 @@
       ],
       "price": 11.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Corps"
       ],
       "ribbon": "Huile précieuse corps"
     },
@@ -1836,7 +1727,6 @@
       ],
       "price": 12.9,
       "collections": [
-        "Hommes",
         "Savons"
       ],
       "ribbon": "Savon mou à barbe"
@@ -1854,7 +1744,7 @@
       ],
       "price": 14.5,
       "collections": [
-        "Soin des lèvres"
+        "Soins Visage"
       ],
       "ribbon": "Baume à lèvres"
     },
@@ -1867,7 +1757,7 @@
       ],
       "price": 29.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Masque hydratant"
     },
@@ -1895,11 +1785,8 @@
       ],
       "price": 31.5,
       "collections": [
-        "Bien-être et détente",
-        "Savons",
-        "Soins de la peau",
-        "Accessoires",
-        "Bébés"
+        "Enfants",
+        "Accessoires"
       ],
       "ribbon": "Konjac Baby/Child"
     },
@@ -1914,7 +1801,7 @@
       "price": 15.5,
       "collections": [
         "Accessoires",
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Eponge Konjac visage"
     },
@@ -1926,7 +1813,7 @@
       "price": 13.9,
       "collections": [
         "Accessoires",
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Eponge Konjac visage"
     },
@@ -1940,8 +1827,7 @@
       ],
       "price": 15.9,
       "collections": [
-        "Soins de la peau",
-        "Savons"
+        "Soins Corps"
       ],
       "ribbon": "Huile précieuse corps"
     },
@@ -1969,7 +1855,7 @@
       ],
       "price": 3.5,
       "collections": [
-        "Accessoires"
+        "DIY"
       ],
       "ribbon": "Pot en PP"
     },
@@ -1982,7 +1868,7 @@
       ],
       "price": 9.2,
       "collections": [
-        "Soins de la peau",
+        "Soins Corps",
         "Accessoires"
       ],
       "ribbon": "Ingrédients DIY"
@@ -1996,7 +1882,7 @@
       ],
       "price": 49.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Hydratation intense"
     },
@@ -2039,9 +1925,7 @@
       ],
       "price": 10,
       "collections": [
-        "Hommes",
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon de rasage"
     },
@@ -2056,11 +1940,7 @@
       ],
       "price": 15,
       "collections": [
-        "Soins de la peau",
-        "Shampoings",
-        "Soin des cheveux",
-        "Savons",
-        "Accessoires"
+        "Soins Capillaires"
       ],
       "ribbon": "Shampoing solide"
     },
@@ -2108,7 +1988,7 @@
       ],
       "price": 8.9,
       "collections": [
-        "Soins de la peau",
+        "Soins Corps",
         "Accessoires"
       ],
       "ribbon": "Ingrédients DIY"
@@ -2123,7 +2003,7 @@
       ],
       "price": 15,
       "collections": [
-        "Soin des lèvres"
+        "Soins Visage"
       ],
       "ribbon": "Gloss"
     },
@@ -2136,7 +2016,7 @@
       ],
       "price": 5.2,
       "collections": [
-        "Soins de la peau",
+        "Soins Corps",
         "Accessoires"
       ],
       "ribbon": "Ingrédients DIY"
@@ -2151,9 +2031,7 @@
       ],
       "price": 21.9,
       "collections": [
-        "Soins de la peau",
-        "Bien-être et détente",
-        "Savons"
+        "Soins Corps"
       ],
       "ribbon": "Huile de massage"
     },
@@ -2167,7 +2045,7 @@
       ],
       "price": 26.5,
       "collections": [
-        "Soins de la peau"
+        "Soins Visage"
       ],
       "ribbon": "Huile précieuse visage"
     },
@@ -2183,7 +2061,8 @@
       "price": 6.95,
       "collections": [
         "Savons",
-        "Bébés"
+        "Enfants",
+        "Soins Visage"
       ],
       "ribbon": "Hypoallergénique"
     },
@@ -2208,7 +2087,7 @@
       ],
       "price": 0,
       "collections": [
-        "Accessoires"
+        "Personnalisation"
       ],
       "ribbon": "Made to order"
     },
@@ -2232,7 +2111,7 @@
       ],
       "price": 8.95,
       "collections": [
-        "Bien-être et détente"
+        "Bain & Bien-être"
       ],
       "ribbon": "Rose"
     },
@@ -2250,7 +2129,7 @@
       ],
       "price": 12,
       "collections": [
-        "Bien-être et détente"
+        "Bain & Bien-être"
       ],
       "ribbon": "Orange douce"
     },
@@ -2270,7 +2149,7 @@
       ],
       "price": 6.95,
       "collections": [
-        "Bien-être et détente"
+        "Bain & Bien-être"
       ],
       "ribbon": "Lavande & lavandin"
     },
@@ -2289,8 +2168,7 @@
       ],
       "price": 7.45,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon premium"
     },
@@ -2304,8 +2182,7 @@
       ],
       "price": 12,
       "collections": [
-        "Shampoings",
-        "Savons"
+        "Soins Capillaires"
       ],
       "ribbon": "Savon pour chiens"
     },
@@ -2336,8 +2213,7 @@
       ],
       "price": 39.9,
       "collections": [
-        "Hommes",
-        "Ambiance"
+        "Parfums"
       ],
       "ribbon": "Eau de parfum"
     },
@@ -2350,7 +2226,7 @@
       ],
       "price": 11.9,
       "collections": [
-        "Soins de la peau"
+        "Soins Corps"
       ],
       "ribbon": "Déodorant naturel"
     },
@@ -2366,8 +2242,8 @@
       ],
       "price": 23.9,
       "collections": [
-        "Soins de la peau",
-        "Soin des cheveux",
+        "Soins Corps",
+        "Soins Capillaires",
         "Savons"
       ],
       "ribbon": "Lotion biphasée"
@@ -2395,8 +2271,6 @@
       ],
       "price": 28,
       "collections": [
-        "Savon Liquide",
-        "Accessoires",
         "Savons"
       ],
       "ribbon": "Savon liquide"
@@ -2411,9 +2285,7 @@
       ],
       "price": 18,
       "collections": [
-        "Bébés",
-        "Soins de la peau",
-        "Accessoires"
+        "Enfants"
       ],
       "ribbon": "Bébé et maman"
     },
@@ -2427,8 +2299,7 @@
       ],
       "price": 8.4,
       "collections": [
-        "Savons",
-        "Enfants"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
     },
@@ -2442,8 +2313,7 @@
       "price": 6,
       "collections": [
         "Savons",
-        "Enfants",
-        "Accessoires"
+        "Enfants"
       ],
       "ribbon": "Savon Soin - Premium"
     },
@@ -2459,7 +2329,7 @@
       ],
       "price": 6.95,
       "collections": [
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Pochette anti-gaspi"
     },
@@ -2476,7 +2346,7 @@
       ],
       "price": 12.9,
       "collections": [
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Porte savon"
     },
@@ -2495,9 +2365,7 @@
       ],
       "price": 6.9,
       "collections": [
-        "Bien-être et détente",
-        "Enfants",
-        "Savons"
+        "Bain & Bien-être"
       ],
       "ribbon": "Bath fizz Bath bombs"
     },
@@ -2510,8 +2378,6 @@
       ],
       "price": 12,
       "collections": [
-        "Soins de la peau",
-        "Hommes",
         "Savons"
       ],
       "ribbon": "Savon mou à barbe"
@@ -2534,9 +2400,7 @@
       ],
       "price": 6.9,
       "collections": [
-        "Bien-être et détente",
-        "Savons",
-        "Enfants"
+        "Bain & Bien-être"
       ],
       "ribbon": "Bath fizz Bath bombs"
     },
@@ -2550,8 +2414,7 @@
       ],
       "price": 12.9,
       "collections": [
-        "Soins de la peau",
-        "Hommes",
+        "Soins Corps",
         "Savons"
       ],
       "ribbon": "Huile à barbe bio"
@@ -2569,7 +2432,7 @@
       ],
       "price": 27.5,
       "collections": [
-        "Soins de la peau"
+        "Soins Corps"
       ],
       "ribbon": "Lotion hydratante"
     },
@@ -2583,8 +2446,7 @@
       ],
       "price": 13.5,
       "collections": [
-        "Soins de la peau",
-        "Savons"
+        "Soins Visage"
       ],
       "ribbon": "Eaux florales"
     },
@@ -2597,8 +2459,6 @@
       ],
       "price": 22.5,
       "collections": [
-        "Soins de la peau",
-        "Bébés",
         "Enfants"
       ],
       "ribbon": "Lotion multi-usages"
@@ -2617,8 +2477,7 @@
       ],
       "price": 25,
       "collections": [
-        "Bien-être et détente",
-        "Savons"
+        "Bain & Bien-être"
       ],
       "ribbon": "Sels de bain"
     },
@@ -2631,8 +2490,7 @@
       ],
       "price": 20,
       "collections": [
-        "Soins de la peau",
-        "Savons"
+        "Soins Corps"
       ],
       "ribbon": "Gommage parfum fraise"
     },
@@ -2649,8 +2507,6 @@
       ],
       "price": 23.9,
       "collections": [
-        "Savon Liquide",
-        "Accessoires",
         "Savons"
       ],
       "ribbon": "Savon liquide"
@@ -2664,8 +2520,7 @@
       ],
       "price": 12.25,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon Soin - Premium"
     },
@@ -2681,8 +2536,7 @@
       ],
       "price": 9.5,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse +"
     },
@@ -2696,8 +2550,7 @@
       ],
       "price": 15,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon soin sel de mer"
     },
@@ -2710,8 +2563,7 @@
       ],
       "price": 12.5,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon hypoallergenique"
     },
@@ -2737,8 +2589,7 @@
       ],
       "price": 9.05,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Mousse onctueuse dorée"
     },
@@ -2751,10 +2602,37 @@
       ],
       "price": 9.6,
       "collections": [
-        "Savons",
-        "Accessoires"
+        "Savons"
       ],
       "ribbon": "Savon mousse onctueuse"
+    },
+    {
+      "id": "product_e701ee1d-a17e-452e-9334-93caa90ab75c",
+      "description": "Révélez votre éclat naturel et scintillez avec élégance.\n\nL'huile scintillante Glam & Glitter associe soin et lumière dans une formule nourrissante au toucher sec. Elle hydrate la peau, la parfume délicatement et la pare de subtils reflets scintillants pour un fini lumineux et sophistiqué, de jour comme de nuit.\n\nConseil d'utilisation:\nBien agiter le flacon puis prélevez quelques gouttes d'huile dans le creux de la main et réchauffez-la entre vos paumes. Massez délicatement sur le corps jusqu'à absorption complète.\n\nAppliquée sur peau humide, elle offre un fini plus léger et une diffusion encore plus harmonieuse de ses nacres lumineuses.\n \nIngredients: Olea europaea (olive) fruit oil, carthamus tinctorius(safflower) seed oil, c15-19 alkane,macadamia integrifolia seed oil, helianthus annuus (sunflower) seed oil, cannabis sativa seed oil, prunus amygdalus dulcis (sweet almond) oil, parfum (fragrance), cannabis sativa leaf  extract, daucus carota sativa (carrot) root extract, calcium aluminum borosilicate(or alternatively calcium sodium borosilicate), ci 77891 (titanium dioxide non nano), silica, CI77491 (iron oxides), tin oxide-\ntocopherol, beta-sitosterol, squalene. \n\nTesté sous contrôle dermatologique. Faites un test en cas de 1ère utilisation.",
+      "price": 49.9,
+      "ribbon": "Huile sèche corps ",
+      "collections": [
+        "Soins Corps"
+      ],
+      "images": [
+        "/uploads/glam_glitter_body_oil_cbd_cosme-tiques_n-1782052387884-be93555d.jpg"
+      ],
+      "inStock": true,
+      "name": "Glam & Glitter Amande douce Macadamia Chanvre - 50 ml"
+    },
+    {
+      "id": "product_9307b1f9-8150-43f4-bace-3b4dc15d4d7c",
+      "description": "Sérum Éclat & Défense\nCe sérum innovant à la texture légère et non grasse est spécialement conçu pour les peaux fatiguées, stressées, sensibles, déshydratées ou en manque d'éclat. Il convient également aux peaux matures souhaitant préserver leur confort et leur luminosité au quotidien.\nSa texture originale associe un gel frais à de délicates perles d'alginate qui fondent au contact de la peau lors de l'application. Cette fusion unique libère progressivement des actifs soigneusement sélectionnés pour aider à préserver la peau des agressions extérieures tout en lui apportant confort, hydratation et éclat.\nJour après jour, la peau paraît plus souple, plus lisse et visiblement mieux hydratée. Le teint semble plus uniforme, reposé et lumineux.\n\nLes actifs phares\n\nPerles d'alginate\nVéritables concentrés de douceur, elles contribuent à préserver l'hydratation de la peau et à la protéger des effets visibles du stress environnemental. Elles participent également à améliorer l'apparence du teint et à révéler son éclat naturel.\n\nExtrait biologique de baie de goji\nNaturellement riche en vitamines, minéraux, oligoéléments et acides aminés, il est apprécié pour ses propriétés revitalisantes et antioxydantes. Il aide à préserver l'éclat de la peau et à lutter contre les effets visibles de la fatigue et du stress environnemental.\n\nBase gel hydratante\nLe gel du sérum est formulé à partir d'ingrédients soigneusement sélectionnés tels que l'eau, la glycérine végétale et des agents texturants doux offrant une texture fraîche, légère et agréable à l'application.\n\nConseils d'utilisation\nAppliquer matin et soir sur une peau propre et sèche du visage, du contour des yeux et du cou.\nDéposer quelques gouttes dans le creux de la main puis appliquer délicatement en massant jusqu'à absorption complète.\nUtiliser seul ou comme base avant votre crème de jour ou de nuit.\n\nPour compléter votre rituel beauté, associez-le à nos soins visage :\nUnder Control – Peaux grasses\nConsensus – Peaux normales à mixtes\nOasis – Peaux sèches\nAbsolute – Peaux matures et sèches\n\nUne expérience à découvrir\nNous vous invitons à découvrir par vous-même la texture unique de ce sérum et le confort qu'il procure à la peau. Rendez-nous visite en boutique pour un conseil personnalisé et une expérience sensorielle complète.\n\nIngrédients (INCI)\nAqua, Glycerin, Polysorbate 20, Phenoxyethanol, Propanediol, Hydroxyethyl Cellulose, Parfum (Fragrance), Mica, Calcium Alginate, Biosaccharide Gum-4, Titanium Dioxide, Gellan Gum, Xanthan Gum, Citric Acid, Lycium Barbarum Fruit Extract, CI 17200 (Red 33).\n\nBon à savoir\n✓ Testé sous contrôle dermatologique sur des volontaires humains\n✓ Jamais testé sur les animaux conformément à la réglementation en vigueur \n✓ Parfum sans substances CMR ni phtalates\n✓ Sans nanomatériaux\n\nFabrication artisanale\nProduit naturel fabriqué artisanalement dans l'atelier So You à Genève.\n\nPrécautions d'emploi\nEffectuer un test cutané préalable avant la première utilisation.\nLes informations relatives aux ingrédients et à leurs propriétés sont fournies à titre informatif et ne constituent pas un avis médical.\n\n",
+      "price": 89.9,
+      "ribbon": "Sérum anti-âge",
+      "collections": [
+        "Soins Visage"
+      ],
+      "images": [
+        "/uploads/se-rum_caviar_anti-a-ge_anti-pollution_i-1782311590720-25d707f9.jpg"
+      ],
+      "inStock": true,
+      "name": "Sérum anti-âge, anti-pollution, illuminateur extrait de baie de goji BIO - 30 ml"
     }
   ]
 }

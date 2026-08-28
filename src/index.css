@@ -1,84 +1,116 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Outfit:wght@200;300;400;500&display=swap');
 @import "tailwindcss";
+/* Product descriptions are authored in the admin and rendered with `prose`.
+   Without this plugin those classes do nothing, so headings and bold text in a
+   description rendered exactly like body copy. */
+@plugin "@tailwindcss/typography";
 
 @theme {
-  --color-ivory: #FAF9F6;
-  --color-mist-white: #F5F7FA;
-  --color-mist-blue: #A5B4C2;
-  --color-stone-gray: #596068;
-  --color-slate-stone: #2A3439;
-  --color-alpine-silver: #D9E0E3;
-  --color-lake-mist: #E2E8F0;
-  --color-sage: #9DC183;
+  /* Palette — pierre ivoire chaude, travertin, calcaire, plâtre, lin naturel.
+     Les tons précédents venaient d'un imaginaire lacustre et alpin (mist, lake,
+     slate, alpine) : bleutés et froids. La cliente demande l'inverse — de la
+     chaleur minérale, sans blanc cru ni gris.
+
+     Les noms de jetons sont conservés pour ne pas réécrire des centaines de
+     classes ; seules les valeurs changent. Des alias correctement nommés sont
+     ajoutés plus bas pour le code à venir.
+
+     Contrastes vérifiés (AA, seuil 4,5) : texte 5,49 · titres 11,25 ·
+     texte sur carte 5,87 · blanc sur pied de page 12,44. */
+  --color-ivory: #FDFBF7;          /* céramique — cartes, texte sur fond sombre */
+  --color-mist-white: #F7F3EC;     /* plâtre — fond de page */
+  --color-mist-blue: #B9A891;      /* travertin — accent sourd */
+  --color-stone-gray: #6A6157;     /* taupe chaud — texte courant */
+  --color-slate-stone: #3A332B;    /* brun charbon — titres, pied de page */
+  --color-alpine-silver: #DED3C4;  /* calcaire — filets, bordures */
+  --color-lake-mist: #EFE8DE;      /* lin — panneaux discrets */
+  --color-sage: #9FAE86;           /* botanique, légèrement réchauffé */
+
+  /* Alias sémantiques : mêmes valeurs, noms justes. Tailwind ne génère que les
+     utilitaires réellement utilisés, donc ceux-ci ne coûtent rien tant qu'ils
+     ne servent pas. */
+  --color-ceramic: #FDFBF7;
+  --color-plaster: #F7F3EC;
+  --color-travertine: #B9A891;
+  --color-taupe: #6A6157;
+  --color-charcoal: #3A332B;
+  --color-limestone: #DED3C4;
+  --color-linen: #EFE8DE;
   
   --font-sans: 'Outfit', sans-serif;
   --font-serif: 'Cormorant Garamond', serif;
   
-  --animate-fadeIn: fadeIn 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  --animate-fadeInUp: fadeInUp 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  /* `--animate-fadeIn` et `--animate-fadeInUp` engendraient `animate-fade-in`
+     et `animate-fade-in-up` a 2 s. Le premier n'etait demande nulle part ; le
+     second ne servait qu'a l'ouverture d'une fenetre d'atelier, ou deux
+     secondes sont une eternite. Un seul jeton subsiste, nomme d'apres son
+     unique emploi. */
+  /* Interlignage et approche par TAILLE, non par niveau de titre.
+     Un meme titre traverse la rampe `text-2xl sm:text-5xl lg:text-7xl`, et il
+     portait un unique `leading-[1.1]` pour toute cette course : beaucoup trop
+     serre a 24 px, ou deux lignes se touchent, et juste a 72 px. Vingt-quatre
+     titres du site etaient dans ce cas.
+     Ecrit ici, chaque palier porte le sien, et la valeur suit la taille reelle
+     a chaque point de rupture sans qu'on ait rien a poser sur l'element.
+     Meme raisonnement pour l'approche : plus la lettre grandit, plus l'espace
+     entre elles se lit comme un trou. */
+  --text-2xl--line-height: 1.25;
+  --text-3xl--line-height: 1.18;
+  --text-4xl--line-height: 1.14;
+  --text-5xl--line-height: 1.10;
+  --text-6xl--line-height: 1.07;
+  --text-7xl--line-height: 1.05;
+  --text-8xl--line-height: 1.03;
+
+  --text-4xl--letter-spacing: -0.006em;
+  --text-5xl--letter-spacing: -0.012em;
+  --text-6xl--letter-spacing: -0.018em;
+  --text-7xl--letter-spacing: -0.022em;
+  --text-8xl--letter-spacing: -0.026em;
+
+  --animate-modal-in: fadeInUp 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-marquee: marquee 60s linear infinite;
 }
 
+/* Les deux entrees du hero.
+   Elles animaient `filter: blur(10px)` — la seule propriete de la page qui
+   force une nouvelle peinture a chaque image, et sur le premier ecran, celui
+   qui doit s'afficher le plus vite. Le `scale(0.98)` obligeait en plus a
+   re-rasteriser le texte pendant tout le trajet. Il ne reste que l'opacite et
+   la translation, qui vont toutes deux au compositeur. */
 @keyframes fadeIn {
-  0% { opacity: 0; filter: blur(10px); }
-  100% { opacity: 1; filter: blur(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes fadeInUp {
-  0% { opacity: 0; filter: blur(10px); transform: translateY(30px) scale(0.98); }
-  100% { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+/* Hero footage drift — a very slow, very small ken-burns. 1.5% of scale over
+   28s is below the threshold where the eye reads it as movement; it reads as
+   the image being alive. Gated behind motion-safe in the markup. */
+@keyframes heroDrift {
+  0%   { transform: scale(1.02) translate3d(0, 0, 0); }
+  50%  { transform: scale(1.055) translate3d(-0.6%, -0.8%, 0); }
+  100% { transform: scale(1.02) translate3d(0, 0, 0); }
 }
 
-@keyframes draw {
-  to {
-    stroke-dashoffset: 0;
-  }
+/* Scroll cue: the line grows downward and fades, hinting the direction rather
+   than pulsing in place. */
+@keyframes scrollHint {
+  0%   { transform: scaleY(0.35); transform-origin: top; opacity: 0.15; }
+  45%  { transform: scaleY(1);    transform-origin: top; opacity: 0.85; }
+  100% { transform: scaleY(1);    transform-origin: bottom; opacity: 0; }
 }
 
-@keyframes dash {
-  0% {
-    stroke-dashoffset: 100;
-  }
-  50% {
-    stroke-dashoffset: 0;
-  }
-  100% {
-    stroke-dashoffset: -100;
-  }
-}
-
-@keyframes cartBounce {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.3) translateY(-2px); }
-  100% { transform: scale(1); }
-}
-
-@keyframes flyToCart {
-  0% { 
-    transform: translate(0, 0) scale(1); 
-    opacity: 1;
-  }
-  100% { 
-    transform: translate(calc(var(--fly-x) * 1px), calc(var(--fly-y) * 1px)) scale(0.1); 
-    opacity: 0;
-  }
-}
-
-@keyframes float {
-  0% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(-15px) rotate(1deg); }
-  100% { transform: translateY(0px) rotate(0deg); }
-}
-
-@keyframes float-slow {
-  0% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(15px) rotate(-1deg); }
-  100% { transform: translateY(0px) rotate(0deg); }
+/* Botanical band. Each frame drifts on its own cycle, scale kept under 4% so
+   nothing reads as animation — the band just never looks quite static. */
+@keyframes frameDrift {
+  0%   { transform: scale(1.03) translate3d(0, 0, 0); }
+  50%  { transform: scale(1.075) translate3d(1%, -1.2%, 0); }
+  100% { transform: scale(1.03) translate3d(0, 0, 0); }
 }
 
 @keyframes marquee {
@@ -105,14 +137,32 @@
   body {
     @apply bg-mist-white text-stone-gray font-sans selection:bg-slate-stone selection:text-ivory;
   }
+  /* Repli pour un titre qui ne porterait aucune classe de taille. Des qu'un
+     `text-*` est present — c'est le cas de presque tous les titres du site —
+     ce sont les valeurs par palier de l'echelle ci-dessus qui s'appliquent,
+     l'utilitaire l'emportant sur cette couche. Ces regles restent pour qu'un
+     titre nu ne retombe pas sur l'interligne du texte courant. */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif text-slate-stone font-light tracking-wide;
+    @apply font-serif text-slate-stone font-light;
+    text-wrap: balance;
+  }
+  h1 { letter-spacing: -0.012em; line-height: 1.12; }
+  h2 { letter-spacing: -0.010em; line-height: 1.16; }
+  h3 { letter-spacing: -0.012em; line-height: 1.20; }
+  h4 { letter-spacing: -0.006em; line-height: 1.30; }
+  h5, h6 { letter-spacing: 0.010em; line-height: 1.40; }
+
+  /* Below the display range the negative tracking stops paying off — a 30px
+     serif heading needs its counters back. */
+  @media (max-width: 640px) {
+    h1 { letter-spacing: -0.012em; line-height: 1.12; }
+    h2 { letter-spacing: -0.008em; line-height: 1.18; }
   }
 }
 
 @layer utilities {
   .glass {
-    @apply bg-white/40 backdrop-blur-xl border border-white/30 shadow-[0_8px_32px_0_rgba(42,52,57,0.05)];
+    @apply bg-ivory/50 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_0_rgba(58,51,43,0.06)];
   }
   .glass-dark {
     @apply bg-slate-stone/60 backdrop-blur-xl border border-white/10 shadow-2xl;
@@ -129,18 +179,101 @@
   }
 }
 
-/* Custom Animations */
-.reveal {
-  opacity: 0;
-  filter: blur(10px);
-  transform: translateY(30px);
-  transition: all 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+/* Composants. Une couche a part, pour que ces regles perdent contre les
+   utilitaires Tailwind ecrits sur l'element — c'est l'ordre attendu, et une
+   regle posee hors couche l'emporterait au contraire sur tout le reste. */
+@layer components {
+  /* Le retour au doigt.
+     Le site posait `active:scale-[0.97]` sur une vingtaine de surfaces. Sur
+     mobile, `:active` n'arrive qu'apres le delai de decision du navigateur — le
+     doigt a deja quitte l'ecran quand l'echelle change, donc on ne voit rien.
+     Et la meme duree a l'aller qu'au retour donne un rebond mou.
+     Ici : descente immediate et courte, remontee plus longue et amortie. On
+     s'enfonce vite, on remonte doucement — c'est ce que fait un vrai bouton. */
+  .press {
+    /* La liste est explicite plutot que `all` : `transition-all` anime aussi
+       les proprietes de mise en page qui changent par accident, chacune coutant
+       un reflux. Les couleurs y figurent parce que ces memes boutons ont un
+       survol : si l'element gardait `transition-colors` a cote, cet utilitaire
+       ecraserait la propriete de transition entiere et la pression ne
+       s'animerait plus du tout. */
+    transition-property: transform, color, background-color, border-color, box-shadow, opacity;
+    transition-duration: 260ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .press:active {
+    transform: scale(0.97);
+    transition-duration: 80ms;
+  }
+
+  /* Les libelles en petites capitales tres espacees.
+     `letter-spacing` ajoute son espace APRES la derniere lettre aussi. Sur un
+     libelle centre, cette colonne de vide fantome de 0,5 em fait partie de la
+     ligne : le navigateur centre le tout, et le texte visible se retrouve
+     decale d'un quart de cadratin vers la gauche. Ce n'est jamais enorme, mais
+     c'est visible des qu'un libelle surmonte un titre centre — et c'est le cas
+     de six d'entre eux.
+     La marge negative rend au bloc la largeur de ce vide, ce qui replace le
+     centre optique au bon endroit. Sur un libelle aligne a gauche, elle ne
+     change rien : le texte part toujours du meme bord. */
+  .caps-label {
+    text-transform: uppercase;
+    letter-spacing: 0.5em;
+    margin-right: -0.5em;
+  }
+
+  /* L'entree d'un element qui vient d'apparaitre.
+     La grille se contentait d'un `.reveal` pilote par l'observateur
+     d'intersection, plus un `transitionDelay` de 100 ms par carte : la
+     troisieme rangee arrivait 1,1 s apres la premiere, alors qu'on venait de
+     cliquer une rubrique et qu'on regardait deja l'endroit ou elle devait
+     apparaitre. Ici l'animation part au montage, sans observateur — la carte
+     est visible par defaut, et rien ne peut la laisser invisible. */
+  .apparait {
+    animation: apparait 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* L'apparition au defilement.
+     Ces deux regles etaient ecrites HORS de toute couche. En CSS, ce qui est
+     hors couche l'emporte sur tout ce qui est en couche : `.reveal` battait donc
+     les utilitaires Tailwind poses sur le meme element. Toute carte portant
+     `.reveal` voyait son `transition` et son `transform` de survol ecrases par
+     ceux de l'apparition — c'est ce qui rendait le survol inerte sur les quatre
+     familles de cartes. Ici, dans `components`, l'utilitaire ecrit sur
+     l'element gagne, ce qui est l'ordre attendu.
+
+     600 ms et 24 px deviennent 420 ms et 14 px : un contenu qui arrive encore
+     apres que l'oeil s'est pose se lit comme un retard, pas comme une elegance.
+     Seuls `opacity` et `transform` sont animes — tous deux vont au compositeur,
+     contrairement au `filter: blur()` d'origine qui coutait une peinture. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 420ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform, opacity;
+  }
+
+  .reveal.active {
+    opacity: 1;
+    transform: translateY(0);
+    /* Rendu au navigateur une fois l'apparition faite : `will-change` maintenu
+       garde une couche de composition par element, pour rien. */
+    will-change: auto;
+  }
 }
 
-.reveal.active {
-  opacity: 1;
-  filter: blur(0);
-  transform: translateY(0);
+/* L'ancienne image s'efface pendant que la nouvelle est deja en place dessous.
+   L'inverse — faire apparaitre la nouvelle par-dessus — laisserait voir le fond
+   du cadre a travers, le temps du fondu. */
+@keyframes fondreVersRien {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes apparait {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* Touch devices: pause carousel on touch */
@@ -154,4 +287,52 @@
     /* Slightly slower on mobile for readability */
     animation-duration: 120s;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Accessibility preferences
+
+   The site previously honoured none of these. It runs a 20s float on a
+   full-viewport background, blurred scroll reveals, a marquee and parallax —
+   exactly the motion that makes some people ill.
+
+   Reduced motion does not mean no feedback: transitions become short opacity
+   cross-fades instead of travel, so the interface still confirms what happened.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 150ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Reveals stop travelling and simply fade in. */
+  .reveal { transform: none; filter: none; opacity: 0; transition: opacity 200ms ease; }
+  .reveal.active { opacity: 1; }
+
+  /* The looping background float and the marquee stop entirely. */
+  .animate-marquee-slow,
+  .animate-marquee,
+  [class*="animate-[float"] { animation: none !important; transform: none !important; }
+
+  /* Hover lifts and card scaling are travel, not information. */
+  .group:hover .group-hover\:scale-105,
+  .hover\:-translate-y-1:hover,
+  .hover\:-translate-y-2:hover { transform: none !important; }
+}
+
+/* Frosted surfaces become near-solid rather than translucent. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass { background: rgba(255,255,255,0.94); backdrop-filter: none; }
+  .glass-dark { background: rgba(58,51,43,0.96); backdrop-filter: none; }
+}
+
+/* High contrast: solid chrome with a defined edge, and no text shadows. */
+@media (prefers-contrast: more) {
+  .glass { background: #fff; backdrop-filter: none; border-color: rgba(58,51,43,0.5); }
+  .glass-dark { background: #3a332b; backdrop-filter: none; border-color: rgba(255,255,255,0.5); }
+  .text-shadow { text-shadow: none; }
 }

@@ -1,18 +1,68 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { separerLangue } from '../i18n/routes';
+import Lien from './Lien';
+import useLienLangue from '../i18n/useLienLangue';
+import { useLocation, useNavigate } from 'react-router-dom';
+import Logo from './Logo';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useLanguage } from '../i18n/LanguageContext';
+import { visibleCategories, cheminRubrique } from '../data/categories';
+import { getProducts } from '../services/products';
 
-const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
+const MobileMenu = ({ isOpen, onClose }) => {
+  const location = useLocation();
+  // Le chemin sans son préfixe de langue : « /en/about » et « /about »
+  // désignent la même page, et doivent s'allumer pareil dans le menu.
+  const cheminNu = separerLangue(location.pathname).chemin;
+  const navigate = useNavigate();
+  const lien = useLienLangue();
+  const { t, tCategory } = useLanguage();
   const [shopExpanded, setShopExpanded] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const categories = [
-    'Savons', 'Soins de la peau', 'Bien-être et détente', 'Bébés',
-    'Accessoires', 'Hommes', 'Shampoings', 'Enfants',
-    'Soin des lèvres', 'Ambiance', 'Savon Liquide', 'Soin des cheveux'
-  ];
-
-  const handleNav = (category) => {
+  const handleMobileSearch = (e) => {
+    e.preventDefault();
+    const q = searchTerm.trim();
+    if (!q) return;
     onClose();
-    onCategorySelect(category);
+    navigate(lien(`/search/${encodeURIComponent(q)}`));
+    setSearchTerm('');
   };
+
+  const isLinkActive = (item) => {
+    if (item === 'Home') return cheminNu === '/';
+    if (item === 'About Us') return cheminNu === '/about';
+    if (item === 'Workshops') return cheminNu === '/workshops';
+    if (item === 'Contact') return cheminNu === '/contact';
+    if (item === 'Shop') return cheminNu.startsWith('/category/');
+    return false;
+  };
+
+  const isCategoryActive = (item) => {
+    return cheminNu === `/category/${encodeURIComponent(item)}`;
+  };
+
+  // Auto-expand Shop submenu on opening mobile menu if currently on a category page
+  useEffect(() => {
+    if (isOpen) {
+      setShopExpanded(cheminNu.startsWith('/category/'));
+    }
+  }, [isOpen, cheminNu]);
+
+  // Même source que le menu de bureau : les deux listes divergeaient à la
+  // première modification puisqu'elles étaient écrites deux fois.
+  const [products, setProducts] = useState([]);
+  useEffect(() => {
+    let actif = true;
+    getProducts().then((d) => { if (actif) setProducts(Array.isArray(d) ? d : []); });
+    return () => { actif = false; };
+  }, []);
+  const categories = visibleCategories(products);
+
+  // Les entrées du menu sont des liens, plus des boutons : un robot lit un
+  // href, il ne clique pas. Le tiroir se referme au clic, comme avant.
+  const NAV_PATHS = { Home: '/', 'About Us': '/about', Workshops: '/workshops', Journal: '/journal', Contact: '/contact' };
+  const lienNav = (item) => NAV_PATHS[item];
 
   return (
     <>
@@ -34,12 +84,11 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
 
           {/* Header */}
           <div className="flex items-center justify-between px-8 pt-8 pb-6">
-            <span className="font-serif text-xl text-white tracking-[0.1em]">
-              So You
-            </span>
+            <Logo className="h-5 w-auto text-white" />
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300"
+              aria-label={t('drawer.close')}
+              className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 press"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6 18L18 6M6 6l12 12" />
@@ -50,36 +99,61 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
           {/* Divider */}
           <div className="h-px bg-white/10 mx-8" />
 
+          {/* Search */}
+          <form onSubmit={handleMobileSearch} className="px-8 pt-6">
+            <div className="flex items-center gap-3 border-b border-white/20 pb-3">
+              <svg className="w-5 h-5 text-white/50 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder={t('nav.searchPlaceholderMobile')}
+                className="bg-transparent outline-none text-white placeholder-white/40 font-sans text-sm w-full"
+              />
+            </div>
+          </form>
+
           {/* Navigation Links */}
           <nav className="flex-1 px-8 py-8">
             <ul className="space-y-1">
               {/* Home */}
               <li
-                className={`transform transition-all duration-500 ${
+                className={`transform transition-all duration-250 ${
                   isOpen ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
                 }`}
                 style={{ transitionDelay: isOpen ? '100ms' : '0ms' }}
               >
-                <button
-                  onClick={() => handleNav('Home')}
-                  className="w-full text-left py-4 text-white font-sans text-lg tracking-[0.15em] uppercase hover:text-white/70 transition-colors duration-300"
+                <Lien
+                  to={lienNav('Home')}
+                  onClick={onClose}
+                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase flex items-center justify-between press border-l-2 pl-4 -ml-4 transform-gpu ${
+                    isLinkActive('Home') 
+                      ? 'text-white border-white font-medium' 
+                      : 'text-white/60 hover:text-white border-transparent'
+                  }`}
                 >
-                  Home
-                </button>
+                  {t('nav.home')}
+                </Lien>
               </li>
 
               {/* Shop (expandable) */}
               <li
-                className={`transform transition-all duration-500 ${
+                className={`transform transition-all duration-250 ${
                   isOpen ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
                 }`}
                 style={{ transitionDelay: isOpen ? '150ms' : '0ms' }}
               >
                 <button
                   onClick={() => setShopExpanded(!shopExpanded)}
-                  className="w-full flex items-center justify-between py-4 text-white font-sans text-lg tracking-[0.15em] uppercase hover:text-white/70 transition-colors duration-300"
+                  className={`w-full flex items-center justify-between py-4 font-sans text-lg tracking-[0.15em] uppercase press border-l-2 pl-4 -ml-4 transform-gpu ${
+                    isLinkActive('Shop') 
+                      ? 'text-white border-white font-medium' 
+                      : 'text-white/60 hover:text-white border-transparent'
+                  }`}
                 >
-                  <span>Shop</span>
+                  <span>{t('nav.shop')}</span>
                   <svg
                     className={`w-4 h-4 transform transition-transform duration-300 ${shopExpanded ? 'rotate-180' : ''}`}
                     fill="none"
@@ -91,80 +165,127 @@ const MobileMenu = ({ isOpen, onClose, onCategorySelect }) => {
                 </button>
 
                 {/* Category Grid */}
-                <div
-                  className={`overflow-hidden transition-all duration-500 ease-out ${
-                    shopExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
-                  }`}
-                >
-                  <div className="grid grid-cols-2 gap-2 pb-4 pt-2">
-                    {categories.map((cat, idx) => (
-                      <button
+                {/* La hauteur ouverte etait ecrite en dur : `max-h-[500px]`.
+                    Treize rubriques sur deux colonnes y tiennent en francais ;
+                    en allemand « Bad & Wohlbefinden » passe sur deux lignes, et
+                    les dernieres rubriques etaient coupees sans rien pour
+                    l'indiquer.
+                    La liste n'est simplement plus rendue quand elle est repliee,
+                    et parait en fondu quand elle s'ouvre : il n'y a plus de
+                    hauteur a maintenir, donc plus rien qui puisse deborder. Le
+                    panneau du menu defile deja de lui-meme. */}
+                {shopExpanded && (
+                  <div className="grid grid-cols-2 gap-2 pb-4 pt-2 apparait">
+                    {categories.map((cat) => (
+                      <Lien
                         key={cat}
-                        onClick={() => handleNav(cat)}
-                        className="text-left px-4 py-3 text-white/60 font-sans text-xs tracking-[0.15em] uppercase hover:text-white hover:bg-white/10 rounded-xl transition-all duration-300"
-                        style={{ transitionDelay: shopExpanded ? `${idx * 30}ms` : '0ms' }}
+                        to={cheminRubrique(cat)}
+                        onClick={onClose}
+                        className={`text-left px-4 py-3 font-sans text-xs tracking-[0.15em] uppercase rounded-xl press border transform-gpu ${
+                          isCategoryActive(cat)
+                            ? 'text-white bg-white/20 border-white/20 font-medium'
+                            : 'text-white/60 bg-transparent border-transparent hover:text-white hover:bg-white/10'
+                        }`}
                       >
-                        {cat}
-                      </button>
+                        {tCategory(cat)}
+                      </Lien>
                     ))}
                   </div>
-                </div>
+                )}
               </li>
 
               {/* About Us */}
               <li
-                className={`transform transition-all duration-500 ${
+                className={`transform transition-all duration-250 ${
                   isOpen ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
                 }`}
                 style={{ transitionDelay: isOpen ? '200ms' : '0ms' }}
               >
-                <button
-                  onClick={() => handleNav('About Us')}
-                  className="w-full text-left py-4 text-white font-sans text-lg tracking-[0.15em] uppercase hover:text-white/70 transition-colors duration-300"
+                <Lien
+                  to={lienNav('About Us')}
+                  onClick={onClose}
+                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase flex items-center justify-between press border-l-2 pl-4 -ml-4 transform-gpu ${
+                    isLinkActive('About Us') 
+                      ? 'text-white border-white font-medium' 
+                      : 'text-white/60 hover:text-white border-transparent'
+                  }`}
                 >
-                  About Us
-                </button>
+                  {t('nav.about')}
+                </Lien>
               </li>
 
               {/* Workshops */}
               <li
-                className={`transform transition-all duration-500 ${
+                className={`transform transition-all duration-250 ${
                   isOpen ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
                 }`}
                 style={{ transitionDelay: isOpen ? '250ms' : '0ms' }}
               >
-                <button
-                  onClick={() => handleNav('Workshops')}
-                  className="w-full text-left py-4 text-white font-sans text-lg tracking-[0.15em] uppercase hover:text-white/70 transition-colors duration-300"
+                <Lien
+                  to={lienNav('Workshops')}
+                  onClick={onClose}
+                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase flex items-center justify-between press border-l-2 pl-4 -ml-4 transform-gpu ${
+                    isLinkActive('Workshops') 
+                      ? 'text-white border-white font-medium' 
+                      : 'text-white/60 hover:text-white border-transparent'
+                  }`}
                 >
-                  Workshops
-                </button>
+                  {t('nav.workshops')}
+                </Lien>
+              </li>
+
+              {/* Journal */}
+              <li
+                className={`transform transition-all duration-250 ${
+                  isOpen ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
+                }`}
+                style={{ transitionDelay: isOpen ? '275ms' : '0ms' }}
+              >
+                <Lien
+                  to={lienNav('Journal')}
+                  onClick={onClose}
+                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase flex items-center justify-between press border-l-2 pl-4 -ml-4 transform-gpu ${
+                    isLinkActive('Journal')
+                      ? 'text-white border-white font-medium'
+                      : 'text-white/60 hover:text-white border-transparent'
+                  }`}
+                >
+                  {t('nav.journal')}
+                </Lien>
               </li>
 
               {/* Contact */}
               <li
-                className={`transform transition-all duration-500 ${
+                className={`transform transition-all duration-250 ${
                   isOpen ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
                 }`}
                 style={{ transitionDelay: isOpen ? '300ms' : '0ms' }}
               >
-                <button
-                  onClick={() => handleNav('Contact')}
-                  className="w-full text-left py-4 text-white font-sans text-lg tracking-[0.15em] uppercase hover:text-white/70 transition-colors duration-300"
+                <Lien
+                  to={lienNav('Contact')}
+                  onClick={onClose}
+                  className={`w-full text-left py-4 font-sans text-lg tracking-[0.15em] uppercase flex items-center justify-between press border-l-2 pl-4 -ml-4 transform-gpu ${
+                    isLinkActive('Contact') 
+                      ? 'text-white border-white font-medium' 
+                      : 'text-white/60 hover:text-white border-transparent'
+                  }`}
                 >
-                  Contact
-                </button>
+                  {t('nav.contact')}
+                </Lien>
               </li>
             </ul>
           </nav>
 
           {/* Footer info */}
           <div className="px-8 py-8 border-t border-white/10">
+            <div className="mb-6">
+              <LanguageSwitcher inline variant="dark" className="text-white -ml-1.5" />
+            </div>
             <p className="text-white/30 font-sans text-xs tracking-wider">
-              Handmade in Geneva
+              {t('nav.handmadeInGeneva')}
             </p>
             <p className="text-white/20 font-sans text-xs tracking-wider mt-2">
-              3 ave. Pictet-De-Rochemont, 1207 Genève
+              {t('footer.address')}
             </p>
           </div>
         </div>

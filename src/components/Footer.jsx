@@ -1,69 +1,150 @@
-import React from 'react';
+import React, { useState } from 'react';
+import Lien from './Lien';
+
+import Logo from './Logo';
+import { useLanguage } from '../i18n/LanguageContext';
+import useEnvoiFormulaire from '../hooks/useEnvoiFormulaire';
+
+const SOCIAL = {
+  instagram: 'https://www.instagram.com/soyoucosmetics.ch?igsh=MTM4bWd2NTd2OHB1Mw==',
+  facebook: 'https://www.facebook.com/share/1JV7jPXXqX/?mibextid=wwXIfr'
+};
+
+// Order requested by the client: So You · Boutique · Notre histoire · Ateliers · Contact.
+// The Journal entry joins this list when the Journal section itself is built.
+const EXPLORE_LINKS = [
+  { key: 'home', to: '/' },
+  { key: 'products', to: '/category/All' },
+  { key: 'about', to: '/about' },
+  { key: 'workshops', to: '/workshops' },
+  { key: 'personnalisation', to: '/personnalisation' },
+  { key: 'journal', to: '/journal' },
+  { key: 'contact', to: '/contact' }
+];
 
 const Footer = () => {
+  const { t } = useLanguage();
+  const [email, setEmail] = useState('');
+  const { etat, enCours, message, messageVisible, envoyer } = useEnvoiFormulaire();
+
+  // La confirmation vivait dans le `catch`, sous le commentaire « optimistic
+  // confirmation » : une adresse perdue affichait « ✓ Inscrit ». Elle ne
+  // s'affiche plus que sur une réponse reçue.
+  const handleSubscribe = (e) => {
+    e.preventDefault();
+    const value = email.trim();
+    if (!value || enCours) return;
+
+    envoyer(
+      fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: value })
+      }),
+      { surSucces: () => setEmail('') }
+    );
+  };
+
   return (
     <footer className="bg-slate-stone text-mist-white py-20 border-t border-white/5">
       <div className="container mx-auto px-6 md:px-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
-          
           <div className="col-span-1 md:col-span-2">
-            <h3 className="font-serif text-3xl font-light tracking-wide mb-6">So You Cosmetics</h3>
+            <Logo className="h-8 w-auto text-white mb-6" />
             <p className="font-sans text-mist-white/70 max-w-sm text-sm leading-relaxed mb-8 font-light">
-              Natural, artisanal cosmetics handmade in Geneva. Formulated with Swiss purity for your daily wellness ritual.
+              {t('footer.tagline')}
             </p>
             <div className="flex gap-4 mb-8">
-              <a href="#" className="w-10 h-10 rounded-full border border-mist-white/20 flex items-center justify-center hover:bg-white hover:text-slate-stone hover:border-white transition-all duration-500">
-                <span className="sr-only">Instagram</span>
-                <span className="text-xs tracking-widest">IG</span>
+              <a
+                href={SOCIAL.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full border border-mist-white/20 flex items-center justify-center hover:bg-ivory hover:text-slate-stone hover:border-white press"
+                aria-label="Instagram"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                  <rect x="3" y="3" width="18" height="18" rx="5" />
+                  <circle cx="12" cy="12" r="4" />
+                  <circle cx="17.5" cy="6.5" r="0.7" fill="currentColor" stroke="none" />
+                </svg>
               </a>
-              <a href="#" className="w-10 h-10 rounded-full border border-mist-white/20 flex items-center justify-center hover:bg-white hover:text-slate-stone hover:border-white transition-all duration-500">
-                <span className="sr-only">Facebook</span>
-                <span className="text-xs tracking-widest">FB</span>
+              <a
+                href={SOCIAL.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full border border-mist-white/20 flex items-center justify-center hover:bg-ivory hover:text-slate-stone hover:border-white press"
+                aria-label="Facebook"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+                </svg>
               </a>
             </div>
             <div className="space-y-2 text-sm text-mist-white/60 font-light">
-              <p>3 ave. Pictet-De-Rochemont, 1207 Genève</p>
-              <p><a href="tel:+41225566992" className="hover:text-white transition-colors duration-300">022 556 69 92</a></p>
+              <p>{t('footer.address')}</p>
+              <p><a href="tel:+41225566992" className="hover:text-white press">022 556 69 92</a></p>
             </div>
           </div>
 
-          <div>
-            <h4 className="font-sans font-medium uppercase tracking-[0.2em] text-[10px] mb-8 text-alpine-silver">Explore</h4>
+          {/* Client asked for the EXPLORER block centred; the brand/address
+              column above stays left-aligned. */}
+          <div className="text-center">
+            <h4 className="font-sans font-medium uppercase tracking-[0.2em] text-[10px] mb-8 text-alpine-silver">{t('footer.explore')}</h4>
             <ul className="space-y-4">
-              {['Products', 'Workshops', 'About', 'Contact'].map((item) => (
-                <li key={item}>
-                  <a href={`#${item.toLowerCase()}`} className="text-sm text-mist-white/60 hover:text-white transition-colors duration-500 font-light tracking-wide">
-                    {item}
-                  </a>
+              {EXPLORE_LINKS.map((item) => (
+                <li key={item.key}>
+                  <Lien
+                    to={item.to}
+                    className="text-sm text-mist-white/60 hover:text-white transition-colors duration-200 font-light tracking-wide"
+                  >
+                    {t(`footer.links.${item.key}`)}
+                  </Lien>
                 </li>
               ))}
             </ul>
           </div>
 
           <div>
-            <h4 className="font-sans font-medium uppercase tracking-[0.2em] text-[10px] mb-8 text-alpine-silver">Newsletter</h4>
-            <p className="text-sm text-mist-white/60 mb-6 font-light">Join our community for botanical wellness tips and exclusive offers.</p>
-            <form className="flex border-b border-mist-white/20 pb-3 group">
-              <input 
-                type="email" 
-                placeholder="Your email address" 
-                className="bg-transparent border-none outline-none text-sm w-full placeholder-mist-white/30 text-white font-light"
+            <h4 className="font-sans font-medium uppercase tracking-[0.2em] text-[10px] mb-8 text-alpine-silver">{t('footer.newsletter')}</h4>
+            <p className="text-sm text-mist-white/60 mb-6 font-light">{t('footer.newsletterText')}</p>
+            <form onSubmit={handleSubscribe} className="flex border-b border-mist-white/20 pb-3 group">
+              <input
+                type="email"
+                required
+                value={email}
+                disabled={enCours}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t('footer.emailPlaceholder')}
+                className="bg-transparent border-none outline-none text-sm w-full placeholder-mist-white/30 text-white font-light disabled:opacity-50"
               />
-              <button type="submit" className="text-[10px] uppercase tracking-[0.2em] text-mist-white/50 group-hover:text-white transition-colors duration-500">
-                Subscribe
+              <button
+                type="submit"
+                disabled={enCours}
+                className="press text-[10px] uppercase tracking-[0.2em] text-mist-white/50 group-hover:text-white transition-colors duration-200 whitespace-nowrap disabled:opacity-50"
+              >
+                {enCours ? t('footer.subscribing') : etat === 'ok' ? t('footer.subscribed') : t('footer.subscribe')}
               </button>
             </form>
+            {message === 'erreur' && (
+              <p
+                role="alert"
+                aria-hidden={!messageVisible}
+                className={`mt-3 text-xs font-light text-red-300 transition-opacity duration-500 ${messageVisible ? 'opacity-100' : 'opacity-0'}`}
+              >
+                {t('footer.subscribeError')}
+              </p>
+            )}
           </div>
 
         </div>
-        
+
         <div className="mt-20 pt-8 border-t border-mist-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-xs text-mist-white/40 font-light tracking-wide">
-            &copy; {new Date().getFullYear()} So You Cosmetics. Handmade in Geneva.
+            {t('footer.rights', { year: new Date().getFullYear() })}
           </p>
           <div className="flex gap-6 text-xs text-mist-white/40 font-light tracking-wide">
-            <a href="#" className="hover:text-white transition-colors duration-500">Terms & Conditions</a>
-            <a href="#" className="hover:text-white transition-colors duration-500">Privacy Policy</a>
+            <Lien to="/terms" className="hover:text-white transition-colors duration-200">{t('footer.terms')}</Lien>
+            <Lien to="/privacy" className="hover:text-white transition-colors duration-200">{t('footer.privacy')}</Lien>
           </div>
         </div>
       </div>

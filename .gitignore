@@ -11,6 +11,13 @@ node_modules
 dist
 dist-ssr
 *.local
+*.zip
+
+# Secrets & runtime data — must never be committed
+.env
+scratch/
+server/data/
+.claude/
 
 # Editor directories and files
 .vscode/*
@@ -24,3 +31,6 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Documents client (devis, factures) — jamais dans le depot
+*.pdf
