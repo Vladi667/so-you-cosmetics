@@ -100,6 +100,8 @@ const translations = {
       emptySearch: 'Aucun résultat pour « {q} ».',
       emptyCategory: 'Aucun produit dans cette catégorie.',
       loadMore: 'Voir plus',
+      pagination: 'Pages de résultats',
+      pageLabel: 'Page {n}',
       seeAll: 'Voir toute la boutique',
       // La barre d’outils du catalogue.
       countProducts: '{n} produits',
@@ -270,7 +272,25 @@ const translations = {
       defaultDesc: 'Un produit artisanal So You, fait main avec amour à Genève.',
       youMayAlsoLike: 'Vous aimerez aussi',
     },
-    category: { home: 'Accueil' },
+    category: {
+      home: 'Accueil',
+      // Le titre de premier niveau d'une page de rubrique.
+      //
+      // Ces quatorze pages n'en avaient aucun : leur premier titre venait du
+      // catalogue, « Découvrez So You », identique sur toutes et sur l'accueil.
+      // Ce sont pourtant les pages à intention commerciale du site — celles
+      // qu'on cherche en tapant « savon artisanal Genève ».
+      //
+      // « {nom} à Genève » plutôt qu'une formule plus riche : le nom des
+      // rubriques reste français et son genre est inconnu ici, si bien que
+      // « faits main » s'accorderait faux une fois sur deux. La construction
+      // choisie ne s'accorde avec rien.
+      heading: '{nom} à Genève',
+      headingAll: 'La boutique — cosmétiques naturels faits main à Genève',
+      // Le paragraphe qui rattache la page au lieu. Volontairement sans
+      // accord ni détail de produit : il vaut pour les quatorze rubriques.
+      intro: 'Fabriqué à la main dans notre atelier genevois, au 3 av. Pictet-De-Rochemont. Retrait gratuit en boutique aux Eaux-Vives, livraison partout en Suisse.',
+    },
     search: { home: 'Accueil', label: 'Recherche :' },
     // La page servie quand l'adresse ne correspond à rien. Le serveur répond
     // alors un vrai 404 ; ceci en est le visage.
@@ -626,6 +646,8 @@ const translations = {
       emptySearch: 'No results for “{q}”.',
       emptyCategory: 'No products found in this category.',
       loadMore: 'Load More',
+      pagination: 'Result pages',
+      pageLabel: 'Page {n}',
       seeAll: 'See the whole shop',
       countProducts: '{n} products',
       countProduct: '{n} product',
@@ -790,7 +812,12 @@ const translations = {
       defaultDesc: 'An artisanal So You product, handmade with love in Geneva.',
       youMayAlsoLike: 'You may also like',
     },
-    category: { home: 'Home' },
+    category: {
+      home: 'Home',
+      heading: '{nom} in Geneva',
+      headingAll: 'The shop — natural cosmetics handmade in Geneva',
+      intro: 'Handmade in our Geneva workshop at 3 av. Pictet-De-Rochemont. Free in-store pickup in the Eaux-Vives, delivery across Switzerland.',
+    },
     search: { home: 'Home', label: 'Search:' },
     notFound: {
       title: 'This page does not exist',
@@ -1144,6 +1171,8 @@ const translations = {
       emptySearch: 'Keine Ergebnisse für „{q}“.',
       emptyCategory: 'Keine Produkte in dieser Kategorie.',
       loadMore: 'Mehr anzeigen',
+      pagination: 'Ergebnisseiten',
+      pageLabel: 'Seite {n}',
       seeAll: 'Alle Produkte ansehen',
       countProducts: '{n} Produkte',
       countProduct: '{n} Produkt',
@@ -1308,7 +1337,12 @@ const translations = {
       defaultDesc: 'Ein handwerkliches So You Produkt, mit Liebe in Genf handgemacht.',
       youMayAlsoLike: 'Das könnte Ihnen auch gefallen',
     },
-    category: { home: 'Startseite' },
+    category: {
+      home: 'Startseite',
+      heading: '{nom} in Genf',
+      headingAll: 'Der Laden — handgemachte Naturkosmetik aus Genf',
+      intro: 'Handgefertigt in unserem Genfer Atelier an der 3 av. Pictet-De-Rochemont. Kostenlose Abholung in den Eaux-Vives, Versand in die ganze Schweiz.',
+    },
     search: { home: 'Startseite', label: 'Suche:' },
     notFound: {
       title: 'Diese Seite existiert nicht',
