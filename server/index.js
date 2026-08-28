@@ -9,6 +9,8 @@ const apiRouter = require('./routes');
 const { ensureUploadsDir } = require('./uploads');
 const db = require('./db');
 const seo = require('./seo');
+const mesure = require('./mesure');
+const flux = require('./flux');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -65,16 +67,26 @@ app.use((req, res, next) => {
   // la feuille de polices Google et ses fichiers, et le reste chez nous.
   // `unsafe-inline` sur les styles est nécessaire tant que des attributs style
   // subsistent dans le rendu ; il ne concerne pas les scripts.
+  // Les origines de la mesure d'audience, dérivées des mêmes réglages que les
+  // balises elles-mêmes.
+  //
+  // Sans cela, un marqueur ajouté à la page serait refusé par le navigateur
+  // sans erreur visible : on croirait mesurer, et on ne mesurerait rien. La
+  // liste reste vide tant qu'aucune mesure n'est configurée — une politique se
+  // resserre par défaut et ne s'élargit qu'à la demande.
+  const orig = mesure.originesCsp();
+  const ajout = (liste) => (liste.length ? ' ' + liste.join(' ') : '');
+
   res.setHeader(
     'Content-Security-Policy-Report-Only',
     [
       "default-src 'self'",
-      `script-src 'self' 'nonce-${res.locals.cspNonce}' https://gateway.sumup.com`,
+      `script-src 'self' 'nonce-${res.locals.cspNonce}' https://gateway.sumup.com${ajout(orig.script)}`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
-      "img-src 'self' data: blob: https://static.wixstatic.com https://gateway.sumup.com",
+      `img-src 'self' data: blob: https://static.wixstatic.com https://gateway.sumup.com${ajout(orig.img)}`,
       "media-src 'self'",
-      "connect-src 'self' https://gateway.sumup.com https://api.sumup.com",
+      `connect-src 'self' https://gateway.sumup.com https://api.sumup.com${ajout(orig.connect)}`,
       // Le plan d'acces de la page « Nous trouver » : maps.google.com
       // redirige vers www.google.com, il faut donc les deux. Trouve par la
       // mise en observation — imposee, la politique aurait fait disparaitre
@@ -164,6 +176,34 @@ app.get('/sitemap.xml', async (req, res) => {
     // tronquée que Google prendrait pour la vérité sur l'étendue du site.
     console.error('sitemap.xml indisponible :', err.message);
     res.status(500).type('text/plain').send('sitemap indisponible');
+  }
+});
+
+// Le flux produits, pour les fiches gratuites de Google Shopping.
+//
+// À déclarer une fois dans Merchant Center comme flux programmé ; il se
+// reconstruit à chaque lecture, donc un prix modifié depuis l'administration
+// suit tout seul.
+//
+// Même emplacement et même raison que le plan du site : avant le catch-all,
+// pour qu'une panne réponde une erreur franche plutôt que du HTML sous un nom
+// de fichier XML.
+app.get('/flux-produits.xml', async (req, res) => {
+  try {
+    const schema = req.get('x-forwarded-proto') || req.protocol || 'https';
+    const base = `${schema}://${req.get('host')}`;
+    const { xml, retenus, total, ecartes } = await flux.construireFlux(base, db);
+    // Ce qui est écarté est dit, et compté. Un catalogue de 177 fiches dont 7
+    // n'entrent pas dans le flux doit pouvoir s'expliquer en une ligne — sinon
+    // on cherche des semaines pourquoi un produit n'apparaît pas sur Shopping.
+    const motifs = Object.entries(ecartes).map(([r, n]) => `${n} ${r}`).join(', ');
+    console.log(`flux-produits.xml : ${retenus}/${total} articles${motifs ? ` (écartés : ${motifs})` : ''}`);
+    res.type('application/xml').send(xml);
+  } catch (err) {
+    // Un flux tronqué est pire qu'un flux absent : Merchant Center prendrait la
+    // liste partielle pour la vérité et retirerait les articles manquants.
+    console.error('flux-produits.xml indisponible :', err.message);
+    res.status(500).type('text/plain').send('flux indisponible');
   }
 });
 
@@ -286,7 +326,9 @@ app.get('*', async (req, res, next) => {
     const content = db.readContent();
     // Le script de données est assemblé plus bas, une fois connu ce que le
     // serveur a su dire de la page : window.__SEO__ en fait partie.
-    let tag = '';
+    // Les balises de mesure, si elles sont configurées. Posées avant le reste
+    // pour que la vérification Search Console soit lisible haut dans le <head>.
+    let tag = mesure.balises(res.locals.cspNonce);
     let seoClient = null;
     // If </head> is somehow absent, fall through to the untouched file rather
     // than guessing where to put the tag.
@@ -394,5 +436,9 @@ app.listen(PORT, () => {
   console.log(`  Local URL:  http://localhost:${PORT}`);
   console.log(`  Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`  Uploads dir: ${uploadsRoot}`);
+  // Dit au démarrage ce qui est mesuré, ou que rien ne l'est. Un site qui
+  // croit mesurer sans mesurer est pire qu'un site qui sait qu'il ne mesure
+  // rien : personne ne va vérifier ce qu'on pense avoir réglé.
+  console.log(mesure.resume());
   console.log(`=========================================`);
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Lien from './Lien';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import SectionHeader from './SectionHeader';
 import { getProducts, imageUrl, imageSrcSet } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -31,6 +31,16 @@ const stripHtml = (s) => (s || '').toString().replace(/<[^>]*>/g, ' ');
 // deux. Aucune rangée ne reste bancale, quelle que soit la largeur.
 const APERCU = 8;
 
+// La taille d'une page, et la première tranche montrée hors pagination.
+//
+// Les deux DOIVENT être le même nombre. La tranche initiale valait douze
+// pendant que la pagination comptait par vingt-quatre : le lien « page 1 »
+// menait à l'adresse nue, qui en montrait douze, tandis que « page 2 »
+// commençait au vingt-cinquième. Les produits 13 à 24 n'apparaissaient alors
+// dans aucune page atteignable — douze fiches par rubrique invisibles à qui
+// suit les liens plutôt que le plan du site.
+const PAS = 24;
+
 // `apercu` : l'accueil montre un échantillon, pas la boutique.
 //
 // Le catalogue complet y était monté tel quel, avec son défilement infini —
@@ -41,7 +51,7 @@ const APERCU = 8;
 //
 // En aperçu, le nombre est fixe, l'observateur n'est pas posé, et le pied
 // renvoie à la boutique au lieu d'en charger davantage.
-function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favorites, searchQuery = '', apercu = false }) {
+function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favorites, searchQuery = '', apercu = false, sansEntete = false }) {
   const { t, tCategory } = useLanguage();
   const [productsList, setProductsList] = useState([]);
   const [activeCategory, setActiveCategory] = useState(globalActiveCategory);
@@ -58,6 +68,7 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
   // Un lien de resultats se colle alors dans une conversation, et le retour
   // arriere du navigateur retrouve la selection au lieu de la perdre.
   const [parametres, setParametres] = useSearchParams();
+  const { pathname } = useLocation();
   const tri = TRIS.includes(parametres.get('tri')) ? parametres.get('tri') : 'boutique';
   const tranchesChoisies = (parametres.get('prix') || '')
     .split(',')
@@ -94,7 +105,7 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
       .catch(() => {});
     return () => { actif = false; };
   }, []);
-  const [visibleCount, setVisibleCount] = useState(apercu ? APERCU : 12);
+  const [visibleCount, setVisibleCount] = useState(apercu ? APERCU : PAS);
   const scrollRef = useRef(null);
   const isSearching = searchQuery.trim().length > 0;
 
@@ -197,11 +208,41 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
   const [selectionPeinte, setSelectionPeinte] = useState(selection);
   if (selectionPeinte !== selection) {
     setSelectionPeinte(selection);
-    setVisibleCount(apercu ? APERCU : 12);
+    setVisibleCount(apercu ? APERCU : PAS);
   }
 
-  const PAS = 24;
   const loadMore = () => setVisibleCount((prev) => prev + PAS);
+
+  // Des adresses de pages, pour que les 178 fiches soient atteignables.
+  //
+  // Le catalogue n'affichait que douze produits, puis attendait un défilement
+  // ou un clic. Un robot ne fait ni l'un ni l'autre : il voyait douze fiches
+  // par rubrique, et aucune adresse ne menait aux suivantes. Le plan du site
+  // les liste désormais toutes, mais un plan n'est qu'une déclaration — un
+  // chemin de liens reste ce qui distribue la valeur entre les pages.
+  //
+  // Strictement additif : sans « ?page », rien ne change. Avec, on affiche
+  // exactement cette tranche-là, et le chargement au défilement se retire —
+  // deux mécanismes qui empileraient des produits en même temps donneraient
+  // des pages qui se recouvrent, donc du contenu dupliqué.
+  const enPages = !apercu && parametres.has('page');
+  const nbPages = Math.max(1, Math.ceil(displayedProducts.length / PAS));
+  const page = Math.min(Math.max(1, parseInt(parametres.get('page'), 10) || 1), nbPages);
+  const produitsAffiches = enPages
+    ? displayedProducts.slice((page - 1) * PAS, page * PAS)
+    : displayedProducts.slice(0, visibleCount);
+
+  // L'adresse d'une page, en conservant le tri et les fourchettes en cours.
+  //
+  // Le chemin courant porte déjà son préfixe de langue ; <Lien> le retire avant
+  // de le reposer, l'opération est donc neutre ici, et le lien reste dans la
+  // langue de la page.
+  const lienPage = (n) => {
+    const p = new URLSearchParams(parametres);
+    if (n <= 1) p.delete('page'); else p.set('page', String(n));
+    const q = p.toString();
+    return q ? `${pathname}?${q}` : pathname;
+  };
 
   // Le chargement au defilement. La sentinelle est placee sous la grille : des
   // qu'elle entre dans le champ, la tranche suivante arrive.
@@ -276,12 +317,19 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
   return (
     <section id="catalog" className="py-24 bg-mist-white">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <SectionHeader
-          title={isSearching ? t('catalog.titleSearch') : t('catalog.titleFull')}
-          subtitle={isSearching
-            ? t('catalog.resultCount', { n: displayedProducts.length, q: searchQuery.trim() })
-            : t('catalog.subtitleFull')}
-        />
+        {/* « sansEntete » : la page de rubrique pose désormais son propre
+            <h1>, et cet en-tête-ci répétait « Découvrez So You » juste en
+            dessous — le même sur quatorze pages. Il reste sur l'accueil, où
+            il est le titre de la section, et pendant une recherche, où il
+            annonce le nombre de résultats. */}
+        {(!sansEntete || isSearching) && (
+          <SectionHeader
+            title={isSearching ? t('catalog.titleSearch') : t('catalog.titleFull')}
+            subtitle={isSearching
+              ? t('catalog.resultCount', { n: displayedProducts.length, q: searchQuery.trim() })
+              : t('catalog.subtitleFull')}
+          />
+        )}
 
         {/* Categories Filter — hidden while searching */}
         {!isSearching && (
@@ -432,7 +480,7 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
             chaque recherche, ce qui remplace l'ancienne cascade de retards. */}
         {charge && (
         <div key={selection} className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
-          {displayedProducts.slice(0, visibleCount).map((product) => {
+          {produitsAffiches.map((product) => {
             const sansPhoto = !product.images || product.images.length === 0;
             // Un atelier mène à sa page de réservation, pas à une fiche produit.
             const lien = product.estAtelier ? `/workshops/${product.id}` : `/product/${product.id}`;
@@ -595,8 +643,36 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
         )}
 
         {/* La sentinelle du chargement au defilement. */}
-        {charge && visibleCount < displayedProducts.length && (
+        {charge && !enPages && visibleCount < displayedProducts.length && (
           <div ref={sentinelleRef} aria-hidden="true" className="h-px w-full" />
+        )}
+
+        {/* Les pages, en vrais liens.
+            Rendues même en page 1 : c'est de là qu'un robot doit trouver le
+            chemin vers les cent soixante fiches suivantes. Discrètes à dessein
+            — pour un visiteur, « Voir plus » reste le geste naturel, et ces
+            liens ne sont là que pour ceux qui ne cliquent pas. */}
+        {charge && !apercu && !isSearching && nbPages > 1 && (
+          <nav aria-label={t('catalog.pagination')} className="mt-16">
+            <ol className="flex flex-wrap items-center justify-center gap-2">
+              {Array.from({ length: nbPages }, (_, i) => i + 1).map((n) => (
+                <li key={n}>
+                  <Lien
+                    to={lienPage(n)}
+                    aria-label={t('catalog.pageLabel', { n })}
+                    aria-current={enPages && n === page ? 'page' : undefined}
+                    className={`inline-flex items-center justify-center min-w-9 h-9 px-3 rounded-full text-xs tracking-widest border press transition-colors ${
+                      (enPages ? n === page : n === 1)
+                        ? 'bg-slate-stone text-white border-slate-stone font-medium'
+                        : 'text-stone-gray border-slate-stone/15 hover:border-slate-stone/40 hover:text-slate-stone'
+                    }`}
+                  >
+                    {n}
+                  </Lien>
+                </li>
+              ))}
+            </ol>
+          </nav>
         )}
 
         {/* En aperçu, le pied renvoie à la boutique : c'est ce qui donne une
@@ -612,7 +688,7 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
           </div>
         )}
 
-        {!apercu && visibleCount < displayedProducts.length && (
+        {!apercu && !enPages && visibleCount < displayedProducts.length && (
           <div className="mt-16 text-center">
             <button
               onClick={loadMore}
