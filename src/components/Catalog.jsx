@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Lien from './Lien';
 import { useSearchParams } from 'react-router-dom';
 import SectionHeader from './SectionHeader';
-import { getProducts, imageUrl } from '../services/products';
+import { getProducts, imageUrl, imageSrcSet } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
 import { visibleCategories, cheminRubrique } from '../data/categories';
 import { ouvrirPanier, sursautPanier } from '../services/panier';
@@ -446,11 +446,19 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
                 className="group relative flex flex-col bg-ivory rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-shadow duration-250 apparait"
               >
                 <div className="aspect-[4/5] w-full overflow-hidden bg-lake-mist relative">
+                  {/* `sizes` décrit la grille : deux colonnes sur téléphone,
+                      trois puis quatre ensuite. Sans lui, le navigateur suppose
+                      que l'image occupe toute la largeur et prend la plus
+                      grande du lot — soit, sur une carte de 180 px, huit fois
+                      les octets utiles. */}
                   {sansPhoto ? <ProductPlaceholder /> : (
                   <img
                     src={imageUrl(product.images[0], 800)}
+                    srcSet={imageSrcSet(product.images[0], 800)}
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                     alt={product.name}
                     loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-in-out"
                   />
                   )}

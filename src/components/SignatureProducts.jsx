@@ -4,7 +4,7 @@ import Lien from './Lien';
 import SectionHeader from './SectionHeader';
 import { useLanguage } from '../i18n/LanguageContext';
 
-import { getProducts } from '../services/products';
+import { getProducts, imageUrl, imageSrcSet } from '../services/products';
 import { normaliserTexte } from '../data/texte';
 
 // Drift speed in pixels per second. Slow enough to read a product name as it
@@ -242,11 +242,18 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                 <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-ivory mb-5
                                 border border-slate-stone/[0.07] shadow-sm
                                 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group/card">
+                  {/* L'adresse passait ici telle qu'elle est stockée, sans
+                      jamais traverser imageUrl : ni la bonne largeur, ni le
+                      format négocié. C'était la seule bande du site dans ce
+                      cas, et elle est sur l'accueil. */}
                   {product.images && product.images.length > 0 ? (
                     <img
-                      src={product.images[0]}
+                      src={imageUrl(product.images[0], 800)}
+                      srcSet={imageSrcSet(product.images[0], 800)}
+                      sizes="(max-width: 640px) 70vw, (max-width: 1024px) 40vw, 25vw"
                       alt={product.name || ''}
                       loading="lazy"
+                      decoding="async"
                       draggable={false}
                       className="w-full h-full object-cover object-center absolute inset-0
                                  brightness-[1.02] saturate-[0.93]
