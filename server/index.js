@@ -10,6 +10,7 @@ const { ensureUploadsDir } = require('./uploads');
 const db = require('./db');
 const seo = require('./seo');
 const mesure = require('./mesure');
+const flux = require('./flux');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -175,6 +176,34 @@ app.get('/sitemap.xml', async (req, res) => {
     // tronquée que Google prendrait pour la vérité sur l'étendue du site.
     console.error('sitemap.xml indisponible :', err.message);
     res.status(500).type('text/plain').send('sitemap indisponible');
+  }
+});
+
+// Le flux produits, pour les fiches gratuites de Google Shopping.
+//
+// À déclarer une fois dans Merchant Center comme flux programmé ; il se
+// reconstruit à chaque lecture, donc un prix modifié depuis l'administration
+// suit tout seul.
+//
+// Même emplacement et même raison que le plan du site : avant le catch-all,
+// pour qu'une panne réponde une erreur franche plutôt que du HTML sous un nom
+// de fichier XML.
+app.get('/flux-produits.xml', async (req, res) => {
+  try {
+    const schema = req.get('x-forwarded-proto') || req.protocol || 'https';
+    const base = `${schema}://${req.get('host')}`;
+    const { xml, retenus, total, ecartes } = await flux.construireFlux(base, db);
+    // Ce qui est écarté est dit, et compté. Un catalogue de 177 fiches dont 7
+    // n'entrent pas dans le flux doit pouvoir s'expliquer en une ligne — sinon
+    // on cherche des semaines pourquoi un produit n'apparaît pas sur Shopping.
+    const motifs = Object.entries(ecartes).map(([r, n]) => `${n} ${r}`).join(', ');
+    console.log(`flux-produits.xml : ${retenus}/${total} articles${motifs ? ` (écartés : ${motifs})` : ''}`);
+    res.type('application/xml').send(xml);
+  } catch (err) {
+    // Un flux tronqué est pire qu'un flux absent : Merchant Center prendrait la
+    // liste partielle pour la vérité et retirerait les articles manquants.
+    console.error('flux-produits.xml indisponible :', err.message);
+    res.status(500).type('text/plain').send('flux indisponible');
   }
 });
 
