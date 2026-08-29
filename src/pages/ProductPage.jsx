@@ -9,6 +9,7 @@ import { IconeSimple } from '../components/IconeEngagement';
 import { descriptionToHtml } from '../utils/description';
 import { lireRecette } from '../data/recettes';
 import { cheminRubrique } from '../data/categories';
+import { cheminProduit, trouverProduit } from '../data/slug';
 import { ouvrirPanier } from '../services/panier';
 import ImageProduit from '../components/ImageProduit';
 import VisionneuseImage from '../components/VisionneuseImage';
@@ -102,7 +103,12 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
     getProducts().then(data => handleProductsLoaded(data));
 
     function handleProductsLoaded(productsList) {
-      const foundProduct = productsList.find(p => p.id === id);
+      // L'adresse porte un slug lisible ; l'empreinte de huit caractères qui
+      // le termine désigne la fiche. Les anciennes adresses, faites de
+      // l'identifiant Wix entier, restent reconnues — le serveur les redirige
+      // vers la nouvelle forme, mais la résolution doit tenir sans lui, par
+      // exemple en navigation interne depuis un lien ancien.
+      const foundProduct = trouverProduit(id, productsList);
       
       if (foundProduct) {
         setProduct(foundProduct);
@@ -431,7 +437,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                       return (
                         <Lien
                           key={v.id}
-                          to={`/product/${v.id}`}
+                          to={cheminProduit(v)}
                           aria-current={active}
                           className={`press rounded-full border px-4 py-2 font-sans text-xs ${
                             active
@@ -527,7 +533,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   </p>
                   {relatedProducts[0] && (
                     <Lien
-                      to={`/product/${relatedProducts[0].id}`}
+                      to={cheminProduit(relatedProducts[0])}
                       className="press mt-4 inline-block rounded-full border border-slate-stone/25 px-5 py-2 font-sans text-[10px] uppercase tracking-[0.18em] text-slate-stone hover:border-slate-stone/60"
                     >
                       {t('product.outOfStockNearest', { name: relatedProducts[0].name })}
@@ -660,7 +666,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                       {etape.rituel.etape || i + 1}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <Lien to={`/product/${etape.id}`}
+                      <Lien to={cheminProduit(etape)}
                         className={`font-sans text-sm hover:text-stone-gray transition-colors ${etape.id === product.id ? 'font-medium text-slate-stone' : 'text-slate-stone'}`}>
                         {etape.name}
                       </Lien>
@@ -712,7 +718,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 const isFav = favorites.some(fav => fav.id === p.id);
                 return (
                   <div key={p.id} className="group relative flex flex-col bg-ivory rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-250">
-                    <Lien to={`/product/${p.id}`} className="aspect-[4/5] w-full overflow-hidden bg-lake-mist relative block">
+                    <Lien to={cheminProduit(p)} className="aspect-[4/5] w-full overflow-hidden bg-lake-mist relative block">
                       {img ? (
                         <img src={imageUrl(img, 800)} alt={p.name} loading="lazy" className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-in-out" />
                       ) : <ProductPlaceholder />}
@@ -723,7 +729,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                       )}
                     </Lien>
                     <div className="p-3 sm:p-6 flex flex-col flex-grow">
-                      <Lien to={`/product/${p.id}`} className="block">
+                      <Lien to={cheminProduit(p)} className="block">
                         <p className="font-sans text-[9px] sm:text-[10px] tracking-[0.2em] uppercase text-stone-gray mb-1 sm:mb-2">{p.collections[0] ? tCategory(p.collections[0]) : 'So You'}</p>
                         <h3 className="font-serif text-sm sm:text-xl text-slate-stone mb-2 sm:mb-3 line-clamp-2 group-hover:text-stone-gray transition-colors">{p.name}</h3>
                       </Lien>

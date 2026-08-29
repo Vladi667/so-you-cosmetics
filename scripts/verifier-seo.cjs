@@ -189,7 +189,7 @@ const shop = {
   ok(htmlEn.includes('og:locale" content="en_GB"'), 'og:locale suit la langue');
   ok(htmlEn.includes('hreflang="x-default" href="' + BASE + '/category/Savons"'),
      'x-default pointe le français');
-  ok(xml.includes('<loc>' + BASE + '/product/' + catalogue[0].id + '</loc>'), 'une fiche précise y est');
+  ok(xml.includes('<loc>' + BASE + '/product/' + seo.slugProduit(catalogue[0]) + '</loc>'), 'une fiche précise y est, sous son slug');
   ok(!xml.includes('brouillon'), 'le brouillon n’est pas au plan');
   ok(!/<loc>[^<]*&(?!amp;|apos;|quot;|lt;|gt;)/.test(xml), 'les & sont échappés dans les <loc>');
   ok(xml.includes('Bain%20%26%20Bien-'), 'la rubrique accentuée est encodée');
@@ -243,6 +243,56 @@ const shop = {
   const rupt = flux.evaluer({ id: 'x', name: 'X', price: 10, images: ['/a.png'], description: 'x', inStock: false }, BASE);
   ok(rupt.article.dispo === 'out_of_stock', 'inStock === false => rupture');
   ok(!/&(?!amp;|lt;|gt;|quot;|apos;)/.test(f1.xml), 'entités échappées dans tout le flux');
+
+
+  console.log('\n== adresses lisibles des fiches ==');
+  const tousLesSlugs = catalogue.map((p) => seo.slugProduit(p));
+  ok(new Set(tousLesSlugs).size === catalogue.length,
+     'les ' + catalogue.length + ' slugs sont uniques (' + new Set(tousLesSlugs).size + ' distincts)');
+  ok(tousLesSlugs.every((s) => /^[a-z0-9-]+$/.test(s)),
+     'aucun accent, aucune majuscule, aucun caractère à encoder');
+  ok(tousLesSlugs.every((s) => !/--|^-|-$/.test(s)), 'pas de tiret double ni en bordure');
+  // Le suffixe n’est pas décoratif : plusieurs fiches partagent le même nom,
+  // et sans lui elles se réduiraient à la même adresse.
+  const sansSuffixe = tousLesSlugs.map((s) => s.replace(/-[a-z0-9]{8}$/, ''));
+  ok(new Set(sansSuffixe).size < catalogue.length,
+     'des noms sont partagés (' + (catalogue.length - new Set(sansSuffixe).size) + ') — le suffixe les sépare');
+
+  const echantillon = catalogue[0];
+  ok(seo.trouverProduit(seo.slugProduit(echantillon), catalogue) === echantillon,
+     'une fiche se retrouve par son slug');
+  // Les anciennes adresses doivent continuer de répondre : elles ont été
+  // envoyées par message et déposées au plan du site.
+  ok(seo.trouverProduit(echantillon.id, catalogue) === echantillon,
+     'et par son ancien identifiant Wix entier');
+  ok(seo.trouverProduit('nexiste-pas-du-tout', catalogue) === null, 'un slug inconnu ne résout rien');
+  ok(seo.trouverProduit('', catalogue) === null, 'une chaîne vide ne résout rien');
+  ok(catalogue.every((p) => seo.trouverProduit(seo.slugProduit(p), catalogue) === p),
+     'chaque fiche du catalogue se retrouve par son propre slug');
+
+  // Les deux implémentations — celle du navigateur et celle du serveur — sont
+  // des copies volontaires. Rien n’empêcherait qu’elles divergent, sauf ceci.
+  const sourceClient = require('fs')
+    .readFileSync(path.join(RACINE, 'src/data/slug.js'), 'utf8')
+    .replace(/export /g, '');
+  const modClient = {};
+  new Function('module', sourceClient + '\nmodule.exports = { slugProduit, trouverProduit };')(modClient);
+  const desaccords = catalogue.filter(
+    (p) => modClient.exports.slugProduit(p) !== seo.slugProduit(p)
+  );
+  ok(desaccords.length === 0,
+     'navigateur et serveur produisent le même slug sur les ' + catalogue.length + ' fiches' +
+     (desaccords.length ? ' (' + desaccords[0].name + ')' : ''));
+
+  console.log('\n== la fiche répond sous les deux formes ==');
+  const parSlug = await seo.metadonneesDeRoute(
+    '/product/' + seo.slugProduit(echantillon), BASE + '/x', BASE, db, shop);
+  ok(parSlug && parSlug.titre.startsWith(echantillon.name), 'métadonnées résolues depuis le slug');
+  const parId = await seo.metadonneesDeRoute(
+    '/product/' + echantillon.id, BASE + '/x', BASE, db, shop);
+  ok(parId && parId.titre === parSlug.titre, 'et identiques depuis l’ancien identifiant');
+  ok(await seo.metadonneesDeRoute('/product/inconnu-00000000', BASE + '/x', BASE, db, shop) === null,
+     'une fiche inconnue reste un 404');
 
   console.log('\n' + (echecs === 0 ? 'TOUT PASSE' : echecs + ' ECHEC(S)'));
   process.exit(echecs ? 1 : 0);
