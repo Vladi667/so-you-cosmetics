@@ -304,6 +304,34 @@ app.get('*', async (req, res, next) => {
   try {
     const shop = db.getShopSettings();
 
+    // Une fiche demandée par son ancienne adresse part vers la nouvelle, en 301.
+    //
+    // Les identifiants repris de Wix restent reconnus — un lien déjà envoyé par
+    // message, mis en favori, ou déposé au plan du site hier doit continuer de
+    // répondre. Mais il ne doit pas rester indexable : deux adresses pour une
+    // même fiche, c'est exactement le contenu dupliqué que le reste de ce
+    // fichier s'emploie à éviter. La redirection permanente dit au moteur
+    // laquelle garder, et lui transmet ce que l'ancienne avait accumulé.
+    const ancienneFiche = seo.separerLangue(req.path).chemin.match(/^\/product\/([^/]+)$/);
+    if (ancienneFiche) {
+      try {
+        const demande = decodeURIComponent(ancienneFiche[1]);
+        const produit = seo.trouverProduit(demande, await db.getProducts());
+        const canonique = produit && seo.slugProduit(produit);
+        if (canonique && demande !== canonique) {
+          const { langue } = seo.separerLangue(req.path);
+          // La chaîne de requête est conservée : un lien de campagne porte ses
+          // paramètres de suivi, et les perdre en route rendrait la campagne
+          // impossible à mesurer.
+          const requete = req.originalUrl.slice(req.path.length);
+          return res.redirect(301, seo.avecLangue(`/product/${canonique}`, langue) + requete);
+        }
+      } catch {
+        // Adresse mal encodée ou base muette : on ne redirige pas, et la suite
+        // répondra 404 comme il se doit.
+      }
+    }
+
     // Maintenance mode. She asked for a way to take the shop off the air while
     // it is still being finished, without it also locking her — or us — out.
     // /admin and /api stay reachable, so she can turn it back off from the same

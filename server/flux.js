@@ -70,7 +70,7 @@ function evaluer(produit, base) {
       id: produit.id,
       titre: titre(produit.name),
       description,
-      lien: `${base}/product/${encodeURIComponent(produit.id)}`,
+      lien: `${base}/product/${seo.slugProduit(produit)}`,
       image,
       imagesEnPlus: images.slice(1, 11).map((u) => seo.absolutiser(u, base)).filter(Boolean),
       prix: prix.toFixed(2),

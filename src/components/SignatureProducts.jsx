@@ -5,6 +5,7 @@ import SectionHeader from './SectionHeader';
 import { useLanguage } from '../i18n/LanguageContext';
 
 import { getProducts, imageUrl, imageSrcSet } from '../services/products';
+import { cheminProduit } from '../data/slug';
 import { normaliserTexte } from '../data/texte';
 
 // Drift speed in pixels per second. Slow enough to read a product name as it
@@ -272,7 +273,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                   <div className="absolute inset-0 bg-[#B9A891]/[0.12] mix-blend-soft-light pointer-events-none" />
 
                   <Lien
-                    to={`/product/${product.id}`}
+                    to={cheminProduit(product)}
                     tabIndex={isDuplicate ? -1 : undefined}
                     className="absolute inset-0 z-0 bg-gradient-to-t from-slate-stone/40 via-transparent to-transparent
                                opacity-0 group-hover/card:opacity-100 transition-opacity duration-300"
@@ -326,7 +327,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                   <p className="text-xs uppercase tracking-widest text-mist-blue mb-2 font-medium">
                     {product.collections?.[0] ? tCategory(product.collections[0]) : t('catalog.cosmeticsFallback')}
                   </p>
-                  <Lien to={`/product/${product.id}`} tabIndex={isDuplicate ? -1 : undefined}>
+                  <Lien to={cheminProduit(product)} tabIndex={isDuplicate ? -1 : undefined}>
                     <h3 className="font-serif text-base sm:text-lg md:text-xl text-slate-stone mb-1 line-clamp-1 px-4 hover:text-stone-gray transition-colors">
                       {product.name}
                     </h3>

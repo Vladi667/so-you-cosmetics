@@ -771,7 +771,19 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
 
   const fiche = chemin.match(/^\/product\/([^/]+)$/);
   if (fiche) {
-    const produit = await db.getProductById(decodeURIComponent(fiche[1]));
+    // Le catalogue entier plutôt que getProductById : l'adresse porte désormais
+    // un slug, et l'empreinte de huit caractères qui le termine doit être
+    // comparée à toutes les fiches. Les anciennes adresses, elles, restent
+    // reconnues telles quelles.
+    let parametre;
+    try {
+      parametre = decodeURIComponent(fiche[1]);
+    } catch {
+      // Un pourcentage isolé fait lever decodeURIComponent : la fiche n'existe
+      // pas, c'est un 404 et non une erreur serveur.
+      return null;
+    }
+    const produit = trouverProduit(parametre, await db.getProducts());
     if (!produit || !produit.name) return null;
     const description = resumerTexte(produit.description);
     const rubrique = Array.isArray(produit.collections) && produit.collections[0];
@@ -781,7 +793,7 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
     jsonLd.push(schemaFilAriane(base, [
       { nom: 'Accueil', chemin: '/' },
       ...(rubrique ? [{ nom: rubrique, chemin: `/category/${encodeURIComponent(rubrique)}` }] : []),
-      { nom: produit.name, chemin: `/product/${encodeURIComponent(produit.id)}` },
+      { nom: produit.name, chemin: `/product/${slugProduit(produit)}` },
     ], langue));
     return {
       ...commun,
@@ -974,7 +986,7 @@ async function construireSitemap(base, db) {
     ...rubriques.map((c) => url(`/category/${encodeURIComponent(c)}`, '0.8', 'weekly')),
     ...listeProduits
       .filter((p) => p && p.id)
-      .map((p) => url(`/product/${encodeURIComponent(p.id)}`, '0.7', 'weekly')),
+      .map((p) => url(`/product/${slugProduit(p)}`, '0.7', 'weekly')),
     url('/workshops', '0.8', 'monthly'),
     ...(Array.isArray(ateliers) ? ateliers : [])
       .filter((w) => w && w.id)
@@ -997,12 +1009,64 @@ async function construireSitemap(base, db) {
     `xmlns:xhtml="http://www.w3.org/1999/xhtml">${entrees}</urlset>`;
 }
 
+// ---------------------------------------------------------------------------
+// L'adresse lisible d'une fiche produit
+// ---------------------------------------------------------------------------
+
+// Le miroir de src/data/slug.js, en CommonJS, pour la même raison que
+// separerLangue : deux copies d'une règle courte valent mieux qu'un module
+// partagé entre un paquet destiné au navigateur et un serveur non transpilé.
+// La suite de vérification compare les deux implémentations sur le catalogue
+// entier, pour qu'elles ne puissent pas diverger en silence.
+const LONGUEUR_EMPREINTE = 8;
+
+function empreinte(id) {
+  return String(id || '')
+    .replace(/^product_/, '')
+    .replace(/-/g, '')
+    .slice(0, LONGUEUR_EMPREINTE)
+    .toLowerCase();
+}
+
+function slugifier(texte) {
+  return String(texte || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+    .replace(/-+$/, '');
+}
+
+function slugProduit(produit) {
+  if (!produit || !produit.id) return '';
+  const nom = slugifier(produit.name);
+  const emp = empreinte(produit.id);
+  return nom ? `${nom}-${emp}` : emp;
+}
+
+// Accepte l'ancienne forme comme la nouvelle : les adresses déjà envoyées par
+// message ou déposées au plan du site doivent continuer de répondre. Le serveur
+// redirige ensuite vers la forme lisible, pour qu'une seule soit indexée.
+function trouverProduit(parametre, produits) {
+  if (!parametre || !Array.isArray(produits)) return null;
+  const brut = String(parametre);
+  const direct = produits.find((p) => p.id === brut);
+  if (direct) return direct;
+  const emp = brut.slice(-LONGUEUR_EMPREINTE).toLowerCase();
+  return produits.find((p) => empreinte(p.id) === emp) || null;
+}
+
 module.exports = {
   SITE_NOM,
   TITRE_DEFAUT,
   LANGUES,
   LANGUE_DEFAUT,
   LOCALES,
+  slugProduit,
+  trouverProduit,
+  empreinte,
   separerLangue,
   avecLangue,
   alternatives,

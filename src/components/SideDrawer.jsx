@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
+import { cheminProduit } from '../data/slug';
 import Lien from './Lien';
 import { useLanguage } from '../i18n/LanguageContext';
 import { getShipping, shippingCostFor, exigeAdresse, getGiftWrap, modeAutorise } from '../services/shop';
@@ -668,7 +669,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                         page qu'on vient de demander. */}
                     {type === 'favorites' ? (
                       <Lien
-                        to={`/product/${item.id}`}
+                        to={cheminProduit(item)}
                         onClick={onClose}
                         className="font-sans text-sm font-medium text-slate-stone hover:text-stone-gray transition-colors line-clamp-2"
                       >

@@ -5,6 +5,7 @@ import SectionHeader from './SectionHeader';
 import { getProducts, imageUrl, imageSrcSet } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
 import { visibleCategories, cheminRubrique } from '../data/categories';
+import { cheminProduit } from '../data/slug';
 import { ouvrirPanier, sursautPanier } from '../services/panier';
 import { TRANCHES_PRIX, dansLaTranche, trier, TRIS } from '../data/tri';
 import { grouperParRecette } from '../data/recettes';
@@ -483,7 +484,7 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
           {produitsAffiches.map((product) => {
             const sansPhoto = !product.images || product.images.length === 0;
             // Un atelier mène à sa page de réservation, pas à une fiche produit.
-            const lien = product.estAtelier ? `/workshops/${product.id}` : `/product/${product.id}`;
+            const lien = product.estAtelier ? `/workshops/${product.id}` : cheminProduit(product);
             return (
               // `apparait` remplace `reveal` : l'observateur d'intersection
               // n'a rien a observer ici, la grille est deja sous les yeux quand
