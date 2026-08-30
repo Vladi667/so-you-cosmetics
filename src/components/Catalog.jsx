@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Lien from './Lien';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import SectionHeader from './SectionHeader';
-import { getProducts, imageUrl, imageSrcSet } from '../services/products';
+import { getProducts, imageUrl, imageSrcSet, catalogueInitial } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
 import { visibleCategories, cheminRubrique } from '../data/categories';
 import { cheminProduit } from '../data/slug';
@@ -54,12 +54,15 @@ const PAS = 24;
 // renvoie à la boutique au lieu d'en charger davantage.
 function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favorites, searchQuery = '', apercu = false, sansEntete = false }) {
   const { t, tCategory } = useLanguage();
-  const [productsList, setProductsList] = useState([]);
+  // Semé avec ce que le serveur a injecté : sans cela le rendu serveur
+  // produirait une grille vide, et le navigateur en produirait une pleine —
+  // divergence d'hydratation sur chaque fiche.
+  const [productsList, setProductsList] = useState(() => catalogueInitial() || []);
   const [activeCategory, setActiveCategory] = useState(globalActiveCategory);
   // Distinguer « le catalogue n'est pas encore arrive » de « la rubrique est
   // vide ». Sans ce drapeau, la page affichait « Aucun produit dans cette
   // categorie » pendant tout le chargement, sur toutes les rubriques.
-  const [charge, setCharge] = useState(false);
+  const [charge, setCharge] = useState(() => Boolean(catalogueInitial()));
   // Quelle carte vient de recevoir un ajout. Le seul retour etait un chiffre
   // qui changeait dans l'en-tete, hors du champ de vision sur mobile : on
   // touchait le bouton, et rien ne se passait la ou on regardait.

@@ -152,6 +152,22 @@ function verifierConstruction() {
   if (!fs.existsSync(path.join(dist, 'index.html'))) {
     mourir('dist/index.html est absent. Lancer « npm run build » d’abord.');
   }
+
+  // Le moteur de rendu serveur, produit par la même commande.
+  //
+  // Son absence ne casse rien — le serveur retombe sur la coquille — mais elle
+  // annule silencieusement le rendu du corps des pages, et personne ne s'en
+  // apercevrait avant de regarder le HTML reçu par un robot. Mieux vaut refuser
+  // de partir que livrer une version qui paraît complète et ne l'est pas.
+  if (!fs.existsSync(path.join(RACINE, 'dist-ssr', 'entry-server.js'))) {
+    mourir(
+      'dist-ssr/entry-server.js est absent.\n' +
+      '  Le site fonctionnerait, mais servirait une coquille vide aux robots\n' +
+      '  qui n’exécutent pas JavaScript — ce que le rendu serveur corrige.\n' +
+      '  Lancer « npm run build », qui produit les deux.'
+    );
+  }
+
   const dateDist = fs.statSync(path.join(dist, 'index.html')).mtimeMs;
 
   let plusRecent = 0;
@@ -193,8 +209,8 @@ function etatDuDepot() {
 // L'inventaire de ce qui sera transféré
 // ---------------------------------------------------------------------------
 
-function listerDist() {
-  const base = path.join(RACINE, 'dist');
+function listerDossier(nom) {
+  const base = path.join(RACINE, nom);
   const fichiers = [];
   const parcourir = (dossier) => {
     for (const e of fs.readdirSync(dossier, { withFileTypes: true })) {
@@ -232,7 +248,7 @@ const ko = (o) => `${(o / 1024).toFixed(0)} Ko`;
 // Le transfert
 // ---------------------------------------------------------------------------
 
-async function deployer(cfg, dist, serveur) {
+async function deployer(cfg, dist, ssr, serveur) {
   const sftp = new SftpClient();
   const connexion = {
     host: cfg.host,
@@ -249,38 +265,60 @@ async function deployer(cfg, dist, serveur) {
 
   const racine = cfg.racineDistante.replace(/\/+$/, '');
   const horodatage = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const distProvisoire = `${racine}/dist.nouveau-${horodatage}`;
-  const distPrecedent = `${racine}/dist.precedent-${horodatage}`;
+  // Les deux dossiers construits, traités ensemble.
+  //
+  // dist-ssr/ porte le moteur de rendu du serveur ; dist/ porte le paquet que
+  // le navigateur exécute ensuite. Les deux sortent de la même construction et
+  // DOIVENT rester appariés : un moteur d'une version rendant un balisage que
+  // le paquet d'une autre version hydrate, c'est une divergence d'hydratation
+  // sur chaque page, pour tout visiteur pris dans la fenêtre.
+  //
+  // On envoie donc les deux dans des dossiers provisoires, puis on bascule les
+  // deux à la suite. SFTP ne permet pas d'être atomique sur deux dossiers ;
+  // deux renommages consécutifs réduisent la fenêtre à quelques millisecondes,
+  // au lieu de la durée d'un transfert de 14 Mo.
+  const dossiers = [
+    { nom: 'dist', fichiers: dist },
+    { nom: 'dist-ssr', fichiers: ssr },
+  ].map((d) => ({
+    ...d,
+    provisoire: `${racine}/${d.nom}.nouveau-${horodatage}`,
+    precedent: `${racine}/${d.nom}.precedent-${horodatage}`,
+  }));
 
   try {
-    // dist/ passe par un dossier provisoire, puis bascule d'un coup.
+    // Chaque dossier passe par un provisoire.
     //
     // Envoyer les fichiers un par un par-dessus les anciens laisserait, pendant
     // toute la durée du transfert, un site qui mélange l'ancien index.html et
     // les nouveaux fichiers — donc des adresses d'empreintes qui n'existent pas
-    // encore. Sur 14 Mo, cette fenêtre dure. Ici elle se réduit à un renommage,
-    // et l'ancien dossier reste à côté : le retour arrière est immédiat.
-    console.log(`\n${c.gras('dist/')} → ${distProvisoire}`);
-    await sftp.mkdir(distProvisoire, true);
-    let n = 0;
-    for (const f of dist) {
-      if (interdit(f.relatif)) mourir(`refus : ${f.relatif} correspond à une interdiction`);
-      const cible = `${distProvisoire}/${f.relatif}`;
-      const dossier = cible.slice(0, cible.lastIndexOf('/'));
-      if (!(await sftp.exists(dossier))) await sftp.mkdir(dossier, true);
-      await sftp.put(f.local, cible);
-      n += 1;
-      process.stdout.write(`\r  ${n}/${dist.length} fichiers`);
+    // encore. Ici la fenêtre se réduit à un renommage, et l'ancien dossier reste
+    // à côté : le retour arrière est immédiat.
+    for (const d of dossiers) {
+      console.log(`\n${c.gras(d.nom + '/')} → ${path.basename(d.provisoire)}`);
+      await sftp.mkdir(d.provisoire, true);
+      let n = 0;
+      for (const f of d.fichiers) {
+        if (interdit(f.relatif)) mourir(`refus : ${f.relatif} correspond à une interdiction`);
+        const cible = `${d.provisoire}/${f.relatif}`;
+        const dossier = cible.slice(0, cible.lastIndexOf('/'));
+        if (!(await sftp.exists(dossier))) await sftp.mkdir(dossier, true);
+        await sftp.put(f.local, cible);
+        n += 1;
+        process.stdout.write(`\r  ${n}/${d.fichiers.length} fichiers`);
+      }
+      console.log(`\r  ${c.vert('✓')} ${n} fichiers envoyés          `);
     }
-    console.log(`\r  ${c.vert('✓')} ${n} fichiers envoyés          `);
 
+    // Les deux bascules, à la suite et sans rien entre elles.
     console.log(`\n${c.gras('Bascule')}`);
-    if (await sftp.exists(`${racine}/dist`)) {
-      await sftp.rename(`${racine}/dist`, distPrecedent);
-      console.log(`  ${c.vert('✓')} ancien dist → ${path.basename(distPrecedent)}`);
+    for (const d of dossiers) {
+      if (await sftp.exists(`${racine}/${d.nom}`)) {
+        await sftp.rename(`${racine}/${d.nom}`, d.precedent);
+      }
+      await sftp.rename(d.provisoire, `${racine}/${d.nom}`);
+      console.log(`  ${c.vert('✓')} ${d.nom} en place`);
     }
-    await sftp.rename(distProvisoire, `${racine}/dist`);
-    console.log(`  ${c.vert('✓')} nouveau dist en place`);
 
     // Le serveur : petits fichiers de code, posés directement. Node ne relira
     // rien avant son redémarrage, il n'y a donc pas d'état intermédiaire visible.
@@ -291,7 +329,14 @@ async function deployer(cfg, dist, serveur) {
       console.log(`  ${c.vert('✓')} ${f.relatif} ${c.gris(`(${ko(f.taille)})`)}`);
     }
 
-    console.log(`\n  ${c.gris(`Retour arrière : renommer ${path.basename(distPrecedent)} en dist.`)}`);
+    // Le retour arrière porte sur les deux dossiers, et sur les deux ensemble :
+    // remettre l'ancien dist sans l'ancien dist-ssr laisserait un moteur de
+    // rendu et un paquet client de versions différentes, donc une divergence
+    // d'hydratation sur chaque page.
+    console.log(`\n  ${c.gris(
+      `Retour arrière : renommer dist.precedent-${horodatage} et ` +
+      `dist-ssr.precedent-${horodatage} en dist et dist-ssr — les deux ensemble.`
+    )}`);
   } finally {
     await sftp.end();
   }
@@ -379,13 +424,16 @@ async function principal() {
   verifierConstruction();
   const cfg = lireConfig();
   const depot = etatDuDepot();
-  const dist = listerDist();
+  const dist = listerDossier('dist');
+  const ssr = listerDossier('dist-ssr');
   const serveur = listerServeur();
   const poids = dist.reduce((t, f) => t + f.taille, 0);
+  const poidsSsr = ssr.reduce((t, f) => t + f.taille, 0);
 
   console.log(`\n  branche      ${depot.branche} ${c.gris(`(${depot.commit})`)}`);
   console.log(`  destination  ${cfg.username}@${cfg.host}:${cfg.racineDistante}`);
   console.log(`  dist/        ${dist.length} fichiers, ${ko(poids)}`);
+  console.log(`  dist-ssr/    ${ssr.length} fichiers, ${ko(poidsSsr)} ${c.gris('— le moteur de rendu serveur')}`);
   console.log(`  server/      ${serveur.length} fichiers de code`);
   console.log(`  ${c.gras('jamais')}       server/data/ ${c.gris('— commandes, réglages, photos, mot de passe')}`);
   if (!AVEC_CATALOGUE) {
@@ -404,7 +452,7 @@ async function principal() {
     return;
   }
 
-  await deployer(cfg, dist, serveur);
+  await deployer(cfg, dist, ssr, serveur);
 
   console.log(`\n${c.gras('Il reste deux gestes, que le SFTP ne peut pas faire :')}`);
   console.log(`  1. ${c.gras('npm install --prefix server')} sur l'hôte`);

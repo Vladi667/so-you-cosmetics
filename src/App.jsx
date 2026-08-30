@@ -38,7 +38,19 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 import NotFoundPage from './pages/NotFoundPage';
 
 function App() {
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('adminToken'));
+  // localStorage n'existe pas sur le serveur, et cette lecture-ci n'était pas
+  // protégée : elle levait au premier rendu et faisait échouer le rendu serveur
+  // de la page entière, pas seulement de l'administration.
+  //
+  // Faux par défaut, et c'est le bon défaut : le serveur ne doit jamais rendre
+  // une administration connectée. Le navigateur corrige au montage.
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
+    try {
+      return !!localStorage.getItem('adminToken');
+    } catch {
+      return false;
+    }
+  });
   const [cart, setCart] = useState([]);
   const [favorites, setFavorites] = useState([]);
   // Ce qui a été conservé du dernier passage, lu tout de suite : les lignes

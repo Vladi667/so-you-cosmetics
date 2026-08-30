@@ -8,7 +8,7 @@ import Logo from './Logo';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '../i18n/LanguageContext';
 import { visibleCategories, cheminRubrique } from '../data/categories';
-import { getProducts } from '../services/products';
+import { getProducts, catalogueInitial } from '../services/products';
 import useVerrouDefilement from '../hooks/useVerrouDefilement';
 
 // Maps the routing keys used by onCategorySelect/isLinkActive to translation keys.
@@ -39,7 +39,7 @@ const Navbar = ({ cartCount, favCount, onCartClick, onFavClick }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // Les rubriques affichées suivent le catalogue : celles qui n'ont aucun
   // produit ne s'affichent pas, et réapparaissent seules dès qu'elle en ajoute.
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(() => catalogueInitial() || []);
   useEffect(() => {
     let actif = true;
     getProducts().then((d) => { if (actif) setProducts(Array.isArray(d) ? d : []); });
