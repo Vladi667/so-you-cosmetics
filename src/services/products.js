@@ -37,8 +37,29 @@ export function getProducts() {
 //
 // Le ratio 4/5 est celui des trois cadres du site (catalogue, fiche,
 // suggestions) : demander autre chose ferait recadrer Wix.
+// Les photos rapatriées de Wix, déposées par scripts/rapatrier-images.mjs :
+//
+//     /uploads/catalogue/<empreinte>-<largeur>.jpg
+//
+// Elles existent en 400, 800 et 1600, en JPEG et en AVIF. Le serveur choisit le
+// format selon ce que le navigateur accepte ; ici on ne choisit que la largeur.
+// Sans cette reconnaissance, le rapatriement ferait perdre le srcset gagné la
+// veille : toutes les adresses locales seraient servies à la même taille.
+const CATALOGUE_LOCAL = /^(\/uploads\/catalogue\/[a-f0-9]+)-(\d+)\.jpg$/i;
+const LARGEURS_LOCALES = [400, 800, 1600];
+
+// La largeur disponible la plus proche par le haut : mieux vaut une image un peu
+// trop grande que floue.
+function largeurLocale(voulue) {
+  return LARGEURS_LOCALES.find((l) => l >= voulue) || LARGEURS_LOCALES[LARGEURS_LOCALES.length - 1];
+}
+
 export function imageUrl(src, largeur = 800) {
   if (typeof src !== 'string' || !src) return src;
+
+  const local = src.match(CATALOGUE_LOCAL);
+  if (local) return `${local[1]}-${largeurLocale(largeur)}.jpg`;
+
   const hauteur = Math.round(largeur * 5 / 4);
   const url = src.replace(/w_\d+,h_\d+/, `w_${largeur},h_${hauteur}`);
   return avecFormatAuto(url);
@@ -71,10 +92,22 @@ const LARGEURS = [400, 600, 800, 1200, 1600];
 
 export function imageSrcSet(src, largeurMax = 1600) {
   if (typeof src !== 'string' || !src) return undefined;
-  // Uniquement les adresses Wix : elles seules savent se redimensionner. Une
-  // photo téléversée n'existe qu'en une taille, et proposer des largeurs qui
-  // renverraient toutes le même fichier ferait choisir la plus grande au
-  // navigateur — l'inverse de ce qu'on cherche.
+
+  // Les photos rapatriées : trois largeurs réellement présentes sur le disque.
+  // On n'annonce que celles-là — proposer une largeur qui n'existe pas ferait
+  // demander au navigateur un fichier absent.
+  if (CATALOGUE_LOCAL.test(src)) {
+    return LARGEURS_LOCALES
+      .filter((l) => l <= largeurMax)
+      .map((l) => `${imageUrl(src, l)} ${l}w`)
+      .join(', ');
+  }
+
+  // Uniquement les adresses Wix pour le reste : elles seules savent se
+  // redimensionner. Une photo qu'elle téléverse depuis l'administration n'existe
+  // qu'en une taille, et proposer des largeurs qui renverraient toutes le même
+  // fichier ferait choisir la plus grande au navigateur — l'inverse de ce qu'on
+  // cherche.
   if (!/\/v1\/[a-z]+\//i.test(src) || !/w_\d+,h_\d+/.test(src)) return undefined;
   return LARGEURS
     .filter((l) => l <= largeurMax)

@@ -223,6 +223,15 @@ async function initProductionDatabase() {
     // Migrate orders tables created before pickup/shipping tracking existed.
     await ensureColumn(conn, 'orders', 'fulfillment', 'TEXT NULL');
 
+    // La date de séance des ateliers, absente des tables créées avant elle.
+    //
+    // Sans cette migration, l'INSERT de createWorkshop nommerait une colonne
+    // inexistante et la création d'atelier échouerait — sur toute base déjà en
+    // place, c'est-à-dire partout sauf sur une installation neuve. ensureColumn
+    // la pose si elle manque, et se contente d'un message dans le journal si
+    // l'utilisateur SQL n'a pas le droit de modifier la table.
+    await ensureColumn(conn, 'workshops', 'starts_at', 'DATETIME NULL');
+
     // Create bookings table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS bookings (
@@ -267,6 +276,7 @@ async function initProductionDatabase() {
         price DECIMAL(10,2) NOT NULL,
         duration VARCHAR(100),
         image_url VARCHAR(255),
+        starts_at DATETIME NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -1130,14 +1140,18 @@ async function createWorkshop(workshopData) {
     price: workshopData.price,
     duration: workshopData.duration,
     image_url: workshopData.image_url || '/workshop_ingredients.png',
+    // La date et l'heure de la séance. Sans elle, schema.org n'autorise qu'un
+    // Service ; avec elle, l'atelier devient un Event — le seul type qui
+    // remonte dans le carrousel d'événements et dans Maps.
+    starts_at: workshopData.starts_at || null,
     created_at: new Date().toISOString()
   };
 
   if (pool) {
     try {
       await pool.query(
-        'INSERT INTO workshops (id, title, description, price, duration, image_url) VALUES (?, ?, ?, ?, ?, ?)',
-        [workshop.id, workshop.title, workshop.description, workshop.price, workshop.duration, workshop.image_url]
+        'INSERT INTO workshops (id, title, description, price, duration, image_url, starts_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [workshop.id, workshop.title, workshop.description, workshop.price, workshop.duration, workshop.image_url, workshop.starts_at]
       );
       return workshop;
     } catch (err) {
@@ -1155,8 +1169,8 @@ async function updateWorkshop(id, workshopData) {
   if (pool) {
     try {
       await pool.query(
-        'UPDATE workshops SET title = ?, description = ?, price = ?, duration = ?, image_url = ? WHERE id = ?',
-        [workshopData.title, workshopData.description, workshopData.price, workshopData.duration, workshopData.image_url, id]
+        'UPDATE workshops SET title = ?, description = ?, price = ?, duration = ?, image_url = ?, starts_at = ? WHERE id = ?',
+        [workshopData.title, workshopData.description, workshopData.price, workshopData.duration, workshopData.image_url, workshopData.starts_at || null, id]
       );
       return { id, ...workshopData };
     } catch (err) {

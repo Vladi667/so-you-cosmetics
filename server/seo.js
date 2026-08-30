@@ -364,18 +364,64 @@ function schemaProduit(produit, urlPage, base) {
 // on émet donc un Service, qui n'en demande pas et qui décrit honnêtement
 // l'offre telle qu'elle existe. Le jour où des séances datées apparaissent,
 // c'est ici qu'Event prend sa place.
+// Une date valide, ou rien.
+//
+// L'administration envoie ce que produit un <input type="datetime-local"> :
+// « 2026-09-14T14:00 », sans fuseau. On le lit tel quel — l'atelier a lieu à
+// Genève, et lui coller un « Z » le déplacerait de deux heures en été.
+function dateAtelier(valeur) {
+  const brut = String(valeur || '').trim();
+  if (!brut) return '';
+  const d = new Date(brut);
+  return Number.isNaN(d.getTime()) ? '' : brut;
+}
+
 function schemaAtelier(atelier, urlPage, base) {
+  const debut = dateAtelier(atelier.starts_at);
+
+  // Event dès qu'une date existe, Service sinon.
+  //
+  // Google refuse un Event sans startDate — c'est le seul champ qui distingue
+  // « une prestation qu'on propose » de « une séance qui a lieu ». Et l'Event
+  // est le seul des deux à remonter dans le carrousel d'événements et sur Maps,
+  // là où se cherche « atelier savon Genève ce week-end ».
+  //
+  // Tant qu'elle n'a pas saisi de date, un Service reste vrai et valide : mieux
+  // vaut un type modeste et honnête qu'un Event rejeté pour champ manquant.
   const noeud = {
     '@context': 'https://schema.org',
-    '@type': 'Service',
+    '@type': debut ? 'Event' : 'Service',
     '@id': `${urlPage}#atelier`,
     name: atelier.title,
     description: resumerTexte(atelier.description, 300),
-    serviceType: 'Atelier de cosmétique et de savon',
-    provider: { '@id': `${base}/#boutique` },
-    areaServed: { '@type': 'City', name: 'Genève' },
     url: urlPage,
   };
+
+  if (debut) {
+    noeud.startDate = debut;
+    noeud.eventAttendanceMode = 'https://schema.org/OfflineEventAttendanceMode';
+    noeud.eventStatus = 'https://schema.org/EventScheduled';
+    // L'adresse est répétée plutôt que référencée : Google lit le lieu d'un
+    // Event sans suivre les @id, et un Event sans location est rejeté.
+    noeud.location = {
+      '@type': 'Place',
+      name: BOUTIQUE.autreNom,
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: BOUTIQUE.rue,
+        postalCode: BOUTIQUE.codePostal,
+        addressLocality: BOUTIQUE.ville,
+        addressRegion: BOUTIQUE.region,
+        addressCountry: BOUTIQUE.pays,
+      },
+    };
+    noeud.organizer = { '@id': `${base}/#boutique` };
+  } else {
+    noeud.serviceType = 'Atelier de cosmétique et de savon';
+    noeud.provider = { '@id': `${base}/#boutique` };
+    noeud.areaServed = { '@type': 'City', name: 'Genève' };
+  }
+
   const image = absolutiser(atelier.image_url, base);
   if (image) noeud.image = image;
 

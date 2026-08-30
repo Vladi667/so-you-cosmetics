@@ -294,6 +294,40 @@ const shop = {
   ok(await seo.metadonneesDeRoute('/product/inconnu-00000000', BASE + '/x', BASE, db, shop) === null,
      'une fiche inconnue reste un 404');
 
+
+  console.log('\n== atelier : Event ou Service selon la date ==');
+  // Sans date, un Event serait rejeté par Google — startDate est le champ qui
+  // distingue « une prestation qu’on propose » de « une séance qui a lieu ».
+  const atelierSansDate = await seo.metadonneesDeRoute(
+    '/workshops/ws_1', BASE + '/workshops/ws_1', BASE, db, shop);
+  const nSans = atelierSansDate.jsonLd.find((n) => n['@type'] === 'Service' || n['@type'] === 'Event');
+  ok(nSans && nSans['@type'] === 'Service', 'sans date : Service, pas Event');
+  ok(!nSans.startDate && !nSans.location, 'et donc ni startDate ni location');
+  ok(!!nSans.serviceType && !!nSans.provider, 'mais serviceType et provider présents');
+
+  const dbDate = {
+    ...db,
+    getWorkshops: async () => [{ ...ateliers[0], starts_at: '2026-09-14T14:00' }],
+  };
+  const atelierDate = await seo.metadonneesDeRoute(
+    '/workshops/ws_1', BASE + '/workshops/ws_1', BASE, dbDate, shop);
+  const nAvec = atelierDate.jsonLd.find((n) => n['@type'] === 'Event' || n['@type'] === 'Service');
+  ok(nAvec['@type'] === 'Event', 'avec date : Event');
+  ok(nAvec.startDate === '2026-09-14T14:00', 'startDate repris tel quel, sans fuseau ajouté');
+  // L’adresse est répétée plutôt que référencée : Google lit le lieu d’un Event
+  // sans suivre les @id, et un Event sans location est rejeté.
+  ok(nAvec.location && nAvec.location.address.addressLocality === 'Genève',
+     'location porte l’adresse complète, pas une référence');
+  ok(!!nAvec.eventStatus && !!nAvec.eventAttendanceMode, 'statut et mode de présence déclarés');
+  ok(!!nAvec.offers && nAvec.offers.priceCurrency === 'CHF', 'l’offre survit au changement de type');
+
+  // Une date mal saisie ne doit pas produire un Event invalide.
+  const dbBidon = { ...db, getWorkshops: async () => [{ ...ateliers[0], starts_at: 'pas une date' }] };
+  const atelierBidon = await seo.metadonneesDeRoute(
+    '/workshops/ws_1', BASE + '/workshops/ws_1', BASE, dbBidon, shop);
+  const nBidon = atelierBidon.jsonLd.find((n) => n['@type'] === 'Event' || n['@type'] === 'Service');
+  ok(nBidon['@type'] === 'Service', 'date illisible : on retombe sur Service');
+
   console.log('\n' + (echecs === 0 ? 'TOUT PASSE' : echecs + ' ECHEC(S)'));
   process.exit(echecs ? 1 : 0);
 })();

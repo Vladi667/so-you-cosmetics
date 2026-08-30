@@ -146,7 +146,46 @@ app.use(express.json({
 // Serve admin-uploaded product images. Location is shared with routes.js and
 // overridable via UPLOADS_DIR so it can point at a persistent volume.
 const uploadsRoot = ensureUploadsDir();
-app.use('/uploads', express.static(uploadsRoot));
+
+// L'AVIF servi à la place du JPEG, quand le navigateur l'accepte.
+//
+// C'est exactement ce que faisait « enc_auto » chez Wix, et ce qu'on perdrait en
+// rapatriant les photos : le gain mesuré était de 35 Ko à 12,6 Ko sur la même
+// image. scripts/rapatrier-images.mjs dépose les deux formats côte à côte ; il
+// ne reste qu'à choisir lequel envoyer.
+//
+// Fait ici plutôt qu'avec des balises <picture> dans les composants : la
+// négociation ne concerne que le transport, pas le contenu. Les trois endroits
+// qui affichent des photos gardent un <img src="….jpg"> ordinaire, et le
+// navigateur reçoit de l'AVIF sans que rien dans le rendu ne le sache.
+//
+// « Vary: Accept » est indispensable, et posé même quand on ne substitue pas :
+// sans lui, un cache intermédiaire servirait l'AVIF à un navigateur qui ne le
+// lit pas, et l'image resterait blanche.
+app.use('/uploads', (req, res, next) => {
+  if (!/^\/catalogue\/.+\.jpg$/i.test(req.path)) return next();
+  res.setHeader('Vary', 'Accept');
+  if (!/image\/avif/i.test(req.headers.accept || '')) return next();
+  const avif = path.join(uploadsRoot, req.path.replace(/\.jpg$/i, '.avif'));
+  if (!fs.existsSync(avif)) return next();
+  res.type('image/avif');
+  // La même mise en cache que le JPEG servi par express.static juste en dessous.
+  // sendFile court-circuite son setHeaders : sans cette ligne, l'AVIF repartait
+  // en « max-age=0 » — c'est-à-dire que le format servi à la grande majorité des
+  // navigateurs était le seul à être redemandé à chaque visite.
+  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  return res.sendFile(avif);
+});
+
+app.use('/uploads', express.static(uploadsRoot, {
+  setHeaders: (res, chemin) => {
+    // Le nom d'un fichier du catalogue porte l'empreinte de son adresse
+    // d'origine et sa largeur : il ne désignera jamais un autre contenu.
+    if (/[\\/]catalogue[\\/]/.test(chemin)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  },
+}));
 
 // Serve ACME HTTP-01 challenge files from the filesystem (for Let's Encrypt SSL validation).
 // Infomaniak writes challenge tokens into ./.well-known/acme-challenge/ at the site root.
