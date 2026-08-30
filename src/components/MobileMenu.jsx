@@ -7,7 +7,7 @@ import Logo from './Logo';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '../i18n/LanguageContext';
 import { visibleCategories, cheminRubrique } from '../data/categories';
-import { getProducts } from '../services/products';
+import { getProducts, catalogueInitial } from '../services/products';
 
 const MobileMenu = ({ isOpen, onClose }) => {
   const location = useLocation();
@@ -51,7 +51,7 @@ const MobileMenu = ({ isOpen, onClose }) => {
 
   // Même source que le menu de bureau : les deux listes divergeaient à la
   // première modification puisqu'elles étaient écrites deux fois.
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(() => catalogueInitial() || []);
   useEffect(() => {
     let actif = true;
     getProducts().then((d) => { if (actif) setProducts(Array.isArray(d) ? d : []); });

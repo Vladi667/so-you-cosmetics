@@ -5,14 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/verifier-traductions.mjs && node scripts/verifier-seo.cjs && vite build",
+    "build": "node scripts/verifier-traductions.mjs && node scripts/verifier-seo.cjs && npm run build:client && npm run build:ssr",
     "lint": "eslint .",
     "preview": "vite preview",
     "install-all": "npm install && npm install --prefix server",
     "dev:fullstack": "concurrently \"npm run dev\" \"npm run start --prefix server\"",
     "start": "node server/index.js",
     "verifier:traductions": "node scripts/verifier-traductions.mjs",
-    "verifier:seo": "node scripts/verifier-seo.cjs"
+    "verifier:seo": "node scripts/verifier-seo.cjs",
+    "build:client": "vite build --outDir dist",
+    "build:ssr": "vite build --ssr src/entry-server.jsx --outDir dist-ssr"
   },
   "dependencies": {
     "cors": "^2.8.5",

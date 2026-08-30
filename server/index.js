@@ -313,6 +313,81 @@ function reglagesPublics(shop) {
   };
 }
 
+// Le moteur de rendu, chargé une fois et jamais deux.
+//
+// dist-ssr/entry-server.js est produit par « npm run build:ssr ». Il peut
+// manquer : un déploiement qui ne transporte que dist/, une construction
+// interrompue. Dans ce cas le site sert la coquille comme avant — c'est
+// précisément le comportement d'hier, donc une absence n'est pas une panne.
+//
+// `moteurCharge` distingue « pas encore essayé » de « essayé et indisponible » :
+// sans lui, chaque requête retenterait un import qui échoue, et une page
+// coûterait un accès disque inutile.
+let moteur = null;
+let moteurCharge = false;
+
+async function chargerMoteur() {
+  if (moteurCharge) return moteur;
+  moteurCharge = true;
+  const chemin = path.join(__dirname, '../dist-ssr/entry-server.js');
+  try {
+    if (!fs.existsSync(chemin)) {
+      console.warn('Rendu serveur indisponible : dist-ssr absent. ' +
+                   'Lancer « npm run build » pour le produire.');
+      return null;
+    }
+    moteur = await import(require('node:url').pathToFileURL(chemin).href);
+    console.log('Rendu serveur : actif.');
+  } catch (err) {
+    console.error('Rendu serveur indisponible :', err.message);
+    moteur = null;
+  }
+  return moteur;
+}
+
+// Le catalogue injecté, sans les descriptions dont la page n'a pas besoin.
+//
+// Mesuré : le catalogue complet fait 415 Ko, dont 303 Ko de seules descriptions
+// — 75 %. Or aucune grille n'en affiche : une carte montre une photo, un nom et
+// un prix. Les envoyer sur chaque page revenait à faire porter à l'accueil le
+// texte des 177 fiches pour n'en montrer aucune.
+//
+// La fiche consultée garde la sienne, et c'est tout l'intérêt : c'est ce
+// texte-là qu'on veut voir indexé, et il doit donc être dans le HTML rendu.
+//
+// Le compromis se lit dans un seul sens : une description manquante à une
+// grille ne se voit pas, tandis qu'une description manquante à sa fiche serait
+// exactement le défaut que cette étape corrige.
+function allegerCatalogue(produits, cheminNu) {
+  const liste = Array.isArray(produits) ? produits : [];
+  const fiche = cheminNu.match(/^\/product\/([^/]+)$/);
+  let idComplet = null;
+  if (fiche) {
+    try {
+      const p = seo.trouverProduit(decodeURIComponent(fiche[1]), liste);
+      idComplet = p && p.id;
+    } catch {
+      idComplet = null;
+    }
+  }
+  return liste.map((p) => (p.id === idComplet ? p : { ...p, description: '' }));
+}
+
+// Rend le corps, ou une chaîne vide.
+//
+// Jamais d'exception vers l'appelant : une page servie sans son corps rendu
+// reste une page qui marche, tandis qu'une erreur ici priverait la boutique de
+// tout affichage. Le filet est le point entier de la mise en place.
+function rendreCorps(url, contenu, reglages, catalogue, seoClient) {
+  if (!moteur || typeof moteur.rendre !== 'function') return '';
+  try {
+    return moteur.rendre({ url, contenu, reglages, catalogue, seo: seoClient }) || '';
+  } catch (err) {
+    console.error('Rendu serveur échoué pour', url, ':', err.message);
+    return '';
+  }
+}
+
 function serialiseContent(content) {
   // The replacement is the six characters backslash-u-0-0-3-c, not the character
   // it denotes: writing the escape sequence itself here would substitute '<' for
@@ -480,14 +555,53 @@ app.get('*', async (req, res, next) => {
       console.error('Balises de partage non posees :', err.message);
     }
 
-    // Le script de données vient en dernier, après les balises : ainsi le
-    // titre et la description sont lisibles par un robot qui s'arrête au
-    // premier kilo-octet, et window.__SEO__ y porte ce que le serveur a posé.
+    // Le corps de la page, rendu ici plutôt que par le navigateur.
+    //
+    // C'est l'étape 3 du plan. Jusqu'ici le serveur écrivait un <head> complet
+    // et un <body> vide : suffisant pour Google, qui exécute le JavaScript, et
+    // pour les aperçus de lien, qui ne lisent que le <head>. Insuffisant pour
+    // tout le reste — Bing sur un domaine neuf, GPTBot, PerplexityBot,
+    // ClaudeBot, Pinterest — qui lisent le HTML tel qu'il arrive.
+    //
+    // Le catalogue est chargé pour le rendu ET injecté pour le navigateur : le
+    // premier rendu client doit reproduire exactement celui du serveur, sinon
+    // React refait tout et signale une divergence sur chaque fiche. C'est aussi
+    // un aller-retour réseau de moins au chargement.
+    //
+    // L'administration est exclue : elle est chargée à la demande, ne doit
+    // jamais être indexée, et son rendu serveur n'apporterait rien.
+    let catalogue = [];
+    const cheminNu = seo.separerLangue(req.path).chemin;
+    const rendable = statut === 200 && !cheminNu.startsWith('/admin');
+    if (rendable) {
+      try {
+        catalogue = allegerCatalogue(await db.getProducts(), cheminNu);
+      } catch {
+        catalogue = [];
+      }
+    }
+
     tag += `<script nonce="${res.locals.cspNonce}">window.__CONTENT__=${serialiseContent(content)};` +
            `window.__SHOP__=${serialiseContent(reglagesPublics(shop))};` +
+           `window.__CATALOGUE__=${serialiseContent(catalogue)};` +
            `window.__SEO__=${serialiseContent(seoClient)}</script>`;
 
-    res.status(statut).type('html').send(html.replace('</head>', `${tag}</head>`));
+    let page = html.replace('</head>', `${tag}</head>`);
+
+    if (rendable) {
+      const corps = rendreCorps(req.path, content, reglagesPublics(shop), catalogue, seoClient);
+      // Une chaîne vide veut dire que le rendu a échoué ou n'est pas
+      // disponible : on sert alors la coquille, exactement comme avant cette
+      // étape. Le site ne doit jamais tomber pour une optimisation.
+      if (corps) {
+        page = page.replace(
+          '<div id="root"></div>',
+          `<div id="root">${corps}</div>`
+        );
+      }
+    }
+
+    res.status(statut).type('html').send(page);
   } catch (err) {
     // The site must survive a failure here: worst case it serves the page with
     // its coded defaults, which is exactly how it behaved before this existed.
@@ -507,5 +621,8 @@ app.listen(PORT, () => {
   // croit mesurer sans mesurer est pire qu'un site qui sait qu'il ne mesure
   // rien : personne ne va vérifier ce qu'on pense avoir réglé.
   console.log(mesure.resume());
+  // Chargé au démarrage plutôt qu à la première requête : le message du
+  // journal doit apparaître au lancement, pas à la première visite.
+  chargerMoteur();
   console.log(`=========================================`);
 });

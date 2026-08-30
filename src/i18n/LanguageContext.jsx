@@ -37,10 +37,23 @@ const resolve = (obj, path) =>
 //
 // Shaped { fr: { 'hero.titleLine1': '…' } } — the same dot-paths the site
 // already uses, so no mapping table has to be kept in step.
-const overrides = (typeof window !== 'undefined' && window.__CONTENT__) || {};
+// Lu à chaque appel, et sur globalThis plutôt que sur window.
+//
+// Deux raisons, toutes deux liées au rendu côté serveur :
+//
+//   · au moment où ce module est chargé, le serveur n'a encore rien posé. Une
+//     constante figée à l'import vaudrait {} pour toujours — et comme le
+//     processus sert toutes les requêtes, ses textes réécrits ne seraient
+//     rendus sur aucune page ;
+//   · « window » n'existe pas sur le serveur. Celui-ci produirait le texte
+//     codé, le navigateur reproduirait le texte réécrit, et React signalerait
+//     une divergence d'hydratation sur chaque texte qu'elle a modifié.
+//
+// Dans un navigateur, globalThis EST window : rien ne change côté client.
+const lireOverrides = () => globalThis.__CONTENT__ || {};
 
 const override = (lang, key) => {
-  const bucket = overrides[lang];
+  const bucket = lireOverrides()[lang];
   if (!bucket) return undefined;
   const value = bucket[key];
   // An empty string means "no override" rather than "blank this text": a field

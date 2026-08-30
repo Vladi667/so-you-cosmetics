@@ -1,9 +1,36 @@
+// Le catalogue déjà présent, sans aller-retour réseau.
+//
+// Le serveur le pose avant de rendre la page — dans globalThis pendant le rendu
+// serveur, dans window pour le navigateur, et c'est le même objet des deux
+// côtés. Deux conséquences :
+//
+//   · le rendu serveur peut produire les grilles de produits. Sans lui, il
+//     n'émettrait que des cadres vides : un effet ne s'exécute pas pendant
+//     renderToString, et tout le catalogue arrive par un effet. C'était l'objet
+//     même de cette étape ;
+//   · le navigateur affiche le catalogue dès le premier rendu au lieu
+//     d'attendre /api/products, et ce rendu correspond à celui du serveur —
+//     sans quoi React signalerait une divergence sur chaque fiche.
+//
+// Cela ne remplace pas la source : la liste est rafraîchie ensuite comme avant.
+export function catalogueInitial() {
+  const injecte = globalThis.__CATALOGUE__;
+  return Array.isArray(injecte) && injecte.length ? injecte : null;
+}
+
 // Module-level cache so the product list is fetched at most once per session.
 // On any network failure we fall back to the bundled static JSON.
 let cachedPromise = null;
 
 export function getProducts() {
   if (cachedPromise) return cachedPromise;
+
+  // Déjà servi avec la page : on ne demande rien au réseau.
+  const injecte = catalogueInitial();
+  if (injecte) {
+    cachedPromise = Promise.resolve(injecte);
+    return cachedPromise;
+  }
 
   cachedPromise = fetch('/api/products')
     .then(res => {
