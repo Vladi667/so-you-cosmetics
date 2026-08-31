@@ -226,6 +226,16 @@ async function initProductionDatabase() {
     // les commandes déjà passées n'en ont pas, et rien ne doit les invalider.
     await ensureColumn(conn, 'orders', 'customer_phone', 'VARCHAR(40) NULL');
     await ensureColumn(conn, 'orders', 'customer_company', 'VARCHAR(120) NULL');
+    // Quatre colonnes qui manquaient depuis toujours. La commande était bien
+    // construite avec son adresse, son mode d'expédition, son cadeau et la
+    // trace d'acceptation des CGV — mais l'insertion MySQL n'écrivait que
+    // l'identité, le total, les articles et le statut. Tout le reste ne
+    // survivait que dans le repli JSON : dès que MySQL est configuré, une
+    // commande postale arrivait sans adresse et devenait inexpédiable.
+    await ensureColumn(conn, 'orders', 'address', 'TEXT NULL');
+    await ensureColumn(conn, 'orders', 'shipping', 'TEXT NULL');
+    await ensureColumn(conn, 'orders', 'cadeau', 'TEXT NULL');
+    await ensureColumn(conn, 'orders', 'cgv', 'TEXT NULL');
 
     // Create bookings table
     await conn.query(`
@@ -371,20 +381,30 @@ function mapProductRow(r) {
 // are JSON-encoded TEXT columns; a malformed value must degrade gracefully
 // rather than throw, and `fulfillment` must be an object — the admin reads
 // .type/.carrier/.tracking_number off it directly.
+// Une colonne TEXT qui contient du JSON revient parfois déjà décodée selon le
+// pilote et le type de colonne. Les deux cas sont traités ici plutôt qu'à
+// chaque champ, et un contenu illisible vaut « absent » plutôt que de faire
+// échouer la lecture de toute la commande.
+function colonneJson(valeur, defaut = null) {
+  if (valeur === null || valeur === undefined) return defaut;
+  if (typeof valeur !== 'string') return valeur;
+  try { return JSON.parse(valeur); } catch (_) { return defaut; }
+}
+
 function mapOrderRow(r) {
-  let fulfillment = null;
-  if (r.fulfillment) {
-    if (typeof r.fulfillment === 'string') {
-      try { fulfillment = JSON.parse(r.fulfillment); } catch (_) { fulfillment = null; }
-    } else {
-      fulfillment = r.fulfillment;
-    }
-  }
-  let items = r.items;
-  if (typeof items === 'string') {
-    try { items = JSON.parse(items); } catch (_) { items = []; }
-  }
-  return { ...r, total: parseFloat(r.total), items, fulfillment };
+  return {
+    ...r,
+    total: parseFloat(r.total),
+    items: colonneJson(r.items, []),
+    fulfillment: colonneJson(r.fulfillment),
+    // Relus depuis leurs colonnes. Ils n'y étaient pas écrits jusqu'ici, donc
+    // les commandes déjà enregistrées sous MySQL les auront vides — c'est la
+    // situation qu'on répare, pas une régression.
+    address: colonneJson(r.address),
+    shipping: colonneJson(r.shipping),
+    cadeau: colonneJson(r.cadeau),
+    cgv: colonneJson(r.cgv),
+  };
 }
 
 // 1. Get Products
@@ -937,7 +957,7 @@ async function createOrder(order) {
   if (pool) {
     try {
       await pool.query(
-        'INSERT INTO orders (id, customer_name, customer_email, customer_phone, customer_company, total, items, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO orders (id, customer_name, customer_email, customer_phone, customer_company, total, items, status, address, shipping, cadeau, cgv) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
           newOrder.id,
           newOrder.customer_name,
@@ -946,7 +966,13 @@ async function createOrder(order) {
           newOrder.customer_company || null,
           newOrder.total,
           JSON.stringify(newOrder.items),
-          newOrder.status
+          newOrder.status,
+          // Sérialisés comme les articles le sont déjà. Sans ces quatre-là,
+          // l'objet relu depuis MySQL n'avait ni adresse ni mode d'expédition.
+          newOrder.address ? JSON.stringify(newOrder.address) : null,
+          newOrder.shipping ? JSON.stringify(newOrder.shipping) : null,
+          newOrder.cadeau ? JSON.stringify(newOrder.cadeau) : null,
+          newOrder.cgv ? JSON.stringify(newOrder.cgv) : null
         ]
       );
       return newOrder;
