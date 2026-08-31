@@ -4,6 +4,7 @@ import Lien from './Lien';
 import Logo from './Logo';
 import { useLanguage } from '../i18n/LanguageContext';
 import useEnvoiFormulaire from '../hooks/useEnvoiFormulaire';
+import { FAMILLES } from '../data/familles';
 
 const SOCIAL = {
   instagram: 'https://www.instagram.com/soyoucosmetics.ch?igsh=MTM4bWd2NTd2OHB1Mw==',
@@ -23,7 +24,7 @@ const EXPLORE_LINKS = [
 ];
 
 const Footer = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [email, setEmail] = useState('');
   const { etat, enCours, message, messageVisible, envoyer } = useEnvoiFormulaire();
 
@@ -138,7 +139,30 @@ const Footer = () => {
 
         </div>
 
-        <div className="mt-20 pt-8 border-t border-mist-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
+        {/* Les six familles, présentes sur chaque page.
+            Une page qu'aucun lien n'atteint n'est visitée qu'une fois par le
+            robot, puis oubliée : le plan du site la déclare, il ne la
+            recommande pas. Elles sont ici plutôt que dans la colonne
+            « Explorer », qui compte déjà ses entrées et se déséquilibrerait. */}
+        <nav className="mt-16 pt-8 border-t border-mist-white/10">
+          <h4 className="font-sans font-medium uppercase tracking-[0.2em] text-[10px] mb-5 text-alpine-silver">
+            {t('footer.familles')}
+          </h4>
+          <ul className="flex flex-wrap gap-x-8 gap-y-3">
+            {FAMILLES.map((f) => (
+              <li key={f.slug}>
+                <Lien
+                  to={`/${f.slug}`}
+                  className="text-sm text-mist-white/60 hover:text-white transition-colors duration-200 font-light tracking-wide"
+                >
+                  {(f[language] || f.fr).titre}
+                </Lien>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="mt-12 pt-8 border-t border-mist-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-xs text-mist-white/40 font-light tracking-wide">
             {t('footer.rights', { year: new Date().getFullYear() })}
           </p>

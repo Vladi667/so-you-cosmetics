@@ -28,6 +28,8 @@ import ProductPage from './pages/ProductPage';
 import SearchPage from './pages/SearchPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
+import FamillePage from './pages/FamillePage';
+import { SLUGS_FAMILLES } from './data/familles';
 // L'administration est chargee a la demande.
 //
 // Les deux ecrans pesaient 188 Ko de source dans le paquet principal, telecharge
@@ -211,6 +213,25 @@ function App() {
       <Route path="category/:categoryName" element={<CategoryPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
       <Route path="product/:id" element={<ProductPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
       <Route path="search/:query" element={<SearchPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
+      {/* Les six familles commerciales, à la racine et non sous un préfixe.
+          Une adresse courte se retient, se dicte au téléphone et se lit dans
+          un résultat de recherche ; « /guides/… » n'aurait servi que notre
+          confort de rangement. Les slugs sont énumérés, donc rien ici
+          n'intercepte une adresse qui ne leur appartient pas. */}
+      {SLUGS_FAMILLES.map((slug) => (
+        <Route
+          key={slug}
+          path={slug}
+          element={
+            <FamillePage
+              slug={slug}
+              addToCart={addToCart}
+              toggleFavorite={toggleFavorite}
+              favorites={favorites}
+            />
+          }
+        />
+      ))}
       <Route path="terms" element={<TermsPage />} />
       <Route path="privacy" element={<PrivacyPage />} />
       <Route

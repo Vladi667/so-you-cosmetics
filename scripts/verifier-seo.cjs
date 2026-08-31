@@ -139,11 +139,15 @@ const shop = {
   console.log('\n== plan du site ==');
   const xml = await seo.construireSitemap(BASE, db);
   const n = (xml.match(/<loc>/g) || []).length;
-  // (178 fiches + 12 rubriques + /category/All + 8 pages fixes + 1 atelier
-  //  + 1 article) × 3 langues
+  // (178 fiches + 12 rubriques + /category/All + 8 pages fixes + 6 familles
+  //  + 1 atelier + 1 article) × 3 langues
+  //
+  // Le compte des familles est lu depuis le module plutôt qu'écrit ici : ce
+  // test doit échouer si une famille disparaît du plan, pas si quelqu'un en
+  // ajoute une septième et oublie de venir corriger un nombre.
   const rubriques = new Set(catalogue.flatMap((p) => p.collections || [])).size;
-  const parLangue = catalogue.length + rubriques + 1 + 8 + ateliers.length +
-                    articles.filter((a) => a.published).length;
+  const parLangue = catalogue.length + rubriques + 1 + 8 + seo.SLUGS_FAMILLES.length +
+                    ateliers.length + articles.filter((a) => a.published).length;
   const attendu = parLangue * 3;
   ok(n === attendu, 'nombre d’URL attendu ' + attendu + ' (' + parLangue + ' × 3), obtenu ' + n);
   ok(xml.includes('xmlns:xhtml="http://www.w3.org/1999/xhtml"'), 'espace de noms xhtml déclaré');
@@ -327,6 +331,57 @@ const shop = {
     '/workshops/ws_1', BASE + '/workshops/ws_1', BASE, dbBidon, shop);
   const nBidon = atelierBidon.jsonLd.find((n) => n['@type'] === 'Event' || n['@type'] === 'Service');
   ok(nBidon['@type'] === 'Service', 'date illisible : on retombe sur Service');
+
+  console.log('\n== les six familles commerciales ==');
+
+  // Même procédé que pour les slugs : la liste du serveur est une copie de
+  // celle du navigateur, et rien d’autre que ceci n’empêche qu’elles divergent.
+  const sourceFamilles = require('fs')
+    .readFileSync(path.join(RACINE, 'src/data/familles.js'), 'utf8')
+    .replace(/export /g, '');
+  const modFamilles = {};
+  new Function('module', sourceFamilles + '\nmodule.exports = { FAMILLES, SLUGS_FAMILLES };')(modFamilles);
+  const { FAMILLES, SLUGS_FAMILLES } = modFamilles.exports;
+
+  ok(JSON.stringify(SLUGS_FAMILLES) === JSON.stringify(seo.SLUGS_FAMILLES),
+     'navigateur et serveur connaissent les mêmes six familles',
+     SLUGS_FAMILLES.filter((s) => !seo.SLUGS_FAMILLES.includes(s)).join(', '));
+
+  // Une famille sans traduction rendrait du français à un visiteur allemand
+  // sans que rien ne le signale.
+  const champs = ['titre', 'chapeau', 'intro', 'sections', 'question', 'reponse'];
+  const incompletes = FAMILLES.filter((f) =>
+    ['fr', 'en', 'de'].some((l) => !f[l] || champs.some((c) => !f[l][c]))
+  );
+  ok(incompletes.length === 0,
+     'chaque famille est complète dans les trois langues',
+     incompletes.map((f) => f.slug).join(', '));
+
+  // Une rubrique mal orthographiée donnerait une page de texte suivie d’une
+  // grille vide — le pire des deux mondes.
+  const rubriquesReelles = new Set(catalogue.flatMap((p) => p.collections || []));
+  const orphelines = FAMILLES.filter((f) => !rubriquesReelles.has(f.rubrique));
+  ok(orphelines.length === 0,
+     'chaque famille pointe vers une rubrique qui existe au catalogue',
+     orphelines.map((f) => `${f.slug} → ${f.rubrique}`).join(', '));
+
+  for (const langue of ['', '/en', '/de']) {
+    const manquantes = [];
+    for (const slug of SLUGS_FAMILLES) {
+      const m = await seo.metadonneesDeRoute(
+        `${langue}/${slug}`, `${BASE}${langue}/${slug}`, BASE, db, shop);
+      if (!m || !m.titre || !m.description) manquantes.push(slug);
+    }
+    ok(manquantes.length === 0,
+       `les six familles ont titre et description en « ${langue || '/'} »`,
+       manquantes.join(', '));
+  }
+
+  const planFamilles = await seo.construireSitemap(BASE, db);
+  const absentesDuPlan = SLUGS_FAMILLES.filter((s) => !planFamilles.includes(`${BASE}/${s}<`));
+  ok(absentesDuPlan.length === 0,
+     'les six familles figurent au plan du site',
+     absentesDuPlan.join(', '));
 
   console.log('\n' + (echecs === 0 ? 'TOUT PASSE' : echecs + ' ECHEC(S)'));
   process.exit(echecs ? 1 : 0);

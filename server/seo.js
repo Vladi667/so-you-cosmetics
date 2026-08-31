@@ -528,6 +528,41 @@ const PAGES_EN = {
     description: 'How So You Cosmetics collects, uses and protects your personal data, in accordance with the Swiss revised FADP.',
     image: '',
   },
+  // Les six familles commerciales. Écrites ici comme les autres pages fixes :
+  // le serveur est en CommonJS et ne peut pas importer src/data/familles.js.
+  // Les textes ne sont pas ceux de la page — une description de résultat de
+  // recherche a 155 caractères pour donner une raison de cliquer, un chapeau
+  // de page en a le loisir.
+  '/savon-saponifie-a-froid': {
+    titre: 'Cold-process soap made in Geneva',
+    description: 'Cold-process soap handmade in our Eaux-Vives workshop: glycerin kept in, chosen superfat, four weeks of cure. Free collection in the boutique.',
+    image: '/artisanal_soap_crafting.png',
+  },
+  '/shampoing-solide': {
+    titre: 'Solid shampoo — Geneva',
+    description: 'Solid shampoo or hair soap: what separates them, the three-week adjustment nobody warns you about, and how to make a bar last four months.',
+    image: '/botanical_flatlay.png',
+  },
+  '/cosmetique-zero-dechet': {
+    titre: 'Zero-waste cosmetics and refills in Geneva',
+    description: 'Refill your bottles in our Eaux-Vives boutique, or switch to solid. What it actually removes, and which product to start with.',
+    image: '/premium_product_stone.png',
+  },
+  '/soins-peaux-sensibles': {
+    titre: 'Face care for sensitive skin — Geneva',
+    description: 'Short formulas, full INCI readable before you buy, fragrance-free options. What reactive skin gains from knowing before trying anything new.',
+    image: '/workshop_ingredients.png',
+  },
+  '/cadeaux-cosmetiques-naturels': {
+    titre: 'Natural cosmetic gifts and sets in Geneva',
+    description: 'What is hard to get wrong, a gift card valid for a year, wrapping on the spot and free collection in Eaux-Vives.',
+    image: '/premium_product_stone.png',
+  },
+  '/matieres-premieres-cosmetiques': {
+    titre: 'Cosmetic raw materials by the unit — Geneva',
+    description: 'Clays, powders, oils, containers and DIY kits in small quantities. The same materials we use in our own workshop, from the same batches.',
+    image: '/workshop_ingredients.png',
+  },
 };
 
 const PAGES_DE = {
@@ -571,6 +606,36 @@ const PAGES_DE = {
     description: 'Wie So You Cosmetics Ihre personenbezogenen Daten erhebt, verwendet und schützt, gemäss dem revidierten Schweizer DSG.',
     image: '',
   },
+  '/savon-saponifie-a-froid': {
+    titre: 'Kaltgerührte Seife aus Genf',
+    description: 'Kaltgerührte Seife, handgemacht in Genf: Glycerin bleibt erhalten, gewählte Überfettung, vier Wochen Reifezeit. Kostenlose Abholung.',
+    image: '/artisanal_soap_crafting.png',
+  },
+  '/shampoing-solide': {
+    titre: 'Festes Shampoo — Genf',
+    description: 'Festes Shampoo oder Haarseife: der Unterschied, die drei Wochen Umstellung und wie ein Stück vier Monate hält.',
+    image: '/botanical_flatlay.png',
+  },
+  '/cosmetique-zero-dechet': {
+    titre: 'Zero-Waste-Kosmetik und Nachfüllen in Genf',
+    description: 'Flaschen in der Boutique nachfüllen oder auf feste Produkte umsteigen. Was das wirklich einspart und womit man anfängt.',
+    image: '/premium_product_stone.png',
+  },
+  '/soins-peaux-sensibles': {
+    titre: 'Gesichtspflege für empfindliche Haut — Genf',
+    description: 'Kurze Rezepturen, vollständige INCI vor dem Kauf lesbar, Produkte ohne Duft. Was empfindliche Haut vorher wissen sollte.',
+    image: '/workshop_ingredients.png',
+  },
+  '/cadeaux-cosmetiques-naturels': {
+    titre: 'Geschenke und Sets aus Naturkosmetik — Genf',
+    description: 'Was selten danebengeht, ein Gutschein mit einem Jahr Gültigkeit, Verpackung vor Ort und kostenlose Abholung in Eaux-Vives.',
+    image: '/premium_product_stone.png',
+  },
+  '/matieres-premieres-cosmetiques': {
+    titre: 'Kosmetische Rohstoffe in kleinen Mengen — Genf',
+    description: 'Tonerden, Pulver, Öle, Gefässe und DIY-Sets in kleinen Mengen. Dieselben Rohstoffe wie in unserem Atelier, aus denselben Chargen.',
+    image: '/workshop_ingredients.png',
+  },
 };
 
 const PAGES = {
@@ -613,6 +678,36 @@ const PAGES = {
     titre: 'Politique de confidentialité',
     description: 'Comment So You Cosmetics collecte, utilise et protège vos données personnelles, conformément à la nLPD suisse.',
     image: '',
+  },
+  '/savon-saponifie-a-froid': {
+    titre: 'Savon saponifié à froid fabriqué à Genève',
+    description: 'Savons saponifiés à froid, faits main aux Eaux-Vives : glycérine conservée, surgras choisi, quatre semaines de cure. Retrait gratuit en boutique.',
+    image: '/artisanal_soap_crafting.png',
+  },
+  '/shampoing-solide': {
+    titre: 'Shampoing solide — Genève',
+    description: 'Shampoing solide ou savon à cheveux : ce qui les sépare, les trois semaines d’adaptation dont personne ne prévient, et comment faire durer un pain.',
+    image: '/botanical_flatlay.png',
+  },
+  '/cosmetique-zero-dechet': {
+    titre: 'Cosmétique zéro déchet et recharge à Genève',
+    description: 'Rechargez vos flacons à la boutique des Eaux-Vives, ou passez au solide. Ce que cela supprime réellement, et par quel produit commencer.',
+    image: '/premium_product_stone.png',
+  },
+  '/soins-peaux-sensibles': {
+    titre: 'Soins visage pour peaux sensibles — Genève',
+    description: 'Formules courtes, INCI lisible avant l’achat, produits sans parfum. Ce qu’une peau réactive gagne à savoir avant d’essayer un nouveau soin.',
+    image: '/workshop_ingredients.png',
+  },
+  '/cadeaux-cosmetiques-naturels': {
+    titre: 'Cadeaux et coffrets cosmétiques à Genève',
+    description: 'Ce qui se choisit sans se tromper, le bon cadeau valable un an, l’emballage sur place et le retrait gratuit aux Eaux-Vives.',
+    image: '/premium_product_stone.png',
+  },
+  '/matieres-premieres-cosmetiques': {
+    titre: 'Matières premières cosmétiques au détail à Genève',
+    description: 'Argiles, poudres, huiles, contenants et kits DIY en petites quantités. Les mêmes matières que celles de notre atelier, prélevées sur les mêmes lots.',
+    image: '/workshop_ingredients.png',
   },
 };
 
@@ -984,6 +1079,22 @@ function baliseshtml(meta, urlPage, nonce) {
 // Le plan du site
 // ---------------------------------------------------------------------------
 
+// Les slugs des six familles commerciales.
+//
+// Réécrits ici plutôt qu'importés de src/data/familles.js : ce fichier est un
+// module ES chargé par le navigateur, et le serveur est en CommonJS — la même
+// contrainte que pour les routes et les rubriques. La duplication est donc
+// assumée, et la suite de vérification compare les deux listes : une famille
+// ajoutée d'un côté seulement arrête la construction.
+const SLUGS_FAMILLES = [
+  'savon-saponifie-a-froid',
+  'shampoing-solide',
+  'cosmetique-zero-dechet',
+  'soins-peaux-sensibles',
+  'cadeaux-cosmetiques-naturels',
+  'matieres-premieres-cosmetiques',
+];
+
 // Construit à la demande depuis la base : elle ajoute un produit, il y est. Un
 // fichier écrit au build serait faux le jour même.
 //
@@ -1044,6 +1155,10 @@ async function construireSitemap(base, db) {
     ...(Array.isArray(articles) ? articles : [])
       .filter((a) => a && a.slug)
       .map((a) => url(`/journal/${encodeURIComponent(a.slug)}`, '0.5', 'monthly')),
+    // Les six familles commerciales, au même rang que les rubriques : ce sont
+    // elles qu'on atteint en cherchant un besoin plutôt qu'une marque, et
+    // elles suivent le rythme du catalogue qu'elles présentent.
+    ...SLUGS_FAMILLES.map((s) => url(`/${s}`, '0.8', 'monthly')),
     url('/terms', '0.2', 'yearly'),
     url('/privacy', '0.2', 'yearly'),
   ].join('');
@@ -1107,6 +1222,7 @@ function trouverProduit(parametre, produits) {
 module.exports = {
   SITE_NOM,
   TITRE_DEFAUT,
+  SLUGS_FAMILLES,
   LANGUES,
   LANGUE_DEFAUT,
   LOCALES,

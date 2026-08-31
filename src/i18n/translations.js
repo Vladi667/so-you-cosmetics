@@ -164,6 +164,7 @@ const translations = {
     footer: {
       tagline: 'Cosmétiques naturels faits main à Genève',
       explore: 'Explorer',
+      familles: 'Nos savoir-faire',
       address: '3 av. Pictet-De-Rochemont, 1207 Genève',
       links: { home: 'So You', products: 'Boutique', about: 'Notre histoire', workshops: 'Ateliers', journal: 'Journal', contact: 'Contact', personnalisation: 'Sur mesure' },
       newsletter: 'Newsletter',
@@ -293,6 +294,7 @@ const translations = {
       // choisie ne s'accorde avec rien.
       heading: '{nom} à Genève',
       headingAll: 'La boutique — cosmétiques naturels faits main à Genève',
+      voirAussi: 'À voir aussi',
       // Le paragraphe qui rattache la page au lieu. Volontairement sans
       // accord ni détail de produit : il vaut pour les quatorze rubriques.
       intro: 'Fabriqué à la main dans notre atelier genevois, au 3 av. Pictet-De-Rochemont. Retrait gratuit en boutique aux Eaux-Vives, livraison partout en Suisse.',
@@ -721,6 +723,7 @@ const translations = {
     footer: {
       tagline: 'Natural cosmetics handmade in Geneva',
       explore: 'Explore',
+      familles: 'What we know',
       address: '3 av. Pictet-De-Rochemont, 1207 Geneva',
       links: { home: 'So You', products: 'Shop', about: 'Our Story', workshops: 'Atelier', journal: 'Journal', contact: 'Contact', personnalisation: 'Made to order' },
       newsletter: 'Newsletter',
@@ -834,6 +837,7 @@ const translations = {
       home: 'Home',
       heading: '{nom} in Geneva',
       headingAll: 'The shop — natural cosmetics handmade in Geneva',
+      voirAussi: 'See also',
       intro: 'Handmade in our Geneva workshop at 3 av. Pictet-De-Rochemont. Free in-store pickup in the Eaux-Vives, delivery across Switzerland.',
     },
     search: { home: 'Home', label: 'Search:' },
@@ -1258,6 +1262,7 @@ const translations = {
     footer: {
       tagline: 'Natürliche Kosmetik, handgemacht in Genf',
       explore: 'Entdecken',
+      familles: 'Unser Handwerk',
       address: '3 av. Pictet-De-Rochemont, 1207 Genf',
       links: { home: 'So You', products: 'Shop', about: 'Unsere Geschichte', workshops: 'Workshops', journal: 'Journal', contact: 'Kontakt', personnalisation: 'Massanfertigung' },
       newsletter: 'Newsletter',
@@ -1371,6 +1376,7 @@ const translations = {
       home: 'Startseite',
       heading: '{nom} in Genf',
       headingAll: 'Der Laden — handgemachte Naturkosmetik aus Genf',
+      voirAussi: 'Siehe auch',
       intro: 'Handgefertigt in unserem Genfer Atelier an der 3 av. Pictet-De-Rochemont. Kostenlose Abholung in den Eaux-Vives, Versand in die ganze Schweiz.',
     },
     search: { home: 'Startseite', label: 'Suche:' },
