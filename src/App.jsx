@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import Navbar from './components/Navbar';
 import { lirePanier, lireFavoris, ecrirePanier, ecrireFavoris, resoudre, ajouter, fixerQuantite, nombreArticles, sursautPanier, EVT_OUVRIR_PANIER } from './services/panier';
 import { getProducts } from './services/products';
@@ -13,7 +13,8 @@ import Workshops from './components/Workshops';
 import Footer from './components/Footer';
 import PageLoader from './components/PageLoader';
 import SideDrawer from './components/SideDrawer';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
+import { separerLangue } from './i18n/routes';
 import ScrollToTop from './components/ScrollToTop';
 import PersonnalisationPage from './pages/PersonnalisationPage';
 import Home from './pages/Home';
@@ -27,11 +28,29 @@ import ProductPage from './pages/ProductPage';
 import SearchPage from './pages/SearchPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
-import AdminLogin from './pages/AdminLogin';
-import AdminDashboard from './pages/AdminDashboard';
+// L'administration est chargee a la demande.
+//
+// Les deux ecrans pesaient 188 Ko de source dans le paquet principal, telecharge
+// par chaque cliente alors qu'elle seule s'y connecte. React.lazy en fait des
+// morceaux separes, demandes au moment ou /admin est ouvert.
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+import NotFoundPage from './pages/NotFoundPage';
 
 function App() {
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem('adminToken'));
+  // localStorage n'existe pas sur le serveur, et cette lecture-ci n'était pas
+  // protégée : elle levait au premier rendu et faisait échouer le rendu serveur
+  // de la page entière, pas seulement de l'administration.
+  //
+  // Faux par défaut, et c'est le bon défaut : le serveur ne doit jamais rendre
+  // une administration connectée. Le navigateur corrige au montage.
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
+    try {
+      return !!localStorage.getItem('adminToken');
+    } catch {
+      return false;
+    }
+  });
   const [cart, setCart] = useState([]);
   const [favorites, setFavorites] = useState([]);
   // Ce qui a été conservé du dernier passage, lu tout de suite : les lignes
@@ -65,7 +84,6 @@ function App() {
   // client-side. Latency on the interaction path is the fastest way to make an
   // interface feel unresponsive, so both timers are gone.
   const [isLoading, setIsLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState('All');
   const [cartOpen, setCartOpen] = useState(false);
   const [favOpen, setFavOpen] = useState(false);
 
@@ -81,25 +99,17 @@ function App() {
     return () => { cancelAnimationFrame(raf); clearTimeout(fallback); };
   }, []);
 
-  const navigate = useNavigate();
   const location = useLocation();
-  const isAdminPage = location.pathname.startsWith('/admin');
+  // Le préfixe de langue est retiré d'abord : sans cela « /en/admin » ne serait
+  // pas reconnu comme l'administration, et la barre, le pied de page et les
+  // tiroirs reviendraient se poser par-dessus.
+  const isAdminPage = separerLangue(location.pathname).chemin.startsWith('/admin');
 
-  const handleCategorySelect = (category) => {
-    if (category === 'All' || category === 'Home') {
-      navigate('/');
-    } else if (category === 'About Us') {
-      navigate('/about');
-    } else if (category === 'Workshops') {
-      navigate('/workshops');
-    } else if (category === 'Journal') {
-      navigate('/journal');
-    } else if (category === 'Contact') {
-      navigate('/contact');
-    } else {
-      navigate(`/category/${encodeURIComponent(category)}`);
-    }
-  };
+  // handleCategorySelect vivait ici : la barre et le menu mobile lui passaient
+  // une clef de rubrique et il appelait navigate(). Les deux émettent
+  // maintenant de vrais liens, dont l'adresse est la destination — il n'y a
+  // plus de traduction à faire entre les deux, ni de gestionnaire à exécuter
+  // pour qu'un robot sache où mène une entrée de menu.
 
   const addToCart = (product, quantite = 1) => {
     // Fusionne les quantités : six savons font une ligne « ×6 », pas six lignes.
@@ -185,6 +195,44 @@ function App() {
     };
   }, []);
 
+  // L'arbre des pages, déclaré une fois et monté sous chacune des trois
+  // langues. Les chemins sont relatifs au préfixe : « about » et non
+  // « /about », sans quoi ils ne se résoudraient que sous la racine.
+  const pages = (
+    <Routes>
+      <Route index element={<Home addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
+      <Route path="about" element={<AboutPage />} />
+      <Route path="workshops" element={<WorkshopsPage />} />
+      <Route path="workshops/:id" element={<WorkshopDetailPage />} />
+      <Route path="journal" element={<JournalPage />} />
+      <Route path="journal/:slug" element={<JournalPage />} />
+      <Route path="contact" element={<ContactPage />} />
+      <Route path="personnalisation" element={<PersonnalisationPage />} />
+      <Route path="category/:categoryName" element={<CategoryPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
+      <Route path="product/:id" element={<ProductPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
+      <Route path="search/:query" element={<SearchPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
+      <Route path="terms" element={<TermsPage />} />
+      <Route path="privacy" element={<PrivacyPage />} />
+      <Route
+        path="admin"
+        element={
+          // Le morceau arrive par le reseau : sans Suspense, React leve.
+          // L'attente est le fond du site, pas un ecran blanc.
+          <Suspense fallback={<div className="min-h-screen bg-mist-white" />}>
+            {isAdminLoggedIn ? (
+              <AdminDashboard onLogout={() => { localStorage.removeItem('adminToken'); setIsAdminLoggedIn(false); }} />
+            ) : (
+              <AdminLogin onLoginSuccess={() => setIsAdminLoggedIn(true)} />
+            )}
+          </Suspense>
+        }
+      />
+      {/* Tout le reste. Sans cette route, une adresse inconnue rendait un
+          <main> vide entre la barre et le pied de page. */}
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
+  );
+
   return (
     <div className="font-sans antialiased text-stone-gray bg-mist-white min-h-screen flex flex-col overflow-x-hidden">
       <ScrollToTop />
@@ -198,37 +246,21 @@ function App() {
         <Navbar 
           cartCount={nombreArticles(cart)} 
           favCount={favorites.length} 
-          onCategorySelect={handleCategorySelect}
           onCartClick={() => { setFavOpen(false); setCartOpen(true); }}
           onFavClick={() => { setCartOpen(false); setFavOpen(true); }}
         />
       )}
       
       <main className="flex-grow">
+        {/* Les mêmes pages, sous trois adresses.
+            Le français reste à la racine — aucune adresse existante ne change —
+            et l'anglais et l'allemand prennent un préfixe. Les chemins internes
+            sont relatifs : c'est ce qui permet de déclarer l'arbre une seule
+            fois pour les trois langues. */}
         <Routes>
-          <Route path="/" element={<Home addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/workshops" element={<WorkshopsPage />} />
-          <Route path="/workshops/:id" element={<WorkshopDetailPage />} />
-          <Route path="/journal" element={<JournalPage />} />
-          <Route path="/journal/:slug" element={<JournalPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/personnalisation" element={<PersonnalisationPage />} />
-          <Route path="/category/:categoryName" element={<CategoryPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
-          <Route path="/product/:id" element={<ProductPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
-          <Route path="/search/:query" element={<SearchPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route 
-            path="/admin" 
-            element={
-              isAdminLoggedIn ? (
-                <AdminDashboard onLogout={() => { localStorage.removeItem('adminToken'); setIsAdminLoggedIn(false); }} />
-              ) : (
-                <AdminLogin onLoginSuccess={() => setIsAdminLoggedIn(true)} />
-              )
-            } 
-          />
+          <Route path="/en/*" element={pages} />
+          <Route path="/de/*" element={pages} />
+          <Route path="/*" element={pages} />
         </Routes>
       </main>
 

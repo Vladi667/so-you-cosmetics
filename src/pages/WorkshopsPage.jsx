@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+
 import React, { useState, useEffect } from 'react';
 import AutoPlayVideo from '../components/AutoPlayVideo';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -124,16 +124,16 @@ const WorkshopsPage = () => {
                   <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
                     <img src={ws.image_url || '/workshop_ingredients.png'} alt={ws.title} className="w-32 h-32 object-cover rounded-2xl shadow-md" />
                     <div className="flex-1 text-center sm:text-left">
-                      <Link to={`/workshops/${ws.id}`} className="inline-block">
+                      <Lien to={`/workshops/${ws.id}`} className="inline-block">
                         <h3 className="font-serif text-2xl text-slate-stone mb-2 hover:text-stone-gray transition-colors">{ws.title}</h3>
-                      </Link>
+                      </Lien>
                       <div className="prose prose-sm max-w-none font-sans text-stone-gray text-sm mb-4 leading-relaxed prose-strong:text-slate-stone" dangerouslySetInnerHTML={{ __html: ws.description || '' }} />
                       <div className="flex flex-wrap gap-4 items-center justify-center sm:justify-start">
                         <span className="font-bold text-slate-stone">CHF {ws.price}</span>
                         <span className="text-stone-gray/60 text-sm">{ws.duration}</span>
                       </div>
                       <button onClick={() => { setContactForm({...contactForm, subject: t('workshopsPage.reservationSubject', { title: ws.title })}); setIsContactModalOpen(true); }} className="mt-6 px-6 py-2 bg-slate-stone text-white rounded-full text-xs uppercase tracking-widest hover:bg-slate-stone/90 transition-all shadow-md">{t('workshopsPage.reserveThis')}</button>
-                      <Link to={`/workshops/${ws.id}`} className="mt-6 ml-3 inline-block px-6 py-2 border border-slate-stone/25 text-slate-stone rounded-full text-xs uppercase tracking-widest hover:bg-slate-stone hover:text-white transition-colors">{t('workshopsPage.detailsLink')}</Link>
+                      <Lien to={`/workshops/${ws.id}`} className="mt-6 ml-3 inline-block px-6 py-2 border border-slate-stone/25 text-slate-stone rounded-full text-xs uppercase tracking-widest hover:bg-slate-stone hover:text-white transition-colors">{t('workshopsPage.detailsLink')}</Lien>
                     </div>
                   </div>
                 </div>

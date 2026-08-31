@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { imageUrl } from '../services/products';
+import { imageUrl, imageSrcSet } from '../services/products';
 
 const DUREE_FONDU = 320;
 
@@ -50,8 +50,14 @@ const ImageProduit = ({ src, alt, largeur = 1600, className = '', onClick, eager
 
   return (
     <>
+      {/* La grande photo de la fiche demandait 1600 px à tout le monde, y
+          compris à un téléphone de 375 px — trois fois les octets nécessaires
+          sur l'élément que le LCP mesure justement. Le navigateur choisit
+          maintenant, et il connaît sa densité de pixels mieux que nous. */}
       <img
         src={imageUrl(affichee, largeur)}
+        srcSet={imageSrcSet(affichee, largeur)}
+        sizes="(max-width: 1024px) 100vw, 50vw"
         alt={alt}
         loading={eager ? 'eager' : 'lazy'}
         fetchPriority={eager ? 'high' : 'auto'}

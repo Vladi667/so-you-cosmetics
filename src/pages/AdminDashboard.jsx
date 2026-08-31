@@ -49,7 +49,7 @@ const AdminDashboard = ({ onLogout }) => {
   const [bookings, setBookings] = useState([]);
   const [clients, setClients] = useState([]);
   const [workshops, setWorkshops] = useState([]);
-  const [workshopForm, setWorkshopForm] = useState({ id: null, title: '', description: '', price: '', duration: '', image_url: '' });
+  const [workshopForm, setWorkshopForm] = useState({ id: null, title: '', description: '', price: '', duration: '', image_url: '', starts_at: '' });
   const [products, setProducts] = useState([]);
   const [productForm, setProductForm] = useState({ id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [] });
   const [productSearch, setProductSearch] = useState('');
@@ -1440,6 +1440,11 @@ const AdminDashboard = ({ onLogout }) => {
                 <input type="text" required placeholder="Titre" value={workshopForm.title} onChange={e => setWorkshopForm({...workshopForm, title: e.target.value})} className="px-4 py-2 border rounded" />
                 <input type="text" required placeholder="Prix" value={workshopForm.price} onChange={e => setWorkshopForm({...workshopForm, price: e.target.value})} className="px-4 py-2 border rounded" />
                 <input type="text" placeholder="Durée (ex: 2 heures)" value={workshopForm.duration} onChange={e => setWorkshopForm({...workshopForm, duration: e.target.value})} className="px-4 py-2 border rounded" />
+                {/* La date et l heure de la séance. Facultative : un atelier sans
+                    date reste un Service pour les moteurs ; avec une date il
+                    devient un Event, le seul type qui remonte dans le carrousel
+                    d événements et sur Maps. */}
+                <input type="datetime-local" placeholder="Date de la séance" title="Date et heure de la séance (facultatif)" value={workshopForm.starts_at || ''} onChange={e => setWorkshopForm({...workshopForm, starts_at: e.target.value})} className="px-4 py-2 border rounded" />
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <label className={`inline-flex items-center gap-2 px-4 py-2 rounded cursor-pointer text-sm font-medium ${workshopImageUploading ? 'bg-gray-200 text-stone-gray cursor-wait' : 'bg-slate-stone text-white hover:opacity-90'}`}>

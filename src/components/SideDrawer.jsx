@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
+import { cheminProduit } from '../data/slug';
+import Lien from './Lien';
 import { useLanguage } from '../i18n/LanguageContext';
 import { getShipping, shippingCostFor, exigeAdresse, getGiftWrap, modeAutorise } from '../services/shop';
 import { totalPanier, nombreArticles } from '../services/panier';
 import { lireCaisse, ecrireCaisse, oublierCaisse } from '../services/caisse';
-import { Link } from 'react-router-dom';
 import useVerrouDefilement from '../hooks/useVerrouDefilement';
 
 const CHAMP_CAISSE = 'w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40';
@@ -739,13 +740,13 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                         tiroir se ferme, sinon il reste ouvert par-dessus la
                         page qu'on vient de demander. */}
                     {type === 'favorites' ? (
-                      <Link
-                        to={`/product/${item.id}`}
+                      <Lien
+                        to={cheminProduit(item)}
                         onClick={onClose}
                         className="font-sans text-sm font-medium text-slate-stone hover:text-stone-gray transition-colors line-clamp-2"
                       >
                         {getName(item)}
-                      </Link>
+                      </Lien>
                     ) : (
                       <h4 className="font-sans text-sm font-medium text-slate-stone truncate">{getName(item)}</h4>
                     )}

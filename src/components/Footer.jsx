@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import Lien from './Lien';
+
 import Logo from './Logo';
 import { useLanguage } from '../i18n/LanguageContext';
 import useEnvoiFormulaire from '../hooks/useEnvoiFormulaire';
@@ -92,12 +93,12 @@ const Footer = () => {
             <ul className="space-y-4">
               {EXPLORE_LINKS.map((item) => (
                 <li key={item.key}>
-                  <Link
+                  <Lien
                     to={item.to}
                     className="text-sm text-mist-white/60 hover:text-white transition-colors duration-200 font-light tracking-wide"
                   >
                     {t(`footer.links.${item.key}`)}
-                  </Link>
+                  </Lien>
                 </li>
               ))}
             </ul>
@@ -142,8 +143,8 @@ const Footer = () => {
             {t('footer.rights', { year: new Date().getFullYear() })}
           </p>
           <div className="flex gap-6 text-xs text-mist-white/40 font-light tracking-wide">
-            <Link to="/terms" className="hover:text-white transition-colors duration-200">{t('footer.terms')}</Link>
-            <Link to="/privacy" className="hover:text-white transition-colors duration-200">{t('footer.privacy')}</Link>
+            <Lien to="/terms" className="hover:text-white transition-colors duration-200">{t('footer.terms')}</Lien>
+            <Lien to="/privacy" className="hover:text-white transition-colors duration-200">{t('footer.privacy')}</Lien>
           </div>
         </div>
       </div>

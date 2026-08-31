@@ -1,7 +1,39 @@
+# Le repli des adresses vers index.html, pour le cas où Apache servirait le
+# site directement.
+#
+# En temps normal c'est le serveur Node (server/index.js) qui répond : c'est lui
+# qui injecte le titre, la description, les balises de partage, les données
+# structurées et hreflang, lui qui construit /sitemap.xml à la demande, et lui
+# qui répond un vrai 404 sur une adresse inconnue. Ce fichier ne sert alors à
+# rien, et c'est très bien ainsi.
+#
+# Mais il part dans dist/ à chaque déploiement, et si Apache venait à traiter
+# une requête avant Node, la règle ci-dessous transformerait n'importe quelle
+# adresse en index.html — servie telle quelle, sans aucune de ces balises. Le
+# site paraîtrait fonctionner : ce sont les moteurs et les aperçus de lien qui
+# ne verraient plus rien, sans que rien ne le signale.
+#
+# D'où l'exclusion : /sitemap.xml n'existe pas sur le disque, il est calculé.
+# Sans cette ligne, Apache le réécrirait en index.html et renverrait du HTML
+# sous un nom de fichier XML — que la Search Console signale comme un plan
+# illisible plutôt que comme un plan absent, ce qui envoie chercher au mauvais
+# endroit. Avec elle, la panne est franche : 404, et l'on sait quoi regarder.
+#
+# Pour vérifier lequel des deux répond en production :
+#   curl -sI https://soyoucosmetics.com/sitemap.xml | head -1
+#   -> 200 + content-type XML : Node répond, tout va bien
+#   -> 404, ou du HTML         : Apache sert en direct, et tout le travail
+#                                de référencement côté serveur est inopérant
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+
   RewriteRule ^index\.html$ - [L]
+
+  # Ce que seul Node sait produire : ne jamais le remplacer par la coquille.
+  RewriteRule ^sitemap\.xml$ - [L]
+  RewriteRule ^api/ - [L]
+
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]

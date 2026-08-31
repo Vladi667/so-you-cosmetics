@@ -16,8 +16,15 @@ const Hero = () => {
 
   return (
     <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
+      {/* L'affiche est le plus grand element peint de la page — donc la mesure
+          que Google appelle LCP. Sans elle, cette mesure attendait le
+          telechargement de 2,29 Mo de video : l'accueil restait vide le temps
+          que le reseau reponde, et sur une connexion mobile devant la boutique,
+          longtemps. Une image de 107 Ko la remplit tout de suite, et la video
+          se pose dessus quand elle arrive. */}
       <AutoPlayVideo
         src="/hero-video.mp4"
+        poster="/hero-poster.jpg"
         className="absolute inset-0 z-0 w-full h-full object-cover sepia-[.04] saturate-[.92] brightness-105
                    motion-safe:animate-[heroDrift_28s_ease-in-out_infinite]"
       />

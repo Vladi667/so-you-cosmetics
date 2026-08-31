@@ -8,6 +8,9 @@ const morgan = require('morgan');
 const apiRouter = require('./routes');
 const { ensureUploadsDir } = require('./uploads');
 const db = require('./db');
+const seo = require('./seo');
+const mesure = require('./mesure');
+const flux = require('./flux');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -64,16 +67,31 @@ app.use((req, res, next) => {
   // la feuille de polices Google et ses fichiers, et le reste chez nous.
   // `unsafe-inline` sur les styles est nécessaire tant que des attributs style
   // subsistent dans le rendu ; il ne concerne pas les scripts.
+  // Les origines de la mesure d'audience, dérivées des mêmes réglages que les
+  // balises elles-mêmes.
+  //
+  // Sans cela, un marqueur ajouté à la page serait refusé par le navigateur
+  // sans erreur visible : on croirait mesurer, et on ne mesurerait rien. La
+  // liste reste vide tant qu'aucune mesure n'est configurée — une politique se
+  // resserre par défaut et ne s'élargit qu'à la demande.
+  const orig = mesure.originesCsp();
+  const ajout = (liste) => (liste.length ? ' ' + liste.join(' ') : '');
+
   res.setHeader(
     'Content-Security-Policy-Report-Only',
     [
       "default-src 'self'",
-      `script-src 'self' 'nonce-${res.locals.cspNonce}' https://gateway.sumup.com`,
+      `script-src 'self' 'nonce-${res.locals.cspNonce}' https://gateway.sumup.com${ajout(orig.script)}`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
-      "img-src 'self' data: blob: https://static.wixstatic.com https://*.sumup.com",
+      // Le joker sur sumup.com est conservé volontairement. La branche
+      // référencement nommait gateway et api ; c'est exactement ce que le
+      // correctif « la politique aurait cassé le paiement » avait dû élargir,
+      // SumUp servant depuis plusieurs sous-domaines. Les origines de mesure
+      // s'ajoutent par-dessus, comme partout ailleurs dans cette politique.
+      `img-src 'self' data: blob: https://static.wixstatic.com https://*.sumup.com${ajout(orig.img)}`,
       "media-src 'self'",
-      "connect-src 'self' https://*.sumup.com",
+      `connect-src 'self' https://*.sumup.com${ajout(orig.connect)}`,
       // Le plan d'acces de la page « Nous trouver » : maps.google.com
       // redirige vers www.google.com, il faut donc les deux. Trouve par la
       // mise en observation — imposee, la politique aurait fait disparaitre
@@ -94,6 +112,34 @@ app.use(cors());
 // Log HTTP requests (Morgan)
 app.use(morgan('dev'));
 
+// La compression, mesurée sur le site en ligne plutôt que supposée.
+//
+//   curl -H 'Accept-Encoding: gzip, br' .../assets/index-….js
+//   -> 1 037 027 octets, aucun en-tête content-encoding
+//
+// Le paquet principal partait donc entier, à chaque première visite, sur un
+// site dont la clientèle est à Genève et souvent sur son téléphone. Rien devant
+// le serveur ne compressait : ni proxy, ni hébergeur. Le doute était permis
+// avant la mesure — il ne l'est plus.
+//
+// Le gain est immédiat et sans contrepartie : ce paquet tombe aux alentours de
+// 146 Ko, et translations.js de 102 à 33 Ko.
+//
+// Dans un try/catch, et c'est délibéré. Les commentaires de ce dépôt décrivent
+// un déploiement qui ne remplace que ./dist ; si node_modules n'est pas
+// réinstallé sur l'hôte, `require` échouerait au démarrage et le site entier
+// tomberait — pour une optimisation. Absent, il ne se passe rien de plus
+// qu'avant, et la ligne du journal dit quoi faire.
+try {
+  const compression = require('compression');
+  app.use(compression());
+} catch (err) {
+  console.warn(
+    'compression absent : les fichiers partent sans compression. ' +
+    'Lancer « npm install --prefix server » sur l’hôte pour l’activer.'
+  );
+}
+
 // Parse incoming JSON requests. Preserve the raw body too so /api/sumup/webhook
 // can verify SumUp's HMAC signature against the exact bytes that were signed.
 // Limit is generous because product image uploads are sent as base64 JSON.
@@ -105,7 +151,46 @@ app.use(express.json({
 // Serve admin-uploaded product images. Location is shared with routes.js and
 // overridable via UPLOADS_DIR so it can point at a persistent volume.
 const uploadsRoot = ensureUploadsDir();
-app.use('/uploads', express.static(uploadsRoot));
+
+// L'AVIF servi à la place du JPEG, quand le navigateur l'accepte.
+//
+// C'est exactement ce que faisait « enc_auto » chez Wix, et ce qu'on perdrait en
+// rapatriant les photos : le gain mesuré était de 35 Ko à 12,6 Ko sur la même
+// image. scripts/rapatrier-images.mjs dépose les deux formats côte à côte ; il
+// ne reste qu'à choisir lequel envoyer.
+//
+// Fait ici plutôt qu'avec des balises <picture> dans les composants : la
+// négociation ne concerne que le transport, pas le contenu. Les trois endroits
+// qui affichent des photos gardent un <img src="….jpg"> ordinaire, et le
+// navigateur reçoit de l'AVIF sans que rien dans le rendu ne le sache.
+//
+// « Vary: Accept » est indispensable, et posé même quand on ne substitue pas :
+// sans lui, un cache intermédiaire servirait l'AVIF à un navigateur qui ne le
+// lit pas, et l'image resterait blanche.
+app.use('/uploads', (req, res, next) => {
+  if (!/^\/catalogue\/.+\.jpg$/i.test(req.path)) return next();
+  res.setHeader('Vary', 'Accept');
+  if (!/image\/avif/i.test(req.headers.accept || '')) return next();
+  const avif = path.join(uploadsRoot, req.path.replace(/\.jpg$/i, '.avif'));
+  if (!fs.existsSync(avif)) return next();
+  res.type('image/avif');
+  // La même mise en cache que le JPEG servi par express.static juste en dessous.
+  // sendFile court-circuite son setHeaders : sans cette ligne, l'AVIF repartait
+  // en « max-age=0 » — c'est-à-dire que le format servi à la grande majorité des
+  // navigateurs était le seul à être redemandé à chaque visite.
+  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  return res.sendFile(avif);
+});
+
+app.use('/uploads', express.static(uploadsRoot, {
+  setHeaders: (res, chemin) => {
+    // Le nom d'un fichier du catalogue porte l'empreinte de son adresse
+    // d'origine et sa largeur : il ne désignera jamais un autre contenu.
+    if (/[\\/]catalogue[\\/]/.test(chemin)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  },
+}));
 
 // Serve ACME HTTP-01 challenge files from the filesystem (for Let's Encrypt SSL validation).
 // Infomaniak writes challenge tokens into ./.well-known/acme-challenge/ at the site root.
@@ -115,6 +200,57 @@ app.use('/.well-known', express.static(acmeRoot, { dotfiles: 'allow', fallthroug
 // API endpoints mounted on /api
 app.use('/api', apiRouter);
 
+// Le plan du site, construit à la demande depuis la base : elle ajoute un
+// produit, il y est. Un fichier écrit au moment du build serait faux le jour
+// même, et le catalogue change depuis l'administration.
+//
+// Posé ici, avant express.static et avant le catch-all : sans cela une panne de
+// génération ferait répondre le catch-all, c'est-à-dire du HTML en 200 là où
+// Google attend du XML — ce qu'il signale comme un plan illisible plutôt que
+// comme un plan absent, et c'est bien plus difficile à diagnostiquer.
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    // Sans « trust proxy », req.protocol dit « http » derrière le proxy qui
+    // termine le TLS : on lit d'abord ce que le proxy annonce.
+    const schema = req.get('x-forwarded-proto') || req.protocol || 'https';
+    const base = `${schema}://${req.get('host')}`;
+    res.type('application/xml').send(await seo.construireSitemap(base, db));
+  } catch (err) {
+    // Un plan absent vaut mieux qu'un plan faux : on ne sert pas une liste
+    // tronquée que Google prendrait pour la vérité sur l'étendue du site.
+    console.error('sitemap.xml indisponible :', err.message);
+    res.status(500).type('text/plain').send('sitemap indisponible');
+  }
+});
+
+// Le flux produits, pour les fiches gratuites de Google Shopping.
+//
+// À déclarer une fois dans Merchant Center comme flux programmé ; il se
+// reconstruit à chaque lecture, donc un prix modifié depuis l'administration
+// suit tout seul.
+//
+// Même emplacement et même raison que le plan du site : avant le catch-all,
+// pour qu'une panne réponde une erreur franche plutôt que du HTML sous un nom
+// de fichier XML.
+app.get('/flux-produits.xml', async (req, res) => {
+  try {
+    const schema = req.get('x-forwarded-proto') || req.protocol || 'https';
+    const base = `${schema}://${req.get('host')}`;
+    const { xml, retenus, total, ecartes } = await flux.construireFlux(base, db);
+    // Ce qui est écarté est dit, et compté. Un catalogue de 177 fiches dont 7
+    // n'entrent pas dans le flux doit pouvoir s'expliquer en une ligne — sinon
+    // on cherche des semaines pourquoi un produit n'apparaît pas sur Shopping.
+    const motifs = Object.entries(ecartes).map(([r, n]) => `${n} ${r}`).join(', ');
+    console.log(`flux-produits.xml : ${retenus}/${total} articles${motifs ? ` (écartés : ${motifs})` : ''}`);
+    res.type('application/xml').send(xml);
+  } catch (err) {
+    // Un flux tronqué est pire qu'un flux absent : Merchant Center prendrait la
+    // liste partielle pour la vérité et retirerait les articles manquants.
+    console.error('flux-produits.xml indisponible :', err.message);
+    res.status(500).type('text/plain').send('flux indisponible');
+  }
+});
+
 // Serve static built files from React in production
 const buildPath = path.join(__dirname, '../dist');
 // index: false is load-bearing. express.static answers a directory request with
@@ -122,7 +258,29 @@ const buildPath = path.join(__dirname, '../dist');
 // straight from disk and never reach the catch-all below, arriving without her
 // texts injected. Every other route worked, which is exactly what made this
 // worth catching with a test rather than by eye.
-app.use(express.static(buildPath, { index: false }));
+app.use(express.static(buildPath, {
+  index: false,
+  setHeaders: (res, chemin) => {
+    // Les fichiers de /assets/ portent une empreinte dans leur nom : Vite en
+    // change à chaque fois que leur contenu change. Ils sont donc immuables au
+    // sens strict — une adresse donnée ne désignera jamais un autre contenu.
+    //
+    // Le site les servait avec « max-age=0 » (relevé en ligne) : chaque visite
+    // suivante revalidait le paquet entier auprès du serveur pour s'entendre
+    // répondre qu'il n'avait pas changé. Un aller-retour réseau par fichier,
+    // pour rien.
+    //
+    // Un an et « immutable » : le navigateur ne redemande plus rien. Le
+    // déploiement suivant produit d'autres noms, donc d'autres adresses, et
+    // rien ne peut rester coincé sur une version périmée.
+    //
+    // index.html est délibérément exclu : c'est lui qui désigne les empreintes
+    // du jour, et le mettre en cache figerait le site sur son ancienne version.
+    if (/[\\/]assets[\\/]/.test(chemin)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  },
+}));
 
 // Serialise the content overrides for embedding inside a <script> tag.
 //
@@ -136,102 +294,6 @@ function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
-// Les balises de partage d'une fiche produit, écrites par le serveur.
-//
-// Le hook du navigateur pose déjà ces balises, et cela suffit à Google, qui
-// exécute le JavaScript avant de lire la page. Mais les robots qui fabriquent
-// l'aperçu d'un lien — WhatsApp, Facebook, Signal, Slack, LinkedIn — ne
-// l'exécutent pas : ils lisent le HTML tel qu'il arrive et repartent. Un lien
-// de produit envoyé à une cliente s'affichait donc en URL nue, sans titre, sans
-// photo, sans un mot. Pour une boutique dont c'est le geste commercial le plus
-// courant, c'est le lien lui-même qui ne vend pas.
-//
-// Les balises portent data-pose="app" : le hook les reprend alors comme les
-// siennes et les nettoie en quittant la page, au lieu de laisser le titre d'un
-// produit sur la page suivante.
-
-// Le résumé, côté serveur, sans DOM pour décoder les entités.
-// Les descriptions viennent de l'import Wix : &nbsp; y est partout, et
-// « pour&nbsp;parfaire » partirait tel quel dans l'aperçu.
-const ENTITES = {
-  nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'",
-  eacute: 'é', egrave: 'è', ecirc: 'ê', agrave: 'à', acirc: 'â',
-  ccedil: 'ç', ocirc: 'ô', ugrave: 'ù', ucirc: 'û', icirc: 'î',
-  iuml: 'ï', euml: 'ë', laquo: '«', raquo: '»', hellip: '…',
-  rsquo: '’', lsquo: '‘', ldquo: '“', rdquo: '”',
-  ndash: '–', mdash: '—', deg: '°', eur: '€',
-};
-
-function decoderEntites(texte) {
-  return String(texte || '')
-    .replace(/&#(\d+);/g, (_, n) => {
-      const code = parseInt(n, 10);
-      return Number.isFinite(code) && code > 0 && code < 1114112 ? String.fromCodePoint(code) : ' ';
-    })
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => {
-      const code = parseInt(n, 16);
-      return Number.isFinite(code) && code > 0 && code < 1114112 ? String.fromCodePoint(code) : ' ';
-    })
-    .replace(/&([a-z]+);/gi, (tout, nom) => {
-      const v = ENTITES[String(nom).toLowerCase()];
-      return v === undefined ? tout : v;
-    });
-}
-
-function resumerTexte(texte, limite = 160) {
-  const propre = decoderEntites(String(texte || '').replace(/<[^>]*>/g, ' '))
-    .replace(/\u00A0/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (propre.length <= limite) return propre;
-  const coupe = propre.slice(0, limite);
-  const dernier = Math.max(coupe.lastIndexOf('. '), coupe.lastIndexOf(' '));
-  return (dernier > limite * 0.5 ? coupe.slice(0, dernier) : coupe).trim() + '…';
-}
-
-// Rend les balises, ou une chaîne vide si le produit ne dit rien d'utile.
-function baliseshtmlProduit(produit, urlPage) {
-  if (!produit || !produit.name) return { titre: '', balises: '' };
-  const titre = `${produit.name} — So You Cosmetics`;
-  const description = resumerTexte(produit.description);
-  // Open Graph exige une adresse absolue. Les photos reprises de Wix en sont
-  // déjà, mais celles qu'elle téléverse elle-même sont enregistrées en
-  // « /uploads/… » : le robot qui fabrique l'aperçu n'a aucun moyen de les
-  // résoudre, et la vignette reste vide. Ce sont justement les fiches les plus
-  // récentes, et leur nombre grandit à chaque photo qu'elle remplace.
-  let image = Array.isArray(produit.images) && produit.images[0] ? String(produit.images[0]) : '';
-  if (image && !/^https?:\/\//i.test(image)) {
-    try {
-      // Contre l'origine, pas contre l'adresse de la fiche : un chemin stocké
-      // sans barre oblique initiale se résoudrait sinon en
-      // « /product/uploads/… ». Aucun n'est dans ce cas aujourd'hui, mais rien
-      // ne l'empêche, et la photo serait alors silencieusement introuvable.
-      image = new URL(image, new URL(urlPage).origin).href;
-    } catch (err) {
-      // Un chemin illisible ne vaut pas une balise cassée : mieux vaut aucune
-      // image qu'une adresse que personne ne peut ouvrir.
-      image = '';
-    }
-  }
-
-  const meta = (attribut, cle, valeur) => (valeur
-    ? `<meta ${attribut}="${cle}" content="${escapeHtml(String(valeur))}" data-pose="app">`
-    : '');
-
-  const balises = [
-    meta('name', 'description', description),
-    meta('property', 'og:type', 'product'),
-    meta('property', 'og:site_name', 'So You Cosmetics'),
-    meta('property', 'og:title', titre),
-    meta('property', 'og:description', description),
-    meta('property', 'og:image', image),
-    meta('property', 'og:url', urlPage),
-    meta('name', 'twitter:card', image ? 'summary_large_image' : 'summary'),
-  ].join('');
-
-  return { titre, balises };
 }
 
 // Ce que la page publique a le droit de connaître des réglages.
@@ -254,6 +316,81 @@ function reglagesPublics(shop) {
     // factures, le numero de TVA. La liste est blanche, jamais noire.
     giftWrap: shop.giftWrap,
   };
+}
+
+// Le moteur de rendu, chargé une fois et jamais deux.
+//
+// dist-ssr/entry-server.js est produit par « npm run build:ssr ». Il peut
+// manquer : un déploiement qui ne transporte que dist/, une construction
+// interrompue. Dans ce cas le site sert la coquille comme avant — c'est
+// précisément le comportement d'hier, donc une absence n'est pas une panne.
+//
+// `moteurCharge` distingue « pas encore essayé » de « essayé et indisponible » :
+// sans lui, chaque requête retenterait un import qui échoue, et une page
+// coûterait un accès disque inutile.
+let moteur = null;
+let moteurCharge = false;
+
+async function chargerMoteur() {
+  if (moteurCharge) return moteur;
+  moteurCharge = true;
+  const chemin = path.join(__dirname, '../dist-ssr/entry-server.js');
+  try {
+    if (!fs.existsSync(chemin)) {
+      console.warn('Rendu serveur indisponible : dist-ssr absent. ' +
+                   'Lancer « npm run build » pour le produire.');
+      return null;
+    }
+    moteur = await import(require('node:url').pathToFileURL(chemin).href);
+    console.log('Rendu serveur : actif.');
+  } catch (err) {
+    console.error('Rendu serveur indisponible :', err.message);
+    moteur = null;
+  }
+  return moteur;
+}
+
+// Le catalogue injecté, sans les descriptions dont la page n'a pas besoin.
+//
+// Mesuré : le catalogue complet fait 415 Ko, dont 303 Ko de seules descriptions
+// — 75 %. Or aucune grille n'en affiche : une carte montre une photo, un nom et
+// un prix. Les envoyer sur chaque page revenait à faire porter à l'accueil le
+// texte des 177 fiches pour n'en montrer aucune.
+//
+// La fiche consultée garde la sienne, et c'est tout l'intérêt : c'est ce
+// texte-là qu'on veut voir indexé, et il doit donc être dans le HTML rendu.
+//
+// Le compromis se lit dans un seul sens : une description manquante à une
+// grille ne se voit pas, tandis qu'une description manquante à sa fiche serait
+// exactement le défaut que cette étape corrige.
+function allegerCatalogue(produits, cheminNu) {
+  const liste = Array.isArray(produits) ? produits : [];
+  const fiche = cheminNu.match(/^\/product\/([^/]+)$/);
+  let idComplet = null;
+  if (fiche) {
+    try {
+      const p = seo.trouverProduit(decodeURIComponent(fiche[1]), liste);
+      idComplet = p && p.id;
+    } catch {
+      idComplet = null;
+    }
+  }
+  return liste.map((p) => (p.id === idComplet ? p : { ...p, description: '' }));
+}
+
+// Rend le corps, ou une chaîne vide.
+//
+// Jamais d'exception vers l'appelant : une page servie sans son corps rendu
+// reste une page qui marche, tandis qu'une erreur ici priverait la boutique de
+// tout affichage. Le filet est le point entier de la mise en place.
+function rendreCorps(url, contenu, reglages, catalogue, seoClient) {
+  if (!moteur || typeof moteur.rendre !== 'function') return '';
+  try {
+    return moteur.rendre({ url, contenu, reglages, catalogue, seo: seoClient }) || '';
+  } catch (err) {
+    console.error('Rendu serveur échoué pour', url, ':', err.message);
+    return '';
+  }
 }
 
 function serialiseContent(content) {
@@ -286,6 +423,34 @@ app.get('*', async (req, res, next) => {
   try {
     const shop = db.getShopSettings();
 
+    // Une fiche demandée par son ancienne adresse part vers la nouvelle, en 301.
+    //
+    // Les identifiants repris de Wix restent reconnus — un lien déjà envoyé par
+    // message, mis en favori, ou déposé au plan du site hier doit continuer de
+    // répondre. Mais il ne doit pas rester indexable : deux adresses pour une
+    // même fiche, c'est exactement le contenu dupliqué que le reste de ce
+    // fichier s'emploie à éviter. La redirection permanente dit au moteur
+    // laquelle garder, et lui transmet ce que l'ancienne avait accumulé.
+    const ancienneFiche = seo.separerLangue(req.path).chemin.match(/^\/product\/([^/]+)$/);
+    if (ancienneFiche) {
+      try {
+        const demande = decodeURIComponent(ancienneFiche[1]);
+        const produit = seo.trouverProduit(demande, await db.getProducts());
+        const canonique = produit && seo.slugProduit(produit);
+        if (canonique && demande !== canonique) {
+          const { langue } = seo.separerLangue(req.path);
+          // La chaîne de requête est conservée : un lien de campagne porte ses
+          // paramètres de suivi, et les perdre en route rendrait la campagne
+          // impossible à mesurer.
+          const requete = req.originalUrl.slice(req.path.length);
+          return res.redirect(301, seo.avecLangue(`/product/${canonique}`, langue) + requete);
+        }
+      } catch {
+        // Adresse mal encodée ou base muette : on ne redirige pas, et la suite
+        // répondra 404 comme il se doit.
+      }
+    }
+
     // Maintenance mode. She asked for a way to take the shop off the air while
     // it is still being finished, without it also locking her — or us — out.
     // /admin and /api stay reachable, so she can turn it back off from the same
@@ -306,38 +471,142 @@ app.get('*', async (req, res, next) => {
 
     let html = fs.readFileSync(indexPath, 'utf8');
     const content = db.readContent();
-    let tag = `<script nonce="${res.locals.cspNonce}">window.__CONTENT__=${serialiseContent(content)};` +
-              `window.__SHOP__=${serialiseContent(reglagesPublics(shop))}</script>`;
+    // Le script de données est assemblé plus bas, une fois connu ce que le
+    // serveur a su dire de la page : window.__SEO__ en fait partie.
+    // Les balises de mesure, si elles sont configurées. Posées avant le reste
+    // pour que la vérification Search Console soit lisible haut dans le <head>.
+    let tag = mesure.balises(res.locals.cspNonce);
+    let seoClient = null;
     // If </head> is somehow absent, fall through to the untouched file rather
     // than guessing where to put the tag.
     if (!html.includes('</head>')) return res.sendFile(indexPath);
 
-    // Une fiche produit part souvent par message : c'est le geste commercial le
-    // plus courant de la boutique. Les robots qui en fabriquent l'apercu ne
-    // lisent que le HTML recu, d'ou ces balises posees ici plutot que par le
-    // navigateur.
-    const fiche = req.path.match(/^\/product\/([^/]+)$/);
-    if (fiche) {
+    // Le titre, la description, l'adresse canonique et les données structurées
+    // de la page demandée — quelle qu'elle soit.
+    //
+    // Ce bloc ne traitait que les fiches produit. Les robots qui fabriquent
+    // l'aperçu d'un lien — WhatsApp, Facebook, LinkedIn, Signal, Slack — ne
+    // lisent que le HTML reçu et ne l'exécutent pas : un lien vers l'accueil,
+    // une rubrique, un atelier ou un article partait donc en adresse nue, sans
+    // titre ni photo. Pour une boutique dont le geste commercial le plus
+    // courant est d'envoyer un lien, c'était le lien lui-même qui ne vendait
+    // pas. Les moteurs autres que Google sont dans le même cas.
+    //
+    // Sans « trust proxy », req.protocol dit « http » derrière le proxy qui
+    // termine le TLS : on lit d'abord ce que le proxy annonce.
+    const schema = req.get('x-forwarded-proto') || req.protocol || 'https';
+    const base = `${schema}://${req.get('host')}`;
+    // L'adresse canonique est donnée sans la chaîne de requête : la même page
+    // partagée avec un ?utm_source ne doit pas devenir un doublon d'elle-même.
+    const urlPage = `${base}${req.path}`;
+    let statut = 200;
+
+    try {
+      const meta = await seo.metadonneesDeRoute(req.path, urlPage, base, db, shop);
+
+      if (meta === null || !seo.routeConnue(req.path)) {
+        // La ressource n'existe pas : une référence inconnue, un atelier
+        // supprimé, un brouillon, ou une adresse qui ne correspond à aucune
+        // route. Le site répondait 200 à tout, y compris à cela — chaque
+        // adresse morte devenait donc une page indexable de plus, vide et
+        // indistinguable des vraies. On dit maintenant ce qui est.
+        //
+        // Le corps reste la même application : elle affiche déjà ses propres
+        // messages « introuvable ». Seuls le statut et le « noindex » changent.
+        statut = 404;
+        const avant = html;
+        html = html.replace(
+          /<meta\s+name="robots"[^>]*>/i,
+          '<meta name="robots" content="noindex, follow">'
+        );
+        // Si index.html ne portait pas la balise — elle y est aujourd'hui, mais
+        // rien ne le garantit demain — on la pose plutôt que de servir un 404
+        // sans consigne. Deux balises « robots » qui se contredisent seraient
+        // pires que pas de balise du tout, d'où le remplacement d'abord.
+        if (html === avant) tag = '<meta name="robots" content="noindex, follow">' + tag;
+      } else if (meta) {
+        // index.html déclare lang="fr" en dur. Une page anglaise servie avec
+        // cette déclaration se contredit elle-même : le moteur lit « français »
+        // dans le document et de l'anglais dedans, et les lecteurs d'écran
+        // prononcent le texte avec la mauvaise phonétique.
+        html = html.replace(/<html([^>]*)\slang="[^"]*"/i, `<html$1 lang="${meta.langue}"`);
+        html = html.replace(/<title>[\s\S]*?<\/title>/i,
+          `<title data-pose="app">${seo.escapeHtml(meta.titre)}</title>`);
+        // Le plancher d'index.html s'efface devant celle de la route. Sans ce
+        // retrait la page porterait deux balises « description » : Google en
+        // choisirait une au hasard, et le hook du navigateur — qui prend la
+        // première venue — mettrait à jour l'autre. Une seule, toujours.
+        html = html.replace(/<meta\s+name="description"[^>]*>/i, '');
+        tag = seo.baliseshtml(meta, urlPage, res.locals.cspNonce) + tag;
+        // Ce que le serveur vient de poser, laissé à portée du navigateur.
+        //
+        // Sans cela le hook du navigateur écrase le titre du serveur au montage
+        // par le sien, qui est plus pauvre : « Savons » remplaçait « Savons
+        // artisanaux faits main à Genève ». Google exécute le JavaScript avant
+        // de lire la page — c'est donc la version écrasée qu'il indexe, et tout
+        // le travail fait ici était perdu à la seconde près.
+        //
+        // Le chemin sert de garde : dès que le visiteur navigue ailleurs, il ne
+        // correspond plus et le hook reprend la main, comme avant.
+        seoClient = { chemin: req.path, titre: meta.titre, description: meta.description };
+      }
+      // meta === undefined : route connue mais volontairement muette
+      // (l'administration, la recherche). La page part telle quelle.
+    } catch (err) {
+      // Une base muette ne doit pas empêcher la page de s'afficher : on sert
+      // alors le document générique, comme avant. Répondre 404 sur une panne
+      // serait pire que le défaut qu'on corrige — cela désindexerait des pages
+      // qui existent.
+      console.error('Balises de partage non posees :', err.message);
+    }
+
+    // Le corps de la page, rendu ici plutôt que par le navigateur.
+    //
+    // C'est l'étape 3 du plan. Jusqu'ici le serveur écrivait un <head> complet
+    // et un <body> vide : suffisant pour Google, qui exécute le JavaScript, et
+    // pour les aperçus de lien, qui ne lisent que le <head>. Insuffisant pour
+    // tout le reste — Bing sur un domaine neuf, GPTBot, PerplexityBot,
+    // ClaudeBot, Pinterest — qui lisent le HTML tel qu'il arrive.
+    //
+    // Le catalogue est chargé pour le rendu ET injecté pour le navigateur : le
+    // premier rendu client doit reproduire exactement celui du serveur, sinon
+    // React refait tout et signale une divergence sur chaque fiche. C'est aussi
+    // un aller-retour réseau de moins au chargement.
+    //
+    // L'administration est exclue : elle est chargée à la demande, ne doit
+    // jamais être indexée, et son rendu serveur n'apporterait rien.
+    let catalogue = [];
+    const cheminNu = seo.separerLangue(req.path).chemin;
+    const rendable = statut === 200 && !cheminNu.startsWith('/admin');
+    if (rendable) {
       try {
-        const produit = await db.getProductById(decodeURIComponent(fiche[1]));
-        // Sans « trust proxy », req.protocol dit « http » derriere le proxy qui
-        // termine le TLS : on lit d'abord ce que le proxy annonce.
-        const schema = req.get('x-forwarded-proto') || req.protocol || 'https';
-        const urlPage = `${schema}://${req.get('host')}${req.path}`;
-        const { titre, balises } = baliseshtmlProduit(produit, urlPage);
-        if (titre) {
-          html = html.replace(/<title>[\s\S]*?<\/title>/i,
-            `<title data-pose="app">${escapeHtml(titre)}</title>`);
-          tag = balises + tag;
-        }
-      } catch (err) {
-        // Une reference inconnue ou une base muette ne doit pas empecher la
-        // page de s'afficher : on sert alors le document generique, comme avant.
-        console.error('Balises de partage non posees :', err.message);
+        catalogue = allegerCatalogue(await db.getProducts(), cheminNu);
+      } catch {
+        catalogue = [];
       }
     }
 
-    res.type('html').send(html.replace('</head>', `${tag}</head>`));
+    tag += `<script nonce="${res.locals.cspNonce}">window.__CONTENT__=${serialiseContent(content)};` +
+           `window.__SHOP__=${serialiseContent(reglagesPublics(shop))};` +
+           `window.__CATALOGUE__=${serialiseContent(catalogue)};` +
+           `window.__SEO__=${serialiseContent(seoClient)}</script>`;
+
+    let page = html.replace('</head>', `${tag}</head>`);
+
+    if (rendable) {
+      const corps = rendreCorps(req.path, content, reglagesPublics(shop), catalogue, seoClient);
+      // Une chaîne vide veut dire que le rendu a échoué ou n'est pas
+      // disponible : on sert alors la coquille, exactement comme avant cette
+      // étape. Le site ne doit jamais tomber pour une optimisation.
+      if (corps) {
+        page = page.replace(
+          '<div id="root"></div>',
+          `<div id="root">${corps}</div>`
+        );
+      }
+    }
+
+    res.status(statut).type('html').send(page);
   } catch (err) {
     // The site must survive a failure here: worst case it serves the page with
     // its coded defaults, which is exactly how it behaved before this existed.
@@ -353,5 +622,12 @@ app.listen(PORT, () => {
   console.log(`  Local URL:  http://localhost:${PORT}`);
   console.log(`  Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`  Uploads dir: ${uploadsRoot}`);
+  // Dit au démarrage ce qui est mesuré, ou que rien ne l'est. Un site qui
+  // croit mesurer sans mesurer est pire qu'un site qui sait qu'il ne mesure
+  // rien : personne ne va vérifier ce qu'on pense avoir réglé.
+  console.log(mesure.resume());
+  // Chargé au démarrage plutôt qu à la première requête : le message du
+  // journal doit apparaître au lancement, pas à la première visite.
+  chargerMoteur();
   console.log(`=========================================`);
 });

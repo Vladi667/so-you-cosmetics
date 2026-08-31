@@ -90,9 +90,27 @@ export function resumer(texte, limite = 160) {
 // La langue du document n'est pas réglée ici : LanguageContext en est le seul
 // propriétaire, et deux effets qui écrivent le même attribut finissent toujours
 // par se contredire dans un ordre qu'on ne contrôle pas.
+// Ce que le serveur a déjà posé pour la page reçue, s'il s'agit toujours d'elle.
+//
+// Le serveur écrit un titre et une description pensés pour la recherche —
+// « Savons artisanaux faits main à Genève » là où la page ne sait dire que
+// « Savons ». Sans cette lecture, le hook écrasait ce texte au montage par le
+// sien, et comme Google exécute le JavaScript avant de lire la page, c'est la
+// version pauvre qui était indexée.
+//
+// La comparaison porte sur le chemin seul : une même page ouverte avec un
+// ?utm_source reste la même page, tandis qu'une navigation vers une autre route
+// rend la main au hook, dont c'est alors le tour.
+function duServeur() {
+  if (typeof window === 'undefined' || !window.__SEO__) return null;
+  return window.__SEO__.chemin === window.location.pathname ? window.__SEO__ : null;
+}
+
 export default function useMetadonnees({ titre, description, image, type = 'website' } = {}) {
-  const titreComplet = titre ? `${titre} — So You Cosmetics` : DEFAUT_TITRE;
-  const resume = description ? resumer(description) : '';
+  const serveur = duServeur();
+  const titreComplet = (serveur && serveur.titre)
+    || (titre ? `${titre} — So You Cosmetics` : DEFAUT_TITRE);
+  const resume = (serveur && serveur.description) || (description ? resumer(description) : '');
   const url = typeof window !== 'undefined' ? window.location.href.split('#')[0] : '';
   const absolue = image && typeof window !== 'undefined'
     ? new URL(image, window.location.origin).href
