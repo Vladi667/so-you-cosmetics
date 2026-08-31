@@ -20,6 +20,9 @@ const ContactPage = () => {
     titre: t('contact.title'),
     description: `${t('contact.subtitle')} — ${ADRESSE_RUE}, ${ADRESSE_VILLE}. ${TELEPHONE}`,
   });
+
+  // La carte ne se charge qu'à la demande — voir la section en bas de page.
+  const [carteChargee, setCarteChargee] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const { etat, enCours, message, messageVisible, envoyer } = useEnvoiFormulaire();
 
@@ -244,19 +247,50 @@ const ContactPage = () => {
         </div>
       </section>
 
-      {/* Google Maps Embed */}
+      {/* La carte Google, chargée seulement quand on la demande.
+          Une iframe Google transmet l'adresse IP du visiteur dès qu'elle se
+          charge. La poser d'emblée ferait donc partir cette donnée avant que
+          quiconque ait consenti. Un panneau tient sa place, la carte arrive au
+          clic : l'intégration reste entière, seul son moment change. Le lien
+          en dessous sert ceux qui préfèrent ouvrir Maps directement — et il
+          fonctionne aussi sans JavaScript. */}
       <section className="relative">
-        <div className="w-full h-[250px] sm:h-[400px] md:h-[500px] grayscale hover:grayscale-0 transition-all duration-700">
-          <iframe
-            src="https://maps.google.com/maps?q=3%20Avenue%20Pictet-de-Rochemont%2C%201207%20Gen%C3%A8ve&output=embed"
-            width="100%"
-            height="100%"
-            style={{ border: 0 }}
-            allowFullScreen=""
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            title={t('contact.mapTitle')}
-          ></iframe>
+        <div className="w-full h-[250px] sm:h-[400px] md:h-[500px]">
+          {carteChargee ? (
+            <div className="w-full h-full grayscale hover:grayscale-0 transition-all duration-700">
+              <iframe
+                src="https://maps.google.com/maps?q=3%20Avenue%20Pictet-de-Rochemont%2C%201207%20Gen%C3%A8ve&output=embed"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen=""
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title={t('contact.mapTitle')}
+              ></iframe>
+            </div>
+          ) : (
+            <div className="w-full h-full bg-lake-mist border-y border-alpine-silver flex flex-col items-center justify-center gap-5 px-6 text-center">
+              <p className="font-sans text-stone-gray text-xs sm:text-sm font-light max-w-md">
+                {t('contact.mapNotice')}
+              </p>
+              <button
+                type="button"
+                onClick={() => setCarteChargee(true)}
+                className="press px-6 sm:px-10 py-3 sm:py-4 font-sans uppercase tracking-[0.3em] text-xs rounded-full bg-slate-stone text-ivory hover:bg-slate-stone/90 transition-colors duration-250"
+              >
+                {t('contact.mapLoad')}
+              </button>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${ADRESSE_RUE}, ${ADRESSE_VILLE}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-sans text-xs font-light text-stone-gray underline underline-offset-4 hover:text-slate-stone press"
+              >
+                {t('contact.mapOpen')}
+              </a>
+            </div>
+          )}
         </div>
       </section>
     </div>

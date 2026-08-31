@@ -222,6 +222,10 @@ async function initProductionDatabase() {
 
     // Migrate orders tables created before pickup/shipping tracking existed.
     await ensureColumn(conn, 'orders', 'fulfillment', 'TEXT NULL');
+    // Le téléphone et la société, facultatifs, ajoutés après coup. NULL permis :
+    // les commandes déjà passées n'en ont pas, et rien ne doit les invalider.
+    await ensureColumn(conn, 'orders', 'customer_phone', 'VARCHAR(40) NULL');
+    await ensureColumn(conn, 'orders', 'customer_company', 'VARCHAR(120) NULL');
 
     // Create bookings table
     await conn.query(`
@@ -880,6 +884,12 @@ async function createOrder(order) {
     id: orderId,
     customer_name: order.name,
     customer_email: order.email,
+    // Facultatifs. Le téléphone est ce que La Poste réclame pour un envoi
+    // signé ; la société est ce qui doit figurer sur la facture d'un achat
+    // professionnel. Vides quand ils n'ont pas été renseignés — jamais absents,
+    // pour que la fiche de commande et l'export CSV lisent toujours la clé.
+    customer_phone: String(order.phone || '').trim(),
+    customer_company: String(order.company || '').trim(),
     total: order.total,
     items: order.items,
     // Ce qu'elle doit expédier, et ce que le client a payé pour cela. Sans ce
@@ -927,11 +937,13 @@ async function createOrder(order) {
   if (pool) {
     try {
       await pool.query(
-        'INSERT INTO orders (id, customer_name, customer_email, total, items, status) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO orders (id, customer_name, customer_email, customer_phone, customer_company, total, items, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         [
           newOrder.id,
           newOrder.customer_name,
           newOrder.customer_email,
+          newOrder.customer_phone || null,
+          newOrder.customer_company || null,
           newOrder.total,
           JSON.stringify(newOrder.items),
           newOrder.status

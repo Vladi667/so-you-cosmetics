@@ -1756,7 +1756,19 @@ const AdminDashboard = ({ onLogout }) => {
               <div>
                 <h4 className="font-sans text-xs tracking-widest uppercase font-bold text-stone-gray/60 mb-2">Informations Client</h4>
                 <p className="font-semibold text-base">{selectedOrder.customer_name}</p>
+                {selectedOrder.customer_company && (
+                  <p className="text-xs text-stone-gray mt-0.5">{selectedOrder.customer_company}</p>
+                )}
                 <p className="font-mono text-xs mt-0.5">{selectedOrder.customer_email}</p>
+                {/* Cliquable : sur un téléphone, c'est un appel ; sur l'ordinateur
+                    de la boutique, c'est un numéro qu'on lit sans le recopier. */}
+                {selectedOrder.customer_phone && (
+                  <p className="font-mono text-xs mt-0.5">
+                    <a href={`tel:${selectedOrder.customer_phone.replace(/\s+/g, '')}`} className="hover:underline">
+                      {selectedOrder.customer_phone}
+                    </a>
+                  </p>
+                )}
                 <p className="text-xs text-stone-gray mt-2">
                   Commandée le : {new Date(selectedOrder.created_at).toLocaleString('fr-CH', { dateStyle: 'long', timeStyle: 'short' })}
                 </p>

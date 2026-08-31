@@ -17,7 +17,15 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
   // chercher un article de plus.
   const [checkoutForm, setCheckoutForm] = useState(() => {
     const garde = lireCaisse();
-    return { name: garde.name, email: garde.email };
+    return {
+      name: garde.name,
+      email: garde.email,
+      // Le telephone sert au transporteur pour un colis signe ; la societe
+      // figure sur la facture quand l'achat est professionnel. Les deux sont
+      // facultatifs : les exiger ferait abandonner des paniers.
+      phone: garde.phone || '',
+      company: garde.company || '',
+    };
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
@@ -124,8 +132,14 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
   // consequence : localStorage est synchrone et le volume tient en quelques
   // centaines d'octets.
   useEffect(() => {
-    ecrireCaisse({ name: checkoutForm.name, email: checkoutForm.email, adresse });
-  }, [checkoutForm.name, checkoutForm.email, adresse]);
+    ecrireCaisse({
+      name: checkoutForm.name,
+      email: checkoutForm.email,
+      phone: checkoutForm.phone,
+      company: checkoutForm.company,
+      adresse,
+    });
+  }, [checkoutForm.name, checkoutForm.email, checkoutForm.phone, checkoutForm.company, adresse]);
 
   const getImageUrl = (product) => {
     if (product.imageUrl) return product.imageUrl;
@@ -217,6 +231,8 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
     const orderPayload = {
       name: checkoutForm.name,
       email: checkoutForm.email,
+      phone: checkoutForm.phone,
+      company: checkoutForm.company,
       shippingId,
       // Nulle pour un retrait : il n'y a rien a expedier. Le serveur refait le
       // meme controle — le navigateur ne decide pas de ce qui est exigible.
@@ -450,6 +466,39 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                   value={checkoutForm.email}
                   onChange={(e) => setCheckoutForm({ ...checkoutForm, email: e.target.value })}
                   placeholder="votre@email.com"
+                  className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40 transition-all"
+                />
+              </div>
+
+              {/* Facultatifs tous les deux, et marques comme tels. Le telephone
+                  n'existe que parce que La Poste le reclame pour un envoi
+                  signe ; la societe sert a etablir la facture au bon nom. Les
+                  rendre obligatoires ferait perdre des commandes pour une
+                  donnee dont on n'a pas toujours l'usage. */}
+              <div>
+                <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">
+                  {t('drawer.phone')}{' '}
+                  <span className="font-normal normal-case tracking-normal text-stone-gray/60">{t('drawer.optional')}</span>
+                </label>
+                <input
+                  type="tel"
+                  value={checkoutForm.phone}
+                  onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })}
+                  placeholder={t('drawer.phonePlaceholder')}
+                  className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">
+                  {t('drawer.company')}{' '}
+                  <span className="font-normal normal-case tracking-normal text-stone-gray/60">{t('drawer.optional')}</span>
+                </label>
+                <input
+                  type="text"
+                  value={checkoutForm.company}
+                  onChange={(e) => setCheckoutForm({ ...checkoutForm, company: e.target.value })}
+                  placeholder={t('drawer.companyPlaceholder')}
                   className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40 transition-all"
                 />
               </div>

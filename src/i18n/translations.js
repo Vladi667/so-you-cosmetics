@@ -198,6 +198,11 @@ const translations = {
       cancel: 'Annuler',
       fullName: 'Nom complet',
       yourName: 'Votre nom',
+      optional: '(facultatif)',
+      phone: 'Téléphone',
+      phonePlaceholder: '079 123 45 67',
+      company: 'Société',
+      companyPlaceholder: 'Si la facture doit être établie au nom d’une société',
       email: 'E-mail',
       orderDetails: 'Détails de la commande',
       total: 'Total',
@@ -381,6 +386,9 @@ const translations = {
       sending: 'Envoi…',
       sendError: "Votre message n’a pas pu être envoyé. Réessayez, ou écrivez à contact@soyoucosmetics.com.",
       mapTitle: 'Emplacement de la boutique Soap Opera',
+      mapNotice: 'La carte est fournie par Google. En l’affichant, votre adresse IP est transmise à Google.',
+      mapLoad: 'Afficher la carte',
+      mapOpen: 'Ouvrir dans Google Maps',
     },
     personnalisation: {
     eyebrow: 'Sur mesure',
@@ -471,7 +479,7 @@ const translations = {
     },
     privacy: {
       title: 'Politique de confidentialité',
-      lastUpdated: 'Mai 2026',
+      lastUpdated: 'Août 2026',
       intro: "So You Cosmetics accorde une grande importance à la protection de votre sphère privée. La présente politique explique quelles données personnelles nous collectons, dans quel but et comment elles sont protégées, conformément à la Loi fédérale sur la protection des données (nLPD).",
       sections: [
         { heading: '1. Responsable du traitement', body: [
@@ -507,13 +515,16 @@ const translations = {
             'Prestataire de paiement : SumUp.',
             'Transporteurs (par exemple La Poste Suisse) pour la livraison de vos commandes.',
             'Hébergeur et service de messagerie (Infomaniak, en Suisse).',
+            'Google, uniquement si vous choisissez d’afficher la carte de la boutique — voir la section « Cookies et services tiers ».',
           ],
         ]},
         { heading: '6. Hébergement et transferts', body: [
           "Nos données sont hébergées en Suisse. Certains prestataires (notamment de paiement) peuvent traiter des données à l’étranger ; nous veillons dans ce cas à ce que des garanties adéquates assurent un niveau de protection approprié.",
         ]},
         { heading: '7. Cookies et services tiers', body: [
-          'Le site utilise des cookies et technologies similaires strictement nécessaires à son fonctionnement (par exemple le panier et la session). Certains services tiers intégrés peuvent déposer leurs propres cookies, notamment Google Maps (localisation de la boutique) et SumUp (paiement). Vous pouvez configurer votre navigateur pour refuser tout ou partie des cookies.',
+          'Le site ne dépose aucun cookie publicitaire ni de mesure d’audience. Il conserve uniquement, dans votre navigateur, ce que son fonctionnement exige : le contenu de votre panier, la langue choisie et, le cas échéant, votre session de connexion.',
+          'La carte Google Maps n’est pas chargée automatiquement. Elle n’apparaît que si vous cliquez pour l’afficher : aucune donnée, y compris votre adresse IP, n’est transmise à Google avant ce geste.',
+          'Notre prestataire de paiement SumUp dépose ses propres cookies au moment du paiement. Vous pouvez par ailleurs configurer votre navigateur pour refuser tout ou partie des cookies.',
         ]},
         { heading: '8. Durée de conservation', body: [
           "Nous conservons vos données aussi longtemps que nécessaire aux finalités décrites et dans le respect des délais légaux, notamment l’obligation de conservation des pièces commerciales pendant 10 ans. Les adresses inscrites à la newsletter sont conservées jusqu’à votre désinscription.",
@@ -716,6 +727,11 @@ const translations = {
       cancel: 'Cancel',
       fullName: 'Full Name',
       yourName: 'Your name',
+      optional: '(optional)',
+      phone: 'Phone',
+      phonePlaceholder: '079 123 45 67',
+      company: 'Company',
+      companyPlaceholder: 'If the invoice should be made out to a company',
       email: 'Email',
       orderDetails: 'Order details',
       total: 'Total',
@@ -894,6 +910,9 @@ const translations = {
       sending: 'Sending…',
       sendError: 'Your message could not be sent. Please try again, or write to contact@soyoucosmetics.com.',
       mapTitle: 'Boutique Soap Opera Location',
+      mapNotice: 'The map is provided by Google. Displaying it sends your IP address to Google.',
+      mapLoad: 'Show the map',
+      mapOpen: 'Open in Google Maps',
     },
     personnalisation: {
     eyebrow: 'Made to order',
@@ -984,7 +1003,7 @@ const translations = {
     },
     privacy: {
       title: 'Privacy Policy',
-      lastUpdated: 'May 2026',
+      lastUpdated: 'August 2026',
       intro: 'So You Cosmetics attaches great importance to protecting your privacy. This policy explains which personal data we collect, for what purpose and how it is protected, in accordance with the Swiss Federal Act on Data Protection (nFADP).',
       sections: [
         { heading: '1. Data controller', body: [
@@ -1020,13 +1039,16 @@ const translations = {
             'Payment provider: SumUp.',
             'Carriers (for example Swiss Post) for the delivery of your orders.',
             'Hosting and email provider (Infomaniak, in Switzerland).',
+            'Google, only if you choose to display the boutique map — see the “Cookies and third-party services” section.',
           ],
         ]},
         { heading: '6. Hosting and transfers', body: [
           'Our data is hosted in Switzerland. Some providers (notably payment providers) may process data abroad; in such cases we ensure that adequate safeguards provide an appropriate level of protection.',
         ]},
         { heading: '7. Cookies and third-party services', body: [
-          'The site uses cookies and similar technologies strictly necessary for its operation (for example the cart and session). Some integrated third-party services may set their own cookies, notably Google Maps (boutique location) and SumUp (payment). You can configure your browser to refuse some or all cookies.',
+          'The site sets no advertising or analytics cookies. It stores in your browser only what its operation requires: the contents of your cart, your chosen language and, where applicable, your login session.',
+          'The Google Maps map is not loaded automatically. It appears only if you click to display it: no data, including your IP address, is sent to Google before you do.',
+          'Our payment provider SumUp sets its own cookies at the time of payment. You can also configure your browser to refuse some or all cookies.',
         ]},
         { heading: '8. Retention period', body: [
           'We keep your data for as long as necessary for the purposes described and in compliance with legal deadlines, in particular the obligation to retain commercial records for 10 years. Addresses subscribed to the newsletter are kept until you unsubscribe.',
@@ -1229,6 +1251,11 @@ const translations = {
       cancel: 'Abbrechen',
       fullName: 'Vollständiger Name',
       yourName: 'Ihr Name',
+      optional: '(optional)',
+      phone: 'Telefon',
+      phonePlaceholder: '079 123 45 67',
+      company: 'Firma',
+      companyPlaceholder: 'Falls die Rechnung auf eine Firma lauten soll',
       email: 'E-Mail',
       orderDetails: 'Bestelldetails',
       total: 'Gesamt',
@@ -1407,6 +1434,9 @@ const translations = {
       sending: 'Senden…',
       sendError: 'Ihre Nachricht konnte nicht gesendet werden. Bitte versuchen Sie es erneut oder schreiben Sie an contact@soyoucosmetics.com.',
       mapTitle: 'Standort der Boutique Soap Opera',
+      mapNotice: 'Die Karte wird von Google bereitgestellt. Beim Anzeigen wird Ihre IP-Adresse an Google übermittelt.',
+      mapLoad: 'Karte anzeigen',
+      mapOpen: 'In Google Maps öffnen',
     },
     personnalisation: {
     eyebrow: 'Massanfertigung',
@@ -1497,7 +1527,7 @@ const translations = {
     },
     privacy: {
       title: 'Datenschutzerklärung',
-      lastUpdated: 'Mai 2026',
+      lastUpdated: 'August 2026',
       intro: 'So You Cosmetics legt grossen Wert auf den Schutz Ihrer Privatsphäre. Diese Erklärung erläutert, welche personenbezogenen Daten wir erheben, zu welchem Zweck und wie sie geschützt werden, gemäss dem Schweizer Bundesgesetz über den Datenschutz (revDSG).',
       sections: [
         { heading: '1. Verantwortlicher', body: [
@@ -1533,13 +1563,16 @@ const translations = {
             'Zahlungsdienstleister: SumUp.',
             'Transporteure (zum Beispiel die Schweizerische Post) für die Lieferung Ihrer Bestellungen.',
             'Hosting- und E-Mail-Anbieter (Infomaniak, in der Schweiz).',
+            'Google, nur wenn Sie die Karte der Boutique anzeigen lassen — siehe Abschnitt „Cookies und Drittdienste“.',
           ],
         ]},
         { heading: '6. Hosting und Übermittlungen', body: [
           'Unsere Daten werden in der Schweiz gehostet. Einige Dienstleister (insbesondere für Zahlungen) können Daten im Ausland verarbeiten; in diesem Fall stellen wir sicher, dass angemessene Garantien ein angemessenes Schutzniveau gewährleisten.',
         ]},
         { heading: '7. Cookies und Drittdienste', body: [
-          'Die Website verwendet Cookies und ähnliche Technologien, die für ihren Betrieb unbedingt erforderlich sind (zum Beispiel Warenkorb und Sitzung). Einige eingebundene Drittdienste können eigene Cookies setzen, insbesondere Google Maps (Standort der Boutique) und SumUp (Zahlung). Sie können Ihren Browser so einstellen, dass er einen Teil oder alle Cookies ablehnt.',
+          'Die Website setzt keine Werbe- oder Analyse-Cookies. Sie speichert in Ihrem Browser nur, was für den Betrieb erforderlich ist: den Inhalt Ihres Warenkorbs, die gewählte Sprache und gegebenenfalls Ihre Anmeldesitzung.',
+          'Die Google-Maps-Karte wird nicht automatisch geladen. Sie erscheint nur, wenn Sie auf „Karte anzeigen“ klicken: Vorher werden keine Daten an Google übermittelt, auch nicht Ihre IP-Adresse.',
+          'Unser Zahlungsdienstleister SumUp setzt beim Bezahlvorgang eigene Cookies. Sie können Ihren Browser zudem so einstellen, dass er einen Teil oder alle Cookies ablehnt.',
         ]},
         { heading: '8. Aufbewahrungsdauer', body: [
           'Wir bewahren Ihre Daten so lange auf, wie es für die beschriebenen Zwecke erforderlich ist und gesetzliche Fristen es verlangen, insbesondere die Pflicht zur Aufbewahrung von Geschäftsunterlagen während 10 Jahren. Newsletter-Adressen werden bis zu Ihrer Abmeldung aufbewahrt.',

@@ -455,7 +455,7 @@ router.get('/refill-count', async (req, res) => {
 });
 
 router.post('/orders', async (req, res) => {
-  const { name, email, items, shippingId, address, cadeau, cgvAcceptees } = req.body;
+  const { name, email, phone, company, items, shippingId, address, cadeau, cgvAcceptees } = req.body;
   if (!name || !email || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Missing required order details' });
   }
@@ -522,6 +522,11 @@ router.post('/orders', async (req, res) => {
     const total = calcul.total;
     const newOrder = await db.createOrder({
       name, email, items, total,
+      // Facultatifs tous les deux. Coupés à une longueur raisonnable plutôt que
+      // refusés : une commande ne doit pas échouer sur un champ qu'on n'exige
+      // pas. Le téléphone sert au transporteur, la société à la facture.
+      phone: String(phone || '').trim().slice(0, 40),
+      company: String(company || '').trim().slice(0, 120),
       shipping: { id: shippingId || '', label: calcul.shippingLabel, cost: calcul.shippingCost },
       // Nulle pour un retrait en boutique : il n'y a rien à expédier.
       address: db.exigeAdresse(shippingId) ? address : null,
