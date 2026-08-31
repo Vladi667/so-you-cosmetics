@@ -52,7 +52,20 @@ const PAS = 24;
 //
 // En aperçu, le nombre est fixe, l'observateur n'est pas posé, et le pied
 // renvoie à la boutique au lieu d'en charger davantage.
-function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favorites, searchQuery = '', apercu = false, sansEntete = false }) {
+//
+// `rubriques` : plusieurs rubriques à la fois, pour les pages qui présentent un
+// besoin plutôt qu'un rayon.
+//
+// « Matières premières » parle d'argiles et de contenants : les premières sont
+// rangées dans DIY, les seconds dans Accessoires, et une page qui n'en montre
+// qu'une moitié dément son propre titre. La rubrique unique reste le cas normal
+// — la boutique, les quatorze pages de rubrique et la recherche continuent de
+// passer par `globalActiveCategory`, et rien de leur comportement ne change.
+//
+// Les deux ne se combinent pas : quand `rubriques` est fourni, il décide seul.
+// Les croiser laisserait une page afficher l'intersection de deux intentions
+// différentes, ce que personne ne saurait lire.
+function Catalog({ globalActiveCategory = 'All', rubriques = null, addToCart, toggleFavorite, favorites, searchQuery = '', apercu = false, sansEntete = false }) {
   const { t, tCategory } = useLanguage();
   // Semé avec ce que le serveur a injecté : sans cela le rendu serveur
   // produirait une grille vide, et le navigateur en produirait une pleine —
@@ -119,6 +132,12 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
   // devait empêcher, et que seul un coup d'œil à la page en ligne a révélée.
   const categories = ['All', ...visibleCategories(productsList)];
 
+  // Normalisé une fois. Le composant reçoit soit null, soit un tableau
+  // reconstruit à chaque rendu par l'appelant : la clé jointe sert de
+  // dépendance stable au mémo, comme `clePrix` le fait pour les tranches.
+  const listeRubriques = Array.isArray(rubriques) ? rubriques : [];
+  const cleRubriques = listeRubriques.join('|');
+
   useEffect(() => {
     let active = true;
     getProducts()
@@ -153,6 +172,13 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
         );
         return terms.every(t => haystack.includes(t));
       });
+    } else if (listeRubriques.length > 0) {
+      // Appartenir à l'une suffit. L'intersection ne montrerait que les fiches
+      // rangées dans toutes à la fois — presque aucune, et jamais celles qu'on
+      // voulait réunir.
+      filtered = productsList.filter(
+        (p) => Array.isArray(p.collections) && p.collections.some((c) => listeRubriques.includes(c))
+      );
     } else if (activeCategory !== 'All') {
       filtered = productsList.filter(p => p.collections && p.collections.includes(activeCategory));
     }
@@ -160,7 +186,7 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
     // Les ateliers rejoignent les Cadeaux, presentes comme les produits mais
     // menant a leur page dediee : ils se reservent, ils ne s'ajoutent pas au
     // panier.
-    if (activeCategory === 'Cadeaux' && workshops.length > 0) {
+    if ((activeCategory === 'Cadeaux' || listeRubriques.includes('Cadeaux')) && workshops.length > 0) {
       filtered = [
         ...workshops.map((w) => ({
           id: w.id,
@@ -193,7 +219,7 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
     return trier(filtered, tri);
     // `tranchesChoisies` est reconstruit a chaque rendu depuis l'adresse : on
     // depend de sa forme stable, la chaine, et non du tableau.
-  }, [productsList, workshops, activeCategory, searchQuery, tri, clePrix]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [productsList, workshops, activeCategory, cleRubriques, searchQuery, tri, clePrix]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!ajouteId) return undefined;
@@ -208,7 +234,7 @@ function Catalog({ globalActiveCategory = 'All', addToCart, toggleFavorite, favo
   // effet marcherait, mais peindrait la grille deux fois — une fois avec
   // l'ancien compteur, une fois avec le bon. L'ajustement pendant le rendu est
   // ce que React recommande pour un etat qui derive d'un changement de selection.
-  const selection = `${activeCategory}|${searchQuery}|${tri}|${clePrix}`;
+  const selection = `${activeCategory}|${cleRubriques}|${searchQuery}|${tri}|${clePrix}`;
   const [selectionPeinte, setSelectionPeinte] = useState(selection);
   if (selectionPeinte !== selection) {
     setSelectionPeinte(selection);

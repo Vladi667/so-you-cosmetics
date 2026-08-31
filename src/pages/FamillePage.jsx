@@ -1,4 +1,3 @@
-import React from 'react';
 import Lien from '../components/Lien';
 import Catalog from '../components/Catalog';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -81,7 +80,7 @@ const FamillePage = ({ slug, addToCart, toggleFavorite, favorites }) => {
         </article>
 
         <Catalog
-          globalActiveCategory={famille.rubrique}
+          rubriques={famille.rubriques}
           sansEntete
           addToCart={addToCart}
           toggleFavorite={toggleFavorite}

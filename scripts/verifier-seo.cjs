@@ -360,10 +360,18 @@ const shop = {
   // Une rubrique mal orthographiée donnerait une page de texte suivie d’une
   // grille vide — le pire des deux mondes.
   const rubriquesReelles = new Set(catalogue.flatMap((p) => p.collections || []));
-  const orphelines = FAMILLES.filter((f) => !rubriquesReelles.has(f.rubrique));
+  const orphelines = FAMILLES.flatMap((f) =>
+    (f.rubriques || []).filter((r) => !rubriquesReelles.has(r)).map((r) => `${f.slug} → ${r}`)
+  );
   ok(orphelines.length === 0,
-     'chaque famille pointe vers une rubrique qui existe au catalogue',
-     orphelines.map((f) => `${f.slug} → ${f.rubrique}`).join(', '));
+     'chaque rubrique visée par une famille existe au catalogue',
+     orphelines.join(', '));
+
+  // Une famille sans rubrique afficherait du texte suivi de rien.
+  const sansRubrique = FAMILLES.filter((f) => !Array.isArray(f.rubriques) || f.rubriques.length === 0);
+  ok(sansRubrique.length === 0,
+     'chaque famille vise au moins une rubrique',
+     sansRubrique.map((f) => f.slug).join(', '));
 
   for (const langue of ['', '/en', '/de']) {
     const manquantes = [];

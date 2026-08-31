@@ -31,7 +31,7 @@
 export const FAMILLES = [
   {
     slug: 'savon-saponifie-a-froid',
-    rubrique: 'Savons',
+    rubriques: ['Savons'],
     image: '/artisanal_soap_crafting.png',
     fr: {
       titre: 'Savon saponifié à froid',
@@ -115,7 +115,7 @@ export const FAMILLES = [
 
   {
     slug: 'shampoing-solide',
-    rubrique: 'Soins Capillaires',
+    rubriques: ['Soins Capillaires'],
     image: '/botanical_flatlay.png',
     fr: {
       titre: 'Shampoing solide',
@@ -199,7 +199,7 @@ export const FAMILLES = [
 
   {
     slug: 'cosmetique-zero-dechet',
-    rubrique: 'Bain & Bien-être',
+    rubriques: ['Bain & Bien-être', 'Soins Capillaires'],
     image: '/premium_product_stone.png',
     fr: {
       titre: 'Cosmétique zéro déchet à Genève',
@@ -283,7 +283,7 @@ export const FAMILLES = [
 
   {
     slug: 'soins-peaux-sensibles',
-    rubrique: 'Soins Visage',
+    rubriques: ['Soins Visage', 'Soins Corps'],
     image: '/workshop_ingredients.png',
     fr: {
       titre: 'Soins pour peaux sensibles et réactives',
@@ -367,7 +367,7 @@ export const FAMILLES = [
 
   {
     slug: 'cadeaux-cosmetiques-naturels',
-    rubrique: 'Cadeaux',
+    rubriques: ['Cadeaux', 'Ambiance'],
     image: '/premium_product_stone.png',
     fr: {
       titre: 'Cadeaux et coffrets à Genève',
@@ -451,7 +451,7 @@ export const FAMILLES = [
 
   {
     slug: 'matieres-premieres-cosmetiques',
-    rubrique: 'DIY',
+    rubriques: ['DIY', 'Accessoires'],
     image: '/workshop_ingredients.png',
     fr: {
       titre: 'Matières premières et matériel DIY',
