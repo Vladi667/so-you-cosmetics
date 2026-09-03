@@ -71,7 +71,13 @@ const AdminDashboard = ({ onLogout }) => {
   const chargerProduitDansFormulaire = (p, { copie = false } = {}) => ({
     ...emptyProductForm,
     id: copie ? null : p.id,
-    name: copie ? `${p.name} (copie)` : (p.name || ''),
+    // « (copie) » ne s'empile pas. Dupliquer une copie donnait « (copie)
+    // (copie) », et une troisième fois en aurait mis trois — trois fiches dont
+    // le nom ne disait plus rien de ce qui les distingue. Une seule mention
+    // suffit à signaler qu'il reste un nom à écrire.
+    name: copie
+      ? (/\(copie\)\s*$/i.test(p.name || '') ? p.name : `${p.name} (copie)`)
+      : (p.name || ''),
     price: p.price ?? '',
     ribbon: p.ribbon || '',
     collectionsText: (p.collections || []).join(', '),
@@ -1325,6 +1331,17 @@ const AdminDashboard = ({ onLogout }) => {
                           <span className="font-medium">{p.name}</span>
                           {p.inStock === false && (
                             <span className="inline-block self-start bg-red-100 text-red-700 text-[10px] tracking-widest uppercase px-2 py-0.5 rounded font-medium">Épuisé</span>
+                          )}
+                          {/* Dupliquer une fiche pour en dériver une variante est
+                              normal — c'est le nom qu'on oublie ensuite. Trois
+                              fiches sont restées « (copie) » en boutique, et la
+                              cliente a signalé « le même produit plusieurs fois » :
+                              rien ne les distinguait à l'œil, seul le prix
+                              changeait. Le rappel se fait donc là où elle regarde. */}
+                          {/\(copie\)/i.test(p.name || '') && (
+                            <span className="inline-block self-start bg-amber-100 text-amber-800 text-[10px] tracking-widest uppercase px-2 py-0.5 rounded font-medium">
+                              À renommer
+                            </span>
                           )}
                         </div>
                       </td>
