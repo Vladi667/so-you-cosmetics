@@ -619,7 +619,22 @@ function normalizeProductInput(input, base = {}) {
   // comme identifiants : un nom changé ne doit pas rompre l'association.
   if (input.related !== undefined) out.related = toArray(input.related);
   if (input.images !== undefined) {
-    const next = toUrls(input.images).map(normalizeImageUrl);
+    // Deux fois la même adresse dans une galerie n'est jamais une intention :
+    // c'est un formulaire renvoyé, un double clic, ou la même photo téléversée
+    // deux fois. Le doublon se voyait en boutique — deux vignettes
+    // rigoureusement identiques sur la même fiche, impossibles à distinguer.
+    //
+    // Dédoublonné ici plutôt qu'à l'affichage : une galerie propre en base vaut
+    // mieux qu'un filtre à chaque rendu, et l'ordre du premier passage est
+    // conservé.
+    const vues = new Set();
+    const next = toUrls(input.images)
+      .map(normalizeImageUrl)
+      .filter((url) => {
+        if (vues.has(url)) return false;
+        vues.add(url);
+        return true;
+      });
     const had = Array.isArray(base.images) && base.images.length > 0;
     // Refuse to silently wipe a product's images. A client bug (or a stale form
     // that never loaded them) must not destroy them; clearing is only honoured

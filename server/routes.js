@@ -8,7 +8,7 @@ const emailService = require('./email');
 const imapService = require('./imap');
 
 // Directory for admin-uploaded product images (served at /uploads by index.js).
-const { UPLOADS_DIR, ensureUploadsDir } = require('./uploads');
+const { UPLOADS_DIR, ensureUploadsDir, empreinteContenu, fichierExistant } = require('./uploads');
 
 // Compare two strings in constant time; tolerates length mismatch
 function timingSafeEqualStr(a, b) {
@@ -2034,7 +2034,20 @@ router.post('/admin/products/upload-image', requireAdmin, async (req, res) => {
     }
     ensureUploadsDir();
     const safeBase = String(filename || 'image').replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 40) || 'image';
-    const name = `${safeBase}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
+
+    // Renvoyer le fichier déjà là, plutôt qu'en écrire un second identique.
+    //
+    // Réenvoyer la même photo est un geste banal : on ne l'a pas vue paraître,
+    // on recommence. Tant que le nom portait l'heure, ce geste créait un
+    // doublon que la galerie affichait deux fois — et que personne ne pouvait
+    // distinguer à l'œil, les deux vignettes étant la même image.
+    const empreinte = empreinteContenu(buf);
+    const deja = fichierExistant(empreinte, ext);
+    if (deja) {
+      return res.status(200).json({ url: `/uploads/${deja}`, deduplique: true });
+    }
+
+    const name = `${safeBase}-${empreinte}.${ext}`;
     fs.writeFileSync(path.join(UPLOADS_DIR, name), buf);
     res.status(201).json({ url: `/uploads/${name}` });
   } catch (err) {
