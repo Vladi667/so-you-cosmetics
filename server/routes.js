@@ -352,22 +352,79 @@ async function computeOrderTotal(items, shippingId, options = {}) {
   // Ce que la commande contient réellement, pour vérifier ensuite qu'elle a le
   // droit du mode d'expédition demandé.
   const produitsCommandes = [];
+  const lignes = [];
+
   for (const line of items || []) {
     const product = byId.get(String(line.id));
     if (!product) continue;                       // ligne inconnue : ignorée, jamais facturée
     // Une fiche sans prix ne s'achète pas : c'est un « sur devis », pas un
     // article à zéro franc. Quatre existent au catalogue, et sans cette garde
     // un panier n'en contenant qu'elles passait pour le seul prix du port.
-    if (!(Number(product.price) > 0)) continue;
-    produitsCommandes.push({ produit: product, qty: Math.max(1, parseInt(line.qty, 10) || 1) });
+    // Une fiche qui propose des contenances porte son prix sur chacune, et le
+    // prix de tête n'est qu'un repère. La garde du « sur devis » ne doit donc
+    // s'appliquer qu'aux fiches sans contenance, sinon un produit décliné et
+    // sans prix nu ne s'achèterait plus du tout.
+    const aDesVariantes = Array.isArray(product.variantes) && product.variantes.length > 0;
+    if (!aDesVariantes && !(Number(product.price) > 0)) continue;
 
     // La variante de recharge. Le navigateur DEMANDE une recharge ; c'est le
     // catalogue qui en donne le prix, et seulement si la fiche en propose une.
     // Une demande de recharge sur un produit qui n'en a pas retombe sur le
     // prix plein — jamais sur un montant que le navigateur aurait choisi.
-    const recharge = line.recharge && Number(product.rechargePrix) > 0;
-    const price = recharge ? Number(product.rechargePrix) : (Number(product.price) || 0);
+    // Booléen explicite : `line.recharge && …` rend *undefined* quand le champ
+    // manque, et JSON.stringify efface une clé undefined. La commande partait
+    // donc sans drapeau, et le compteur de flacons remplis lit ce drapeau.
+    const recharge = Boolean(line.recharge) && Number(product.rechargePrix) > 0;
+
+    // La contenance choisie, si la fiche en propose. Même règle que la
+    // recharge, et pour la même raison : le navigateur DEMANDE « 50 ml », le
+    // catalogue en donne le prix. Un identifiant inconnu — onglet resté ouvert
+    // après qu'elle a modifié ses contenances, ou requête forgée — retombe sur
+    // une variante réelle, jamais sur un montant venu du navigateur.
+    const variantes = Array.isArray(product.variantes) ? product.variantes : [];
+    const demandee = line.varianteId
+      ? variantes.find((v) => String(v.id) === String(line.varianteId))
+      : null;
+    // Une fiche qui propose des contenances n'a plus de prix « nu » : commander
+    // sans en choisir une facturerait un montant ne correspondant à aucun
+    // article réel. On retient alors la première, celle qu'elle a saisie en
+    // tête.
+    const variante = demandee || (variantes.length > 0 ? variantes[0] : null);
+
+    const price = recharge
+      ? Number(product.rechargePrix)
+      : (variante ? Number(variante.prix) : (Number(product.price) || 0));
     const qty = Math.max(1, parseInt(line.qty, 10) || 1);
+
+    // La ligne commandée porte le poids de la contenance retenue, pas celui de
+    // la fiche. C'est ce poids qui décide de la limite des 2 kg, donc des modes
+    // d'expédition proposés : facturer un envoi de 15 ml au poids d'un pot de
+    // 200 ml refuserait des tarifs auxquels la commande a droit — ou pire,
+    // accepterait un colis trop lourd que La Poste renverrait.
+    produitsCommandes.push({
+      produit: variante && variante.poids ? { ...product, poids: variante.poids } : product,
+      qty,
+    });
+
+    // La ligne telle qu'elle sera ENREGISTREE. Jusqu'ici la commande gardait
+    // les lignes envoyées par le navigateur : le total était juste, mais le nom
+    // et le prix inscrits au dossier étaient ceux qu'on avait bien voulu
+    // envoyer. Avec des contenances, le défaut devient concret — « Absolute Gel
+    // Crème » sans format, et elle ne sait pas quel pot mettre dans le colis.
+    lignes.push({
+      id: product.id,
+      // Le nom dit ce qu'il y a à préparer. Une recharge se remplit, elle ne
+      // se vend pas neuve : jusqu'ici rien ne la distinguait dans le tableau
+      // des commandes, sinon un prix plus bas qu'il fallait reconnaître.
+      name: recharge
+        ? `${product.name} — recharge`
+        : (variante ? `${product.name} — ${variante.libelle}` : product.name),
+      qty,
+      price,
+      recharge,
+      varianteId: variante ? variante.id : null,
+    });
+
     goods += price * qty;
     if (recharge) nbRecharges += qty;
   }
@@ -430,6 +487,7 @@ async function computeOrderTotal(items, shippingId, options = {}) {
     nbRecharges,
     total: Math.round((goods + shippingCost + emballage) * 100) / 100,
     shippingLabel: option ? option.label : '',
+    lignes,
   };
 }
 
@@ -521,7 +579,9 @@ router.post('/orders', async (req, res) => {
     }
     const total = calcul.total;
     const newOrder = await db.createOrder({
-      name, email, items, total,
+      // Les lignes du CATALOGUE, pas celles du navigateur : mêmes noms, mêmes
+      // prix et mêmes formats que ceux qui viennent d'être facturés.
+      name, email, items: calcul.lignes, total,
       // Facultatifs tous les deux. Coupés à une longueur raisonnable plutôt que
       // refusés : une commande ne doit pas échouer sur un champ qu'on n'exige
       // pas. Le téléphone sert au transporteur, la société à la facture.

@@ -710,6 +710,64 @@ function normalizeProductInput(input, base = {}) {
     const n = Number(input.rechargePrix);
     out.rechargePrix = Number.isFinite(n) && n > 0 ? n : null;
   }
+
+  // Les contenances d'un même produit — 15, 30, 50 ml — sur UNE fiche.
+  //
+  // Elles existaient en trois fiches séparées, héritées de l'export Wix : même
+  // nom, mêmes photos, trois prix. La boutique paraissait bégayer, et trois
+  // pages se disputaient le même mot-clé.
+  //
+  // Chaque variante porte son poids, et ce n'est pas cosmétique : c'est lui qui
+  // décide de la limite des 2 kg, donc des modes d'expédition proposés. Un pot
+  // de 15 ml et un de 200 ml ne s'envoient pas au même tarif.
+  //
+  // Le stock reste au niveau du produit, à dessein : trois stocks à tenir pour
+  // trois contenances est une charge d'inventaire, pas une commodité.
+  //
+  // Liste vide — le cas de presque tout le catalogue — et rien ne change :
+  // aucune barre de choix, un seul prix.
+  if (input.variantes !== undefined) {
+    const brut = Array.isArray(input.variantes) ? input.variantes : [];
+    const vues = new Set();
+    out.variantes = brut
+      .map((v, i) => {
+        const libelle = String((v && v.libelle) || '').trim();
+        const prix = Number(v && v.prix);
+        // Sans libellé ni prix, ce n'est pas une variante : c'est une ligne
+        // qu'on a commencé à remplir puis abandonnée.
+        if (!libelle || !(prix > 0)) return null;
+        const g = Number(String((v && v.poids) || '').replace(',', '.'));
+        return {
+          // L'identifiant sert de clé de ligne au panier et de référence au
+          // serveur qui refacture. Dérivé du libellé, donc stable d'un
+          // enregistrement à l'autre : un panier gardé ne se dénoue pas.
+          id: String((v && v.id) || libelle).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `v${i + 1}`,
+          libelle,
+          prix,
+          poids: Number.isFinite(g) && g > 0 ? Math.round(g) : null,
+        };
+      })
+      .filter(Boolean)
+      // Deux variantes de même identifiant rendraient la refacturation
+      // ambiguë : le serveur ne saurait laquelle facturer.
+      .filter((v) => {
+        if (vues.has(v.id)) return false;
+        vues.add(v.id);
+        return true;
+      });
+  }
+  // Le prix de la fiche suit la contenance la moins chère.
+  //
+  // Partout ailleurs — grille, bande signature, « vous aimerez aussi », balises
+  // pour Google, tri par prix — c'est `price` qui est lu. Sans cette ligne, une
+  // fiche à contenances afficherait CHF 0.00 sur la grille et le resterait dans
+  // les résultats de recherche. Le montant facturé, lui, reste celui de la
+  // contenance choisie : le serveur ne lit jamais `price` quand il y a des
+  // variantes.
+  if (Array.isArray(out.variantes) && out.variantes.length > 0) {
+    out.price = Math.min(...out.variantes.map((v) => Number(v.prix)));
+  }
+
   if (input.rituel !== undefined) {
     const r = input.rituel || {};
     out.rituel = r && (r.etape || r.geste)

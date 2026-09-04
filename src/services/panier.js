@@ -30,7 +30,7 @@ function lire(cle) {
     if (age > PEREMPTION_JOURS * 24 * 3600 * 1000) return [];
     return data.lignes
       .filter((l) => l && typeof l.id === 'string')
-      .map((l) => ({ id: l.id, qty: Math.max(1, parseInt(l.qty, 10) || 1), recharge: Boolean(l.recharge) }));
+      .map((l) => ({ id: l.id, qty: Math.max(1, parseInt(l.qty, 10) || 1), recharge: Boolean(l.recharge), varianteId: l.varianteId ? String(l.varianteId) : null }));
   } catch {
     return [];
   }
@@ -50,14 +50,18 @@ function ecrire(cle, lignes) {
 // ou en recharge, à deux prix différents. Sans cette clé, les deux fusionnent
 // en une seule ligne — et le prix affiché serait celui de la première ajoutée,
 // pendant que le serveur facturerait chaque unité à son propre tarif.
-export const cleLigne = (item) => `${item.id}|${item.recharge ? 'r' : ''}`;
+//
+// Les contenances posent la même exigence : 15 ml et 50 ml partagent une fiche,
+// un nom et une photo, mais ce sont deux articles, à deux prix.
+export const cleLigne = (item) =>
+  `${item.id}|${item.recharge ? 'r' : ''}|${item.varianteId || ''}`;
 
 export const lirePanier = () => lire(CLE_PANIER);
 export const lireFavoris = () => lire(CLE_FAVORIS);
 
 // On n'écrit que l'identifiant et la quantité, quelle que soit la forme reçue.
 export const ecrirePanier = (items) =>
-  ecrire(CLE_PANIER, items.map((p) => ({ id: p.id, qty: p.qty || 1, recharge: Boolean(p.recharge) })));
+  ecrire(CLE_PANIER, items.map((p) => ({ id: p.id, qty: p.qty || 1, recharge: Boolean(p.recharge), varianteId: p.varianteId || null })));
 export const ecrireFavoris = (items) =>
   ecrire(CLE_FAVORIS, items.map((p) => ({ id: p.id, qty: 1 })));
 
@@ -76,11 +80,28 @@ export function resoudre(lignes, catalogue) {
     // Le prix affiché suit la variante : une recharge se lit à son prix de
     // recharge, qui est celui que le serveur facturera pour cette ligne.
     const recharge = Boolean(l.recharge) && Number(produit.rechargePrix) > 0;
+
+    // La contenance choisie, relue elle aussi dans le catalogue.
+    //
+    // Elle peut avoir disparu depuis — la cliente réorganise ses formats — et un
+    // panier gardé trente jours doit y survivre. On retombe alors sur la première
+    // contenance proposée plutôt que d'abandonner la ligne ; le serveur applique
+    // exactement la même règle, donc l'écran et la facture disent la même chose.
+    const variantes = Array.isArray(produit.variantes) ? produit.variantes : [];
+    const variante = variantes.length > 0
+      ? variantes.find((v) => String(v.id) === String(l.varianteId)) || variantes[0]
+      : null;
+
     sortie.push({
       ...produit,
       qty: Math.max(1, parseInt(l.qty, 10) || 1),
       recharge,
-      price: recharge ? Number(produit.rechargePrix) : produit.price,
+      varianteId: variante ? variante.id : null,
+      contenance: variante ? variante.libelle : produit.contenance,
+      poids: variante && variante.poids ? variante.poids : produit.poids,
+      price: recharge
+        ? Number(produit.rechargePrix)
+        : (variante ? Number(variante.prix) : produit.price),
     });
   }
   return sortie;

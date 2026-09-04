@@ -60,7 +60,7 @@ const AdminDashboard = ({ onLogout }) => {
   const [customBadge, setCustomBadge] = useState(false);
   const [workshopImageUploading, setWorkshopImageUploading] = useState(false);
   const PRODUCTS_PER_PAGE = 25;
-  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], ordre: '', poids: '', contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '', rechargePrix: '' };
+  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], ordre: '', poids: '', contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '', rechargePrix: '', variantes: [] };
   // Charger un produit dans le formulaire.
   //
   // Les deux entrées — « Modifier » et « Dupliquer » — construisaient chacune
@@ -101,6 +101,13 @@ const AdminDashboard = ({ onLogout }) => {
     rituelEtape: (p.rituel && p.rituel.etape) || '',
     rituelGeste: (p.rituel && p.rituel.geste) || '',
     rechargePrix: p.rechargePrix == null ? '' : String(p.rechargePrix),
+    // Tout en texte dans le formulaire : un champ nombre vidé rendrait NaN, et
+    // NaN dans une valeur d'input fait perdre le focus à chaque frappe.
+    variantes: (p.variantes || []).map((v) => ({
+      libelle: v.libelle || '',
+      prix: v.prix == null ? '' : String(v.prix),
+      poids: v.poids == null ? '' : String(v.poids),
+    })),
   });
 
   const [loading, setLoading] = useState(false);
@@ -954,7 +961,11 @@ const AdminDashboard = ({ onLogout }) => {
                   rituel: productForm.rituelId
                     ? { id: productForm.rituelId, etape: productForm.rituelEtape, geste: productForm.rituelGeste }
                     : null,
-                  rechargePrix: productForm.rechargePrix === '' ? null : productForm.rechargePrix
+                  rechargePrix: productForm.rechargePrix === '' ? null : productForm.rechargePrix,
+                  // Les lignes à moitié remplies partent quand même : c'est le
+                  // serveur qui tranche ce qui est une contenance et ce qui est
+                  // une ligne oubliée, pour que la règle soit la même partout.
+                  variantes: productForm.variantes || []
                 };
                 fetch(url, { method, headers: fetchHeaders, body: JSON.stringify(payload) })
                   .then(res => {
@@ -1244,6 +1255,77 @@ const AdminDashboard = ({ onLogout }) => {
                         onChange={e => setProductForm({...productForm, ingredients: e.target.value})}
                         className="px-4 py-2 border rounded w-full" />
                     </div>
+                    {/* Les contenances.
+
+                        Un même soin en 15, 50 et 75 ml occupait trois fiches :
+                        trois photos à charger, trois descriptions à corriger le
+                        jour où la formule change, et une cliente qui tombe sur
+                        le 15 ml sans savoir que le 75 existe. Ici, une fiche et
+                        trois lignes.
+
+                        Tant qu'aucune ligne n'est remplie, la fiche reste
+                        exactement ce qu'elle était : son prix, son poids, aucune
+                        barre de choix sur le site. */}
+                    <div className="md:col-span-2 border-t pt-4 mt-2">
+                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Contenances</label>
+                      <p className="text-[11px] text-stone-gray mb-3">
+                        Si ce produit existe en plusieurs formats, ajoutez-les ici : la fiche en
+                        proposera une seule, avec une barre de choix. Laissé vide, rien ne change.
+                        Le <strong>poids</strong> de chaque format décide de l'envoi possible — au-delà
+                        de 2 kg, la poste refuse le colis, et le site refusera de le proposer.
+                      </p>
+                      {(productForm.variantes || []).length > 0 && (
+                        <div className="grid grid-cols-[1fr_120px_120px_40px] gap-2 mb-1 text-[11px] uppercase tracking-widest text-stone-gray">
+                          <span>Format</span><span>Prix (CHF)</span><span>Poids (g)</span><span />
+                        </div>
+                      )}
+                      {(productForm.variantes || []).map((v, i) => (
+                        <div key={i} className="grid grid-cols-[1fr_120px_120px_40px] gap-2 mb-2">
+                          <input type="text" placeholder="ex : 50 ml" value={v.libelle}
+                            onChange={e => setProductForm({
+                              ...productForm,
+                              variantes: productForm.variantes.map((x, k) => k === i ? { ...x, libelle: e.target.value } : x)
+                            })}
+                            className="px-4 py-2 border rounded w-full" />
+                          <input type="number" step="0.05" min="0" placeholder="45.00" value={v.prix}
+                            onChange={e => setProductForm({
+                              ...productForm,
+                              variantes: productForm.variantes.map((x, k) => k === i ? { ...x, prix: e.target.value } : x)
+                            })}
+                            className="px-4 py-2 border rounded w-full" />
+                          <input type="number" step="1" min="0" placeholder="120" value={v.poids}
+                            onChange={e => setProductForm({
+                              ...productForm,
+                              variantes: productForm.variantes.map((x, k) => k === i ? { ...x, poids: e.target.value } : x)
+                            })}
+                            className="px-4 py-2 border rounded w-full" />
+                          <button type="button" title="Retirer cette contenance"
+                            onClick={() => setProductForm({
+                              ...productForm,
+                              variantes: productForm.variantes.filter((_, k) => k !== i)
+                            })}
+                            className="press rounded border text-stone-gray hover:text-red-600 hover:border-red-300">
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <button type="button"
+                        onClick={() => setProductForm({
+                          ...productForm,
+                          variantes: [...(productForm.variantes || []), { libelle: '', prix: '', poids: '' }]
+                        })}
+                        className="press mt-1 rounded-full border px-4 py-2 text-xs uppercase tracking-widest">
+                        + Ajouter une contenance
+                      </button>
+                      {(productForm.variantes || []).length === 1 && (
+                        <p className="mt-2 text-[11px] text-amber-700">
+                          Une seule contenance : la barre de choix ne s'affichera pas — il n'y aurait
+                          rien à choisir. Ajoutez-en une deuxième, ou retirez celle-ci et servez-vous
+                          du champ « Contenance » plus haut.
+                        </p>
+                      )}
+                    </div>
+
                     <div className="md:col-span-2 border-t pt-4 mt-2">
                       <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Prix en recharge (CHF)</label>
                       <p className="text-[11px] text-stone-gray mb-2">

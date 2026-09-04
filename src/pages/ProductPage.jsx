@@ -89,6 +89,10 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   // Faux par défaut : on n'engage pas quelqu'un à rapporter un flacon qu'il
   // n'a peut-être pas.
   const [enRecharge, setEnRecharge] = useState(false);
+  // La contenance choisie. Nul au montage : on la fixe sur la première quand la
+  // fiche arrive, pour qu'un prix soit toujours affiché et qu'un ajout immédiat
+  // ne parte pas sans format.
+  const [varianteId, setVarianteId] = useState(null);
   // La barre d'achat collante ne paraît que lorsque le vrai bouton a quitté
   // l'écran. L'afficher en permanence doublerait un bouton déjà visible et
   // mangerait le bas de la fiche pour rien.
@@ -114,6 +118,18 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
         setProduct(foundProduct);
         setActiveImage(0);
         setQuantity(1);
+        // Sans cette ligne, le 50 ml choisi sur une fiche resterait sélectionné
+        // sur la suivante, où cet identifiant ne veut plus rien dire.
+        //
+        // On ouvre sur la contenance la moins chère, et non sur la première de
+        // la liste : c'est ce montant que la grille vient d'annoncer, et voir le
+        // prix grimper en arrivant sur la fiche se lit comme un piège.
+        const formats = Array.isArray(foundProduct.variantes) ? foundProduct.variantes : [];
+        setVarianteId(
+          formats.length > 0
+            ? formats.reduce((a, b) => (Number(b.prix) < Number(a.prix) ? b : a)).id
+            : null
+        );
         
         // Ce qu'elle a choisi elle-même passe avant tout calcul : « dans la
         // section Vous aimerez aussi, j'aimerais pouvoir choisir moi-même les
@@ -253,7 +269,18 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   // Le prix qu'on lit à l'écran. Quand la recharge est choisie, c'est celui de
   // la recharge — le même que le serveur facturera pour cette ligne.
   const rechargePossible = Number(product.rechargePrix) > 0;
-  const prixCourant = enRecharge && rechargePossible ? Number(product.rechargePrix) : Number(product.price);
+
+  // Les contenances. Un même soin existe en 15, 50 et 75 ml : trois prix, trois
+  // poids, une seule fiche. Tant que la cliente n'en a saisi aucune, la liste
+  // est vide et rien ne s'affiche — la fiche garde son prix unique.
+  const variantes = Array.isArray(product.variantes) ? product.variantes : [];
+  const varianteChoisie = variantes.length > 0
+    ? variantes.find((v) => String(v.id) === String(varianteId)) || variantes[0]
+    : null;
+
+  const prixCourant = enRecharge && rechargePossible
+    ? Number(product.rechargePrix)
+    : (varianteChoisie ? Number(varianteChoisie.prix) : Number(product.price));
   
   // Use real images if available, otherwise fallback
   const images = product.images && product.images.length > 0 
@@ -266,7 +293,17 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
     // identiques que d'unités, et chacune relançait l'animation du panier.
     // Le drapeau voyage avec la ligne : c'est lui qui dira au serveur quel
     // prix facturer, et c'est le serveur qui décidera si la fiche le permet.
-    addToCart({ ...product, recharge: enRecharge, price: prixCourant }, quantity);
+    addToCart({
+      ...product,
+      recharge: enRecharge,
+      price: prixCourant,
+      // L'identifiant seul voyage ; le libellé et le poids ne servent qu'à
+      // l'affichage du tiroir. Le serveur, lui, relira les trois dans le
+      // catalogue — c'est lui qui facture et qui pèse le colis.
+      varianteId: varianteChoisie ? varianteChoisie.id : null,
+      contenance: varianteChoisie ? varianteChoisie.libelle : product.contenance,
+      poids: varianteChoisie && varianteChoisie.poids ? varianteChoisie.poids : product.poids,
+    }, quantity);
     setAjoute(true);
   };
 
@@ -381,6 +418,52 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   )}
                 </div>
               </div>
+
+              {/* La barre des contenances.
+
+                  Un même soin en 15, 50 et 75 ml occupait trois fiches : trois
+                  photos identiques, trois descriptions à tenir à jour, et une
+                  cliente qui tombe sur le 15 ml sans savoir que le 75 existe.
+                  Une fiche, trois formats.
+
+                  Elle n'apparaît que si la cliente a saisi des contenances dans
+                  l'admin. Un savon qui n'existe qu'en un format garde sa fiche
+                  d'avant, sans barre à choix unique.
+
+                  Comme la recharge : le bouton porte un identifiant, pas un
+                  montant. Le serveur relit le prix et le poids de la contenance
+                  dans le catalogue — c'est ce poids qui décide ensuite si le
+                  colis passe sous les deux kilos. */}
+              {variantes.length > 1 && !enRecharge && (
+                <div className="mb-8">
+                  <div className="mb-2 font-sans text-xs uppercase tracking-widest text-stone-gray">
+                    {t('product.sizeLabel')}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {variantes.map((v) => {
+                      const actif = varianteChoisie && String(v.id) === String(varianteChoisie.id);
+                      return (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => setVarianteId(v.id)}
+                          aria-pressed={actif}
+                          className={`press rounded-full border px-5 py-2 font-sans text-xs transition-colors ${
+                            actif
+                              ? 'border-slate-stone bg-slate-stone text-white'
+                              : 'border-slate-stone/20 bg-ivory text-slate-stone hover:border-slate-stone/40'
+                          }`}
+                        >
+                          {v.libelle}
+                          <span className={`ml-2 tabular-nums ${actif ? 'text-white/70' : 'text-stone-gray/60'}`}>
+                            {Number(v.prix).toFixed(2)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* « Je rapporte mon flacon ».
                   Elle le fait déjà en boutique — son propre texte le dit : on

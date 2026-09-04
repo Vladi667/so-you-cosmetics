@@ -249,7 +249,9 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
         price: getPrice(item),
         // Le drapeau, pas le prix : le serveur lira le tarif de recharge dans
         // le catalogue. Le navigateur demande une variante, il ne la chiffre pas.
-        recharge: Boolean(item.recharge)
+        recharge: Boolean(item.recharge),
+        // Même règle pour la contenance : on envoie laquelle, pas combien.
+        varianteId: item.varianteId || null
       }))
     };
 
