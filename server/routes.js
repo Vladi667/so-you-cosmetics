@@ -501,7 +501,10 @@ router.get('/refill-count', async (req, res) => {
   try {
     const commandes = await db.getOrders();
     const total = (commandes || [])
-      .filter((c) => db.canonicalOrderStatus(c.status) !== 'Pending')
+      // Ni les paniers abandonnés, ni les commandes écartées : une commande
+      // d'essai annulée ne doit pas continuer de compter des flacons remplis
+      // sur la page d'accueil.
+      .filter((c) => !['Pending', 'Cancelled', 'Refunded'].includes(db.canonicalOrderStatus(c.status)))
       .reduce((n, c) => n + (c.items || []).reduce(
         (m, l) => m + (l.recharge ? Math.max(1, parseInt(l.qty, 10) || 1) : 0), 0), 0);
     res.json({ count: total });

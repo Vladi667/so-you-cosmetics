@@ -4,6 +4,7 @@ import ShopSettings from './admin/ShopSettings';
 import RichTextEditor from './admin/RichTextEditor';
 import JournalEditor from './admin/JournalEditor';
 import ApercuFiche from './ApercuFiche';
+import { imageUrl } from '../services/products';
 import { SHOP_CATEGORIES } from '../data/categories';
 
 // Order status has been written in mixed case over the life of the shop
@@ -94,6 +95,9 @@ const AdminDashboard = ({ onLogout }) => {
   const [productForm, setProductForm] = useState({ id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [] });
   const [productSearch, setProductSearch] = useState('');
   const [productsPage, setProductsPage] = useState(1);
+  // Cent soixante-dix-huit fiches dans l'ordre de l'export Wix : pour retrouver
+  // un savon, il fallait le chercher au nom ou tourner sept pages.
+  const [triProduits, setTriProduits] = useState('alpha');
   const [imageUploading, setImageUploading] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState('');
   // true when the badge is free text rather than one of the two presets
@@ -178,6 +182,26 @@ const AdminDashboard = ({ onLogout }) => {
     // repose quand on en change, sinon il surveillerait des nœuds détachés.
   }, [activeTab]);
 
+  // La liste des fiches, filtrée et rangée. Elle était recalculée à trois
+  // endroits — le compte, le tableau, la pagination — et rien ne garantissait
+  // que les trois disent la même chose.
+  const produitsListes = React.useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    const filtres = products.filter((p) => !q || (p.name || '').toLowerCase().includes(q));
+    const parNom = (a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'fr', { sensitivity: 'base' });
+    if (triProduits === 'alpha') return [...filtres].sort(parNom);
+    if (triProduits === 'rubrique') {
+      return [...filtres].sort((a, b) => {
+        // Une fiche sans rubrique se range en fin de liste plutôt qu'en tête :
+        // c'est un oubli à corriger, pas une catégorie.
+        const ra = (a.collections || [])[0] || '\uffff';
+        const rb = (b.collections || [])[0] || '\uffff';
+        return ra.localeCompare(rb, 'fr', { sensitivity: 'base' }) || parNom(a, b);
+      });
+    }
+    return filtres;
+  }, [products, productSearch, triProduits]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -251,6 +275,49 @@ const AdminDashboard = ({ onLogout }) => {
       .finally(() => onLogout());
   };
 
+  // Réduit une photo avant de l'envoyer.
+  //
+  // Les dix photos téléversées depuis l'atelier pèsent de 900 Ko à 4,5 Mo :
+  // elles sortent d'un téléphone, en 4000 px, et partaient telles quelles. Une
+  // fiche produit en chargeait onze mégaoctets — c'est la lenteur qu'elle
+  // signale, et c'est aussi ce que Google mesure pour classer la page.
+  //
+  // 1600 px suffit : c'est la plus grande taille que la boutique demande, sur
+  // un écran de bureau en pleine largeur. Le travail se fait dans son
+  // navigateur, donc rien à installer sur le serveur.
+  const reduirePhoto = (file) => new Promise((resolve, reject) => {
+    // Un format que le canvas ne sait pas décoder (HEIC, un TIFF) passe
+    // inchangé plutôt que d'échouer : mieux vaut une photo lourde qu'aucune.
+    if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
+      const brut = new FileReader();
+      brut.onload = () => resolve(brut.result);
+      brut.onerror = reject;
+      brut.readAsDataURL(file);
+      return;
+    }
+    const lecteur = new FileReader();
+    lecteur.onerror = reject;
+    lecteur.onload = () => {
+      const img = new Image();
+      img.onerror = () => resolve(lecteur.result);
+      img.onload = () => {
+        const MAX = 1600;
+        const ratio = Math.min(1, MAX / Math.max(img.width, img.height));
+        if (ratio === 1 && file.size < 400 * 1024) return resolve(lecteur.result);
+        const toile = document.createElement('canvas');
+        toile.width = Math.round(img.width * ratio);
+        toile.height = Math.round(img.height * ratio);
+        const ctx = toile.getContext('2d');
+        ctx.drawImage(img, 0, 0, toile.width, toile.height);
+        // 0,82 : au-delà le fichier grossit sans que l'œil y gagne.
+        const reduite = toile.toDataURL('image/jpeg', 0.82);
+        resolve(reduite.length < lecteur.result.length ? reduite : lecteur.result);
+      };
+      img.src = lecteur.result;
+    };
+    lecteur.readAsDataURL(file);
+  });
+
   // Upload one or more image files from the admin's computer; append the
   // resulting public URLs to the product form's image list.
   const handleImageUpload = async (e) => {
@@ -260,12 +327,7 @@ const AdminDashboard = ({ onLogout }) => {
     try {
       const urls = [];
       for (const file of files) {
-        const dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+        const dataUrl = await reduirePhoto(file);
         const resp = await fetch('/api/admin/products/upload-image', {
           method: 'POST',
           headers: fetchHeaders,
@@ -1656,9 +1718,28 @@ const AdminDashboard = ({ onLogout }) => {
               </form>
             </div>
 
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <input type="text" placeholder="Rechercher un produit..." value={productSearch} onChange={e => { setProductSearch(e.target.value); setProductsPage(1); }} className="px-4 py-2 border rounded w-full max-w-sm" />
-              <span className="text-sm text-stone-gray whitespace-nowrap">{products.filter(p => !productSearch || (p.name || '').toLowerCase().includes(productSearch.toLowerCase())).length} produit(s)</span>
+            <div className="mb-4 flex items-center gap-3 flex-wrap">
+              <input type="text" placeholder="Rechercher un produit..." value={productSearch} onChange={e => { setProductSearch(e.target.value); setProductsPage(1); }} className="px-4 py-2 border rounded w-full max-w-xs" />
+              <div className="inline-flex rounded-full border border-slate-stone/15 bg-white p-1">
+                {[
+                  { cle: 'alpha', nom: 'A → Z' },
+                  { cle: 'rubrique', nom: 'Par rubrique' },
+                  { cle: 'boutique', nom: 'Ordre de la boutique' },
+                ].map((t) => (
+                  <button
+                    key={t.cle}
+                    type="button"
+                    aria-pressed={triProduits === t.cle}
+                    onClick={() => { setTriProduits(t.cle); setProductsPage(1); }}
+                    className={`px-3.5 py-1.5 rounded-full text-xs transition-colors ${
+                      triProduits === t.cle ? 'bg-slate-stone text-white' : 'text-stone-gray hover:text-slate-stone'
+                    }`}
+                  >
+                    {t.nom}
+                  </button>
+                ))}
+              </div>
+              <span className="ml-auto text-sm text-stone-gray whitespace-nowrap">{produitsListes.length} produit(s)</span>
             </div>
 
             <div className="bg-white rounded-3xl border border-slate-stone/5 overflow-hidden shadow-sm">
@@ -1675,13 +1756,31 @@ const AdminDashboard = ({ onLogout }) => {
                 </thead>
                 <tbody>
                   {(() => {
-                    const filtered = products.filter(p => !productSearch || (p.name || '').toLowerCase().includes(productSearch.toLowerCase()));
-                    const totalPages = Math.max(1, Math.ceil(filtered.length / PRODUCTS_PER_PAGE));
+                    const totalPages = Math.max(1, Math.ceil(produitsListes.length / PRODUCTS_PER_PAGE));
                     const page = Math.min(productsPage, totalPages);
-                    return filtered.slice((page - 1) * PRODUCTS_PER_PAGE, page * PRODUCTS_PER_PAGE).map((p) => (
-                    <tr key={p.id} className="border-b align-top">
+                    const tranche = produitsListes.slice((page - 1) * PRODUCTS_PER_PAGE, page * PRODUCTS_PER_PAGE);
+                    // L'intertitre reparaît en tête de chaque page : une rubrique
+                    // qui enjambe deux pages laisserait sinon la seconde sans nom.
+                    let rubriquePrecedente = null;
+                    return tranche.map((p) => {
+                    const rubrique = (p.collections || [])[0] || 'Sans rubrique';
+                    const nouvelleRubrique = triProduits === 'rubrique' && rubrique !== rubriquePrecedente;
+                    rubriquePrecedente = rubrique;
+                    return (
+                    <React.Fragment key={p.id}>
+                    {nouvelleRubrique && (
+                      <tr className="bg-mist-white">
+                        <td colSpan={6} className="px-4 py-2 font-sans text-[11px] uppercase tracking-[0.2em] text-stone-gray">
+                          {rubrique}
+                        </td>
+                      </tr>
+                    )}
+                    <tr className="border-b align-top">
                       <td className="p-4 flex items-center gap-3">
-                        {p.images && p.images[0] && <img src={p.images[0]} alt="" className="w-10 h-10 object-cover rounded" />}
+                        {/* Une vignette de 40 px chargeait la photo entière : 109 Ko par
+                            ligne pour les images du catalogue, jusqu'à 4,5 Mo pour
+                            celles téléversées depuis. Vingt-cinq lignes par page. */}
+                        {p.images && p.images[0] && <img src={imageUrl(p.images[0], 400)} alt="" loading="lazy" className="w-10 h-10 object-cover rounded" />}
                         <div className="flex flex-col gap-1">
                           <span className="font-medium">{p.name}</span>
                           {p.inStock === false && (
@@ -1758,15 +1857,16 @@ const AdminDashboard = ({ onLogout }) => {
                         </div>
                       </td>
                     </tr>
-                  ));
+                    </React.Fragment>
+                  );
+                  });
                   })()}
                 </tbody>
               </table>
             </div>
 
             {(() => {
-              const filteredCount = products.filter(p => !productSearch || (p.name || '').toLowerCase().includes(productSearch.toLowerCase())).length;
-              const totalPages = Math.max(1, Math.ceil(filteredCount / PRODUCTS_PER_PAGE));
+              const totalPages = Math.max(1, Math.ceil(produitsListes.length / PRODUCTS_PER_PAGE));
               const page = Math.min(productsPage, totalPages);
               if (totalPages <= 1) return null;
               return (
@@ -2215,6 +2315,12 @@ const AdminDashboard = ({ onLogout }) => {
                   <option value="Paid">Payé (Paid)</option>
                   <option value="ReadyForPickup">À retirer (Ready)</option>
                   <option value="Shipped">Envoyé (Shipped)</option>
+                  {/* Le serveur acceptait déjà ces deux statuts ; ils
+                      n'apparaissaient nulle part dans le menu, si bien qu'une
+                      commande d'essai ne pouvait pas être écartée. Une commande
+                      annulée ne compte plus dans le chiffre d'affaires. */}
+                  <option value="Cancelled">Annulée</option>
+                  <option value="Refunded">Remboursée</option>
                 </select>
                 <button 
                   onClick={() => {
