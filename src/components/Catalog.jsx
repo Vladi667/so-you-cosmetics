@@ -12,6 +12,7 @@ import { grouperParRecette } from '../data/recettes';
 import { normaliserTexte } from '../data/texte';
 import ProductBadge from './ProductBadge';
 import ProductPlaceholder from './ProductPlaceholder';
+import CarteProduit from './CarteProduit';
 
 
 // Chaque tranche porte son libelle traduit ; la regle de bornes, elle, vit
@@ -511,7 +512,6 @@ function Catalog({ globalActiveCategory = 'All', rubriques = null, addToCart, to
         {charge && (
         <div key={selection} className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
           {produitsAffiches.map((product) => {
-            const sansPhoto = !product.images || product.images.length === 0;
             // Un atelier mène à sa page de réservation, pas à une fiche produit.
             const lien = product.estAtelier ? `/workshops/${product.id}` : cheminProduit(product);
             return (
@@ -519,105 +519,17 @@ function Catalog({ globalActiveCategory = 'All', rubriques = null, addToCart, to
               // n'a rien a observer ici, la grille est deja sous les yeux quand
               // on change de rubrique. Et la cascade de 100 ms par carte faisait
               // attendre 1,1 s la troisieme rangee — un retard, pas une elegance.
-              <div
+              //
+              // La carte elle-même vit dans CarteProduit : l'administration en
+              // affiche une identique en aperçu, et deux copies auraient divergé
+              // à la première retouche. Ce qui s'actionne reste ici.
+              <CarteProduit
                 key={product.id}
-                className="group relative flex flex-col bg-ivory rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-shadow duration-250 apparait"
-              >
-                <div className="aspect-[4/5] w-full overflow-hidden bg-lake-mist relative">
-                  {/* `sizes` décrit la grille : deux colonnes sur téléphone,
-                      trois puis quatre ensuite. Sans lui, le navigateur suppose
-                      que l'image occupe toute la largeur et prend la plus
-                      grande du lot — soit, sur une carte de 180 px, huit fois
-                      les octets utiles. */}
-                  {sansPhoto ? <ProductPlaceholder /> : (
-                  <img
-                    src={imageUrl(product.images[0], 800)}
-                    srcSet={imageSrcSet(product.images[0], 800)}
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                    alt={product.name}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-in-out"
-                  />
-                  )}
-                  {product.ribbon && (
-                    <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10">
-                      <ProductBadge ribbon={product.ribbon} />
-                    </div>
-                  )}
-                  {product.inStock === false && (
-                    <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10">
-                      <span className="inline-block bg-red-600/95 text-white text-[9px] sm:text-xs tracking-widest uppercase px-2 py-1 sm:px-3 sm:py-1.5 rounded-full shadow-sm font-medium">
-                        {t('catalog.outOfStock')}
-                      </span>
-                    </div>
-                  )}
-                  {/* Hover Overlay — on mobile the card image is directly tappable */}
-                  <Lien to={lien} className="absolute inset-0 bg-slate-stone/10 opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center md:backdrop-blur-[2px]">
-                    <span className="transform translate-y-4 md:group-hover:translate-y-0 opacity-0 md:group-hover:opacity-100 transition-all duration-250 bg-ivory text-slate-stone px-8 py-3 rounded-full font-medium tracking-wide shadow-lg hover:bg-slate-stone hover:text-white hidden md:inline">
-                      {t('catalog.viewDetails')}
-                    </span>
-                  </Lien>
-                </div>
-                
-                <div className="p-3 sm:p-6 flex flex-col flex-grow">
-                  <div className="mb-2">
-                    <p className="text-[9px] sm:text-xs text-slate-stone/60 uppercase tracking-widest mb-0.5 sm:mb-1 truncate">
-                      {product.collections[0] ? tCategory(product.collections[0]) : t('catalog.cosmeticsFallback')}
-                    </p>
-                    <Lien to={lien}>
-                      <h3 className="text-sm sm:text-lg font-serif text-slate-stone leading-tight line-clamp-2 hover:text-stone-gray transition-colors">
-                        {product.name}
-                      </h3>
-                    </Lien>
-                    {/* La contenance, sous le nom.
-                        Elle était saisie sur 104 fiches et n'apparaissait nulle
-                        part en boutique. Or c'est souvent la seule chose qui
-                        distingue deux fiches voisines : « Absolute » existe en
-                        15, 30 et 50 ml, sous un nom trop long pour que la
-                        mention tienne dans les deux lignes du titre. Trois
-                        vignettes identiques, à trois prix — la cliente l'a
-                        signalé, et le titre tronqué ne pouvait pas y répondre.
-                        Le champ dédié, lui, ne se fait jamais couper. */}
-                    {product.contenance && (
-                      <p className="mt-1 font-sans text-[10px] sm:text-xs text-stone-gray/80 tracking-wide">
-                        {product.contenance}
-                      </p>
-                    )}
-                    {/* Le nombre de senteurs, pas la liste : sur une carte de
-                        catalogue, quinze noms de parfums ne se lisent pas. */}
-                    {product.estRecette && (
-                      <p className="mt-1 font-sans text-[10px] sm:text-xs text-stone-gray/70">
-                        {t('catalog.scentCount', { n: product.membres.length })}
-                      </p>
-                    )}
-                  </div>
-                  <div className="mt-auto pt-2 sm:pt-4 flex items-center justify-between border-t border-slate-stone/10">
-                    {/* Quatre fiches du catalogue sont a CHF 0 : les trois
-                        « Collection » et « Commande personnalisee ». Elles ne
-                        valent pas zero franc, elles n'ont pas de prix fixe —
-                        c'est le « sur devis » de son propre texte. Affiche
-                        « CHF 0.00 », on pouvait les commander pour le seul prix
-                        du port. */}
-                    <p className="text-slate-stone text-xs sm:text-base font-medium tracking-wide">
-                      {/* « des CHF X » quand les senteurs d'une meme recette
-                          n'ont pas le meme prix. Afficher un prix unique
-                          promettrait un montant que la caisse ne confirmerait
-                          pas : le serveur facture par identifiant. */}
-                      {Number(product.price) > 0
-                        ? ((product.prixVariable
-                            // Une fiche à contenances porte le prix de la plus
-                            // petite. Annoncer « CHF 33.50 » tout court pour un
-                            // soin qui monte à 82.50 se découvrirait sur la
-                            // fiche, et se lirait comme un appât.
-                            || (Array.isArray(product.variantes)
-                                && product.variantes.length > 1
-                                && new Set(product.variantes.map((v) => Number(v.prix))).size > 1))
-                            ? t('catalog.fromPrice', { price: product.price.toFixed(2) })
-                            : `CHF ${product.price.toFixed(2)}`)
-                        : t('catalog.onQuote')}
-                    </p>
-                    <div className="flex space-x-2 sm:space-x-3">
+                produit={product}
+                lien={lien}
+                t={t}
+                tCategory={tCategory}
+                actions={<>
                       {/* Un bouton qui ne contient qu'une icône n'a pas de nom :
                           un lecteur d'écran annonce « bouton », et rien d'autre.
                           Le nom porte celui du produit, parce que la page en
@@ -656,28 +568,27 @@ function Catalog({ globalActiveCategory = 'All', rubriques = null, addToCart, to
                         </svg>
                       </button>
                       )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ce qui vient de se passer, la ou l'on regarde : sur le bouton
-                    qu'on vient de toucher, et non dans l'en-tete. */}
-                {ajouteId === product.id && (
-                  <div
-                    role="status"
-                    className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between gap-2 bg-slate-stone/95 px-3 py-2 text-[10px] sm:text-xs text-white apparait"
-                  >
-                    <span className="truncate">{t('product.addedToCart')}</span>
-                    <button
-                      type="button"
-                      onClick={ouvrirPanier}
-                      className="press whitespace-nowrap underline underline-offset-2 hover:text-white/80 transition-colors"
+                </>}
+                enfants={
+                  /* Ce qui vient de se passer, la ou l'on regarde : sur le
+                     bouton qu'on vient de toucher, et non dans l'en-tete. */
+                  ajouteId === product.id ? (
+                    <div
+                      role="status"
+                      className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between gap-2 bg-slate-stone/95 px-3 py-2 text-[10px] sm:text-xs text-white apparait"
                     >
-                      {t('product.seeCart')}
-                    </button>
-                  </div>
-                )}
-              </div>
+                      <span className="truncate">{t('product.addedToCart')}</span>
+                      <button
+                        type="button"
+                        onClick={ouvrirPanier}
+                        className="press whitespace-nowrap underline underline-offset-2 hover:text-white/80 transition-colors"
+                      >
+                        {t('product.seeCart')}
+                      </button>
+                    </div>
+                  ) : null
+                }
+              />
             );
           })}
         </div>

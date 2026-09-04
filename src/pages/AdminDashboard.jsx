@@ -3,6 +3,7 @@ import ContentEditor from './admin/ContentEditor';
 import ShopSettings from './admin/ShopSettings';
 import RichTextEditor from './admin/RichTextEditor';
 import JournalEditor from './admin/JournalEditor';
+import ApercuFiche from './ApercuFiche';
 import { SHOP_CATEGORIES } from '../data/categories';
 
 // Order status has been written in mixed case over the life of the shop
@@ -39,6 +40,45 @@ const basculerCategorie = (texte, nom) => {
   else liste.push(nom);
   return liste.join(', ');
 };
+
+// Les sections de la fiche, et ce qui compte comme rempli dans chacune.
+//
+// Le compteur n'est pas une note : il dit ce qui reste, pour qu'une section
+// repliée dans le défilement ne se fasse pas oublier. Seuls les champs qui
+// pèsent vraiment sur la boutique ou sur le référencement sont comptés — un
+// champ facultatif absent du compte n'est pas un reproche.
+const remplie = (v) => String(v == null ? '' : v).trim() !== '';
+
+const SECTIONS_FICHE = [
+  { id: 'identite', titre: 'Identité', total: 5, remplis: (f) =>
+      [remplie(f.name), remplie(f.price), remplie(f.ordre), remplie(f.ribbon), remplie(f.collectionsText)].filter(Boolean).length },
+  { id: 'photos', titre: 'Photos', total: 1, remplis: (f) => ((f.images || []).length ? 1 : 0) },
+  { id: 'format', titre: 'Format et poids', total: 1, remplis: (f) => {
+      const formats = (f.variantes || []).filter((v) => remplie(v.libelle) && Number(v.prix) > 0);
+      return (formats.length > 1 || remplie(f.contenance)) ? 1 : 0;
+    } },
+  { id: 'texte', titre: 'Texte', total: 3, remplis: (f) =>
+      [remplie(String(f.description || '').replace(/<[^>]*>/g, '')), remplie(f.ingredients), remplie(f.inci)].filter(Boolean).length },
+  { id: 'decouverte', titre: 'Découverte', total: 4, remplis: (f) =>
+      [remplie(f.typePeauText), remplie(f.besoinsText), remplie(f.etiquettesText), remplie(f.rechargePrix)].filter(Boolean).length },
+  { id: 'liens', titre: 'Liens', total: 4, remplis: (f) =>
+      [(f.related || []).length > 0, remplie(f.rituelId), remplie(f.rituelEtape), remplie(f.rituelGeste)].filter(Boolean).length },
+];
+
+function EnteteSection({ section, form, chapeau }) {
+  const n = section.remplis(form);
+  return (
+    <>
+      <header className="flex items-baseline gap-3 mb-1">
+        <h3 className="font-serif text-2xl text-slate-stone font-light">{section.titre}</h3>
+        <span className={`ml-auto font-sans text-[11px] tabular-nums ${
+          n === section.total ? 'text-slate-stone font-medium' : 'text-stone-gray/50'
+        }`}>{n}/{section.total}</span>
+      </header>
+      <p className="text-[12px] text-stone-gray mb-5 max-w-[62ch]">{chapeau}</p>
+    </>
+  );
+}
 
 const AdminDashboard = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState('orders');
@@ -109,6 +149,34 @@ const AdminDashboard = ({ onLogout }) => {
       poids: v.poids == null ? '' : String(v.poids),
     })),
   });
+
+  // L'empreinte de la fiche telle qu'elle a été ouverte.
+  //
+  // C'est elle qui dit à la barre d'action s'il reste quelque chose à
+  // enregistrer. Comparer deux sérialisations coûte moins cher que de poser un
+  // drapeau dans chacun des vingt-cinq gestionnaires de saisie — et surtout,
+  // aucun ne peut l'oublier.
+  const [empreinteOuverture, setEmpreinteOuverture] = useState(() => JSON.stringify(emptyProductForm));
+  const ficheModifiee = JSON.stringify(productForm) !== empreinteOuverture;
+
+  // La section qu'on est en train de lire, pour l'éclairer dans le sommaire.
+  const [sectionActive, setSectionActive] = useState('identite');
+
+  useEffect(() => {
+    const cibles = SECTIONS_FICHE
+      .map((s) => document.getElementById('fiche-' + s.id))
+      .filter(Boolean);
+    if (cibles.length === 0) return undefined;
+    const observateur = new IntersectionObserver((entrees) => {
+      entrees.forEach((e) => {
+        if (e.isIntersecting) setSectionActive(e.target.id.replace('fiche-', ''));
+      });
+    }, { rootMargin: '-10% 0px -70% 0px' });
+    cibles.forEach((c) => observateur.observe(c));
+    return () => observateur.disconnect();
+    // Les sections n'existent que sur l'onglet des produits : l'observateur se
+    // repose quand on en change, sinon il surveillerait des nœuds détachés.
+  }, [activeTab]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -975,495 +1043,615 @@ const AdminDashboard = ({ onLogout }) => {
                   })
                   .then(() => {
                     setProductForm(emptyProductForm);
+                    setEmpreinteOuverture(JSON.stringify(emptyProductForm));
                     setCustomBadge(false);
                     loadData();
                   })
                   .catch(err => alert(err.message));
-              }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" required placeholder="Nom du produit" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="px-4 py-2 border rounded" />
-                <input type="number" step="0.01" min="0" required placeholder="Prix (CHF)" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="px-4 py-2 border rounded" />
-                <div>
-                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Badge sur l'image</label>
-                  <select
-                    value={customBadge ? '__custom__' : productForm.ribbon}
-                    onChange={e => {
-                      const v = e.target.value;
-                      if (v === '__custom__') {
-                        setCustomBadge(true);
-                        setProductForm({ ...productForm, ribbon: '' });
-                      } else {
-                        setCustomBadge(false);
-                        setProductForm({ ...productForm, ribbon: v });
-                      }
-                    }}
-                    className="px-4 py-2 border rounded w-full"
-                  >
-                    <option value="">Aucun badge</option>
-                    <option value="coming-soon">Coming Soon / Bientôt disponible</option>
-                    <option value="best-seller">Best Seller / Meilleure vente</option>
-                    <option value="__custom__">Texte personnalisé…</option>
-                  </select>
-                  {customBadge && (
-                    <input
-                      type="text"
-                      autoFocus
-                      placeholder="ex : Hydrolat"
-                      value={productForm.ribbon}
-                      onChange={e => setProductForm({ ...productForm, ribbon: e.target.value })}
-                      className="px-4 py-2 border rounded w-full mt-2"
-                    />
-                  )}
-                  <p className="text-xs text-stone-gray mt-1">« Épuisé » s'affiche automatiquement via la case ci-dessous.</p>
-                </div>
-                <div>
-                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Catégories</label>
-                  {/* Le champ était libre, sans aucune liste sous les yeux :
-                      « maquillage » au lieu de « Maquillage » créait une
-                      rubrique distincte, non traduite, rangée en fin de menu
-                      au lieu de sa place — sans erreur ni avertissement.
-                      Les boutons écrivent la forme exacte ; le champ reste
-                      ouvert pour les rubriques qu'elle invente. */}
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {SHOP_CATEGORIES.map((cat) => {
-                      const active = aLaCategorie(productForm.collectionsText, cat);
+              }} className="xl:grid xl:grid-cols-[minmax(0,1fr)_312px] 2xl:grid-cols-[184px_minmax(0,1fr)_336px] xl:gap-6 2xl:gap-8 xl:items-start">
+
+                {/* Le sommaire.
+
+                    Des onglets auraient caché des champs qu'on oublie ensuite
+                    de remplir. Les ancres gardent tout à l'écran et donnent
+                    quand même une carte du territoire — plus, par section, le
+                    nombre de champs déjà remplis. */}
+                <nav className="hidden 2xl:block sticky top-6" aria-label="Sections de la fiche">
+                  <p className="font-sans text-[10px] uppercase tracking-[0.26em] text-stone-gray/70 mb-3 ml-3">La fiche</p>
+                  <ol className="flex flex-col gap-0.5">
+                    {SECTIONS_FICHE.map((s) => {
+                      const n = s.remplis(productForm);
+                      const actif = sectionActive === s.id;
                       return (
-                        <button
-                          key={cat}
-                          type="button"
-                          aria-pressed={active}
-                          onClick={() => setProductForm({ ...productForm, collectionsText: basculerCategorie(productForm.collectionsText, cat) })}
-                          className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
-                            active
-                              ? 'bg-slate-stone text-white border-slate-stone'
-                              : 'bg-white text-stone-gray border-gray-300 hover:border-slate-stone'
-                          }`}
-                        >
-                          {cat}
-                        </button>
+                        <li key={s.id}>
+                          <a
+                            href={`#fiche-${s.id}`}
+                            className={`grid grid-cols-[1fr_auto] items-center gap-2 px-3.5 py-2 rounded-lg text-sm transition-colors border-l-2 ${
+                              actif
+                                ? 'bg-white text-slate-stone border-mist-blue shadow-sm'
+                                : 'text-stone-gray border-transparent hover:bg-white/70 hover:text-slate-stone'
+                            }`}
+                          >
+                            <span>{s.titre}</span>
+                            <span className={`font-sans text-[11px] tabular-nums ${
+                              n === s.total ? 'text-slate-stone font-medium' : 'text-stone-gray/50'
+                            }`}>{n}/{s.total}</span>
+                          </a>
+                        </li>
                       );
                     })}
-                    <button
-                      type="button"
-                      aria-pressed={aLaCategorie(productForm.collectionsText, COUP_DE_COEUR)}
-                      onClick={() => setProductForm({ ...productForm, collectionsText: basculerCategorie(productForm.collectionsText, COUP_DE_COEUR) })}
-                      className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
-                        aLaCategorie(productForm.collectionsText, COUP_DE_COEUR)
-                          ? 'bg-amber-600 text-white border-amber-600'
-                          : 'bg-white text-amber-700 border-amber-300 hover:border-amber-600'
-                      }`}
-                    >
-                      ♥ {COUP_DE_COEUR}
-                    </button>
-                  </div>
-                  <input type="text" placeholder="Séparées par des virgules" value={productForm.collectionsText} onChange={e => setProductForm({...productForm, collectionsText: e.target.value})} className="px-4 py-2 border rounded w-full" />
-                  <p className="text-xs text-stone-gray mt-1">Cliquez une rubrique pour l’ajouter ou la retirer. <strong>{COUP_DE_COEUR}</strong> affiche le produit sur la page d’accueil. Vous pouvez aussi taper une rubrique à vous : elle apparaîtra dans le menu.</p>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Images</label>
-                  <div className="flex items-center gap-3 mb-2">
-                    <label className={`inline-flex items-center gap-2 px-4 py-2 rounded cursor-pointer text-sm font-medium ${imageUploading ? 'bg-gray-200 text-stone-gray cursor-wait' : 'bg-slate-stone text-white hover:opacity-90'}`}>
-                      {imageUploading ? 'Téléversement…' : '📤 Téléverser depuis mon ordinateur'}
-                      <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple disabled={imageUploading} onChange={handleImageUpload} className="hidden" />
-                    </label>
-                    <span className="text-xs text-stone-gray">PNG, JPG, WEBP · plusieurs fichiers possibles</span>
-                  </div>
-                  {productForm.images.length > 0 ? (
-                    <div className="flex flex-wrap gap-3 mb-3">
-                      {productForm.images.map((url, idx) => (
-                        <div key={`${url}-${idx}`} className="relative group">
-                          <img
-                            src={url}
-                            alt={`Image ${idx + 1}`}
-                            className="w-24 h-24 object-cover rounded border border-slate-stone/10 bg-mist-white"
-                            onError={e => { e.currentTarget.style.opacity = '0.25'; }}
+                  </ol>
+                </nav>
+
+                {/* La colonne des sections. `pb-28` laisse la place à la barre
+                    d'action, qui flotte au-dessus du bas de l'écran. */}
+                <div className="flex flex-col gap-4 pb-28">
+
+                  {/* ── Identité ─────────────────────────────────────────── */}
+                  <section id="fiche-identite" className="scroll-mt-6 bg-white rounded-2xl border border-slate-stone/10 p-5 sm:p-6 shadow-sm">
+                    <EnteteSection section={SECTIONS_FICHE[0]} form={productForm}
+                      chapeau="Ce qu'on lit en premier, sur la grille comme dans l'onglet du navigateur." />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Nom du produit</label>
+                        <input type="text" required placeholder="Nom du produit" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Prix (CHF)</label>
+                        <input type="number" step="0.01" min="0" required placeholder="Prix (CHF)" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Rang dans la boutique</label>
+                        <input type="number" step="1" placeholder="ex : 1" value={productForm.ordre}
+                          onChange={e => setProductForm({...productForm, ordre: e.target.value})}
+                          className="px-4 py-2 border rounded w-full" />
+                        <p className="text-[11px] text-stone-gray mt-1 leading-snug">
+                          Plus le nombre est petit, plus la fiche paraît tôt. Laissé vide, elle garde sa
+                          place actuelle, derrière celles qui portent un rang.
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Badge sur l'image</label>
+                        <select
+                          value={customBadge ? '__custom__' : productForm.ribbon}
+                          onChange={e => {
+                            const v = e.target.value;
+                            if (v === '__custom__') {
+                              setCustomBadge(true);
+                              setProductForm({ ...productForm, ribbon: '' });
+                            } else {
+                              setCustomBadge(false);
+                              setProductForm({ ...productForm, ribbon: v });
+                            }
+                          }}
+                          className="px-4 py-2 border rounded w-full"
+                        >
+                          <option value="">Aucun badge</option>
+                          <option value="coming-soon">Coming Soon / Bientôt disponible</option>
+                          <option value="best-seller">Best Seller / Meilleure vente</option>
+                          <option value="__custom__">Texte personnalisé…</option>
+                        </select>
+                        {customBadge && (
+                          <input
+                            type="text"
+                            autoFocus
+                            placeholder="ex : Hydrolat"
+                            value={productForm.ribbon}
+                            onChange={e => setProductForm({ ...productForm, ribbon: e.target.value })}
+                            className="px-4 py-2 border rounded w-full mt-2"
                           />
-                          {idx === 0 && (
-                            <span className="absolute bottom-1 left-1 bg-slate-stone/90 text-white text-[9px] tracking-wider uppercase px-1.5 py-0.5 rounded">Principale</span>
-                          )}
+                        )}
+                        <p className="text-xs text-stone-gray mt-1">« Épuisé » s'affiche automatiquement via la case ci-dessous.</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Stock (interne, non affiché)</label>
+                        <input type="number" min="0" step="1" placeholder="ex: 12" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Catégories</label>
+                        {/* Le champ était libre, sans aucune liste sous les yeux :
+                            « maquillage » au lieu de « Maquillage » créait une
+                            rubrique distincte, non traduite, rangée en fin de menu
+                            au lieu de sa place — sans erreur ni avertissement.
+                            Les boutons écrivent la forme exacte ; le champ reste
+                            ouvert pour les rubriques qu'elle invente. */}
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {SHOP_CATEGORIES.map((cat) => {
+                            const active = aLaCategorie(productForm.collectionsText, cat);
+                            return (
+                              <button
+                                key={cat}
+                                type="button"
+                                aria-pressed={active}
+                                onClick={() => setProductForm({ ...productForm, collectionsText: basculerCategorie(productForm.collectionsText, cat) })}
+                                className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                                  active
+                                    ? 'bg-slate-stone text-white border-slate-stone'
+                                    : 'bg-white text-stone-gray border-gray-300 hover:border-slate-stone'
+                                }`}
+                              >
+                                {cat}
+                              </button>
+                            );
+                          })}
                           <button
                             type="button"
-                            title="Retirer cette image"
-                            onClick={() => setProductForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }))}
-                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 text-white text-xs leading-none shadow hover:bg-red-700"
+                            aria-pressed={aLaCategorie(productForm.collectionsText, COUP_DE_COEUR)}
+                            onClick={() => setProductForm({ ...productForm, collectionsText: basculerCategorie(productForm.collectionsText, COUP_DE_COEUR) })}
+                            className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                              aLaCategorie(productForm.collectionsText, COUP_DE_COEUR)
+                                ? 'bg-amber-600 text-white border-amber-600'
+                                : 'bg-white text-amber-700 border-amber-300 hover:border-amber-600'
+                            }`}
                           >
-                            ✕
+                            ♥ {COUP_DE_COEUR}
                           </button>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">
-                      Aucune image. Si vous enregistrez ainsi, le produit s'affichera sans photo.
-                    </p>
-                  )}
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      placeholder="…ou collez une URL d'image / un lien Google Drive"
-                      value={imageUrlInput}
-                      onChange={e => setImageUrlInput(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key !== 'Enter') return;
-                        e.preventDefault();
-                        const v = imageUrlInput.trim();
-                        if (!v) return;
-                        setProductForm(f => ({ ...f, images: [...f.images, v] }));
-                        setImageUrlInput('');
-                      }}
-                      className="px-4 py-2 border rounded flex-1"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const v = imageUrlInput.trim();
-                        if (!v) return;
-                        setProductForm(f => ({ ...f, images: [...f.images, v] }));
-                        setImageUrlInput('');
-                      }}
-                      className="px-4 py-2 bg-gray-200 rounded text-sm whitespace-nowrap"
-                    >
-                      Ajouter l'URL
-                    </button>
-                  </div>
-                  <p className="text-xs text-stone-gray mt-1">La première image est celle affichée sur la boutique. Cliquez sur ✕ pour retirer une image ; les autres champs peuvent être modifiés sans y toucher.</p>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Description (HTML accepté)</label>
-                  <RichTextEditor
-                    value={productForm.description}
-                    onChange={(html) => setProductForm({ ...productForm, description: html })}
-                    placeholder="Description du produit — utilisez les boutons ci-dessus pour les sous-titres et le gras"
-                  />
-                </div>
-                <div>
-                  <div className="md:col-span-2 mb-4">
-                    <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">
-                      « Vous aimerez aussi » — jusqu'à 4 produits
-                    </label>
-                    <p className="text-[11px] text-stone-gray mb-2">
-                      Laissé vide, le site propose automatiquement des produits de la même catégorie.
-                    </p>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {(productForm.related || []).map((rid) => {
-                        const p = products.find((x) => x.id === rid);
-                        return (
-                          <span key={rid} className="inline-flex items-center gap-2 bg-mist-white border border-slate-stone/15 rounded-full px-3 py-1 text-xs text-slate-stone">
-                            {p ? p.name.slice(0, 40) : rid}
-                            <button type="button" aria-label="Retirer"
-                              onClick={() => setProductForm({ ...productForm, related: productForm.related.filter((x) => x !== rid) })}
-                              className="text-red-500 hover:text-red-700">×</button>
-                          </span>
-                        );
-                      })}
-                      {(productForm.related || []).length === 0 && (
-                        <span className="text-xs text-stone-gray/70">Sélection automatique</span>
-                      )}
-                    </div>
-                    <select
-                      value=""
-                      disabled={(productForm.related || []).length >= 4}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (!v || (productForm.related || []).includes(v)) return;
-                        setProductForm({ ...productForm, related: [...(productForm.related || []), v] });
-                      }}
-                      className="px-4 py-2 border rounded w-full text-sm disabled:opacity-40"
-                    >
-                      <option value="">{(productForm.related || []).length >= 4 ? 'Maximum atteint (4)' : 'Ajouter un produit…'}</option>
-                      {products.filter((p) => p.id !== productForm.id).map((p) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Stock (interne, non affiché)</label>
-                  <input type="number" min="0" step="1" placeholder="ex: 12" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} className="px-4 py-2 border rounded w-full" />
-                </div>
-
-                {/* Ce qu'il y a dans le flacon.
-                    Ces renseignements existent déjà pour une bonne part dans
-                    l'export Wix — 104 contenances et 101 listes d'ingrédients —
-                    et se relisent plutôt qu'ils ne se ressaisissent. Rien n'est
-                    obligatoire : un champ vide ne s'affiche simplement pas sur
-                    la fiche. */}
-                <div className="md:col-span-2 border-t pt-5 mt-2">
-                  <h4 className="text-xs uppercase tracking-widest text-stone-gray mb-4">Ce qu'il y a dans le flacon</h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">
-                      <label className="flex items-center gap-2 text-sm text-slate-stone">
-                        <input type="checkbox" checked={!!productForm.bonCadeau}
-                          onChange={e => setProductForm({...productForm, bonCadeau: e.target.checked})} />
-                        Ce produit est un bon cadeau
-                      </label>
-                      <p className="text-[11px] text-stone-gray mt-1">
-                        La caisse demandera alors le destinataire, un message et une date. Créez un produit par
+                        <input type="text" placeholder="Séparées par des virgules" value={productForm.collectionsText} onChange={e => setProductForm({...productForm, collectionsText: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                        <p className="text-xs text-stone-gray mt-1">Cliquez une rubrique pour l’ajouter ou la retirer. <strong>{COUP_DE_COEUR}</strong> affiche le produit sur la page d’accueil. Vous pouvez aussi taper une rubrique à vous : elle apparaîtra dans le menu.</p>
+                      </div>
+                      <div className="md:col-span-2 flex flex-col sm:flex-row gap-4 sm:items-center">
+                        <label className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-red-50 border border-red-200 rounded">
+                          <input type="checkbox" checked={!productForm.inStock} onChange={e => setProductForm({...productForm, inStock: !e.target.checked})} className="w-4 h-4 accent-red-600" />
+                          <span className="text-sm text-red-700 font-medium">Marquer le produit comme épuisé</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-slate-stone">
+                          <input type="checkbox" checked={!!productForm.bonCadeau}
+                            onChange={e => setProductForm({...productForm, bonCadeau: e.target.checked})} />
+                          Ce produit est un bon cadeau
+                        </label>
+                      </div>
+                      <p className="md:col-span-2 text-[11px] text-stone-gray -mt-2">
+                        Un bon cadeau : la caisse demandera le destinataire, un message et une date. Créez un produit par
                         montant (25, 50, 100, 150, 295) : le serveur facture toujours le prix de la fiche, jamais
                         celui que le navigateur envoie.
                       </p>
                     </div>
-                    {/* Format et poids.
+                  </section>
 
-                        Ces deux champs étaient seuls dans la grille, et le bloc
-                        des formats multiples se trouvait huit champs plus bas :
-                        rien ne disait qu'on pouvait en déclarer plusieurs, ni
-                        que les deux se remplacent l'un l'autre. On pose donc la
-                        question d'abord — un format, ou plusieurs — et on ne
-                        montre que les champs de la réponse. */}
-                    <div className="md:col-span-2 rounded-xl border border-slate-stone/15 bg-ivory/40 p-4">
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Format et poids</label>
-                      <p className="text-[11px] text-stone-gray mb-3">
-                        Ce produit existe-t-il en un seul format, ou en plusieurs — 15, 30, 50 ml ?
-                      </p>
-
-                      <div className="inline-flex rounded-full border border-slate-stone/20 bg-white p-1 mb-4">
-                        {[false, true].map((multi) => {
-                          const enPlusieurs = (productForm.variantes || []).length > 0;
-                          const actif = enPlusieurs === multi;
-                          return (
-                            <button
-                              key={String(multi)}
-                              type="button"
-                              onClick={() => {
-                                if (multi) {
-                                  // Deux lignes d'emblée : une liste à une seule
-                                  // ligne se lit comme un champ, pas comme une liste.
-                                  if (!enPlusieurs) {
-                                    setProductForm({ ...productForm, variantes: [
-                                      { libelle: '', prix: '', poids: '' },
-                                      { libelle: '', prix: '', poids: '' },
-                                    ] });
-                                  }
-                                  return;
-                                }
-                                const remplies = (productForm.variantes || []).filter((v) => v.libelle || v.prix || v.poids);
-                                if (remplies.length > 0 && !window.confirm(
-                                  'Revenir à un format unique effacera les ' + remplies.length + ' format(s) saisi(s). Continuer ?'
-                                )) return;
-                                setProductForm({ ...productForm, variantes: [] });
-                              }}
-                              aria-pressed={actif}
-                              className={'press rounded-full px-4 py-2 text-xs ' + (actif ? 'bg-slate-stone text-white' : 'text-slate-stone')}
-                            >
-                              {multi ? 'Plusieurs formats' : 'Un seul format'}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {(productForm.variantes || []).length === 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Contenance</label>
-                            <input type="text" placeholder="ex : 100 ml, ou 50 g" value={productForm.contenance}
-                              onChange={e => setProductForm({...productForm, contenance: e.target.value})}
-                              className="px-4 py-2 border rounded w-full" />
-                          </div>
-                          <div>
-                            <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Poids expédié (g)</label>
-                            <input type="number" min="1" step="1" placeholder="ex : 140" value={productForm.poids}
-                              onChange={e => setProductForm({...productForm, poids: e.target.value})}
-                              className="px-4 py-2 border rounded w-full" />
-                            {/* La contenance est ce qu'il y a dedans, le poids ce que
-                                la Poste pèse : emballage compris. Un savon de 90 g
-                                part souvent à 140 g une fois emballé. */}
-                            <p className="text-[11px] text-stone-gray mt-1 leading-snug">
-                              Emballage compris. Renseigné sur tous les produits d'une commande, il choisit
-                              le tarif postal au lieu du forfait. Laissé vide, rien ne change.
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <p className="text-[11px] text-stone-gray mb-3 leading-snug">
-                            Une seule fiche, et une barre de choix sur le site. Chaque format porte son
-                            prix et son <strong>poids</strong> — c'est le poids qui décide de l'envoi
-                            possible : au-delà de 2 kg, la Poste refuse le colis, et le site refusera de
-                            le proposer. Emballage compris, là aussi.
-                          </p>
-                          {/* L'en-tête ne paraît qu'à partir du moment où les
-                              colonnes s'alignent. En dessous, chaque champ
-                              porte son propre libellé : sur un téléphone, la
-                              ligne se plie, et trois nombres sans étiquette ne
-                              se distinguent plus une fois saisis. */}
-                          <div className="hidden sm:grid grid-cols-[1fr_110px_110px_36px] gap-2 mb-1 text-[11px] uppercase tracking-widest text-stone-gray">
-                            <span>Format</span><span>Prix (CHF)</span><span>Poids (g)</span><span />
-                          </div>
-                          {(productForm.variantes || []).map((v, i) => (
-                            <div key={i} className="grid grid-cols-2 sm:grid-cols-[1fr_110px_110px_36px] gap-2 mb-3 sm:mb-2 pb-3 sm:pb-0 border-b sm:border-0 border-slate-stone/10 last:border-0">
-                              <div className="col-span-2 sm:col-span-1">
-                                <span className="sm:hidden block text-[10px] uppercase tracking-widest text-stone-gray mb-1">Format</span>
-                                <input type="text" placeholder="ex : 50 ml" value={v.libelle} aria-label="Format"
-                                  onChange={e => setProductForm({
-                                    ...productForm,
-                                    variantes: productForm.variantes.map((x, k) => k === i ? { ...x, libelle: e.target.value } : x)
-                                  })}
-                                  className="px-4 py-2 border rounded w-full" />
-                              </div>
-                              <div>
-                                <span className="sm:hidden block text-[10px] uppercase tracking-widest text-stone-gray mb-1">Prix (CHF)</span>
-                                <input type="number" step="0.05" min="0" placeholder="45.00" value={v.prix} aria-label="Prix en francs"
-                                  onChange={e => setProductForm({
-                                    ...productForm,
-                                    variantes: productForm.variantes.map((x, k) => k === i ? { ...x, prix: e.target.value } : x)
-                                  })}
-                                  className="px-4 py-2 border rounded w-full" />
-                              </div>
-                              <div>
-                                <span className="sm:hidden block text-[10px] uppercase tracking-widest text-stone-gray mb-1">Poids (g)</span>
-                                <input type="number" step="1" min="0" placeholder="120" value={v.poids} aria-label="Poids en grammes"
-                                  onChange={e => setProductForm({
-                                    ...productForm,
-                                    variantes: productForm.variantes.map((x, k) => k === i ? { ...x, poids: e.target.value } : x)
-                                  })}
-                                  className="px-4 py-2 border rounded w-full" />
-                              </div>
-                              {/* Une croix de 36 px se vise mal au pouce, et le
-                                  mot dit ce qu'elle fait. À l'écran large, la
-                                  colonne est trop étroite pour le mot. */}
-                              <button type="button" title="Retirer ce format"
-                                onClick={() => setProductForm({
-                                  ...productForm,
-                                  variantes: productForm.variantes.filter((_, k) => k !== i)
-                                })}
-                                className="press col-span-2 sm:col-span-1 rounded border px-4 py-2 sm:px-0 sm:py-0 sm:self-end sm:h-[42px] text-xs text-stone-gray hover:text-red-600 hover:border-red-300">
-                                <span className="sm:hidden">Retirer ce format</span>
-                                <span className="hidden sm:inline">×</span>
+                  {/* ── Photos ───────────────────────────────────────────── */}
+                  <section id="fiche-photos" className="scroll-mt-6 bg-white rounded-2xl border border-slate-stone/10 p-5 sm:p-6 shadow-sm">
+                    <EnteteSection section={SECTIONS_FICHE[1]} form={productForm}
+                      chapeau="La première est celle de la grille. Les autres se voient sur la fiche." />
+                    <div className="flex items-center gap-3 mb-2">
+                      <label className={`inline-flex items-center gap-2 px-4 py-2 rounded cursor-pointer text-sm font-medium ${imageUploading ? 'bg-gray-200 text-stone-gray cursor-wait' : 'bg-slate-stone text-white hover:opacity-90'}`}>
+                        {imageUploading ? 'Téléversement…' : '📤 Téléverser depuis mon ordinateur'}
+                        <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple disabled={imageUploading} onChange={handleImageUpload} className="hidden" />
+                      </label>
+                      <span className="text-xs text-stone-gray">PNG, JPG, WEBP · plusieurs fichiers possibles</span>
+                    </div>
+                    {productForm.images.length > 0 ? (
+                      <div className="flex flex-wrap gap-3 mb-3">
+                        {productForm.images.map((url, idx) => (
+                          <div key={`${url}-${idx}`} className="relative group">
+                            <img
+                              src={url}
+                              alt={`Image ${idx + 1}`}
+                              className="w-24 h-24 object-cover rounded border border-slate-stone/10 bg-mist-white"
+                              onError={e => { e.currentTarget.style.opacity = '0.25'; }}
+                            />
+                            {idx === 0 ? (
+                              <span className="absolute bottom-1 left-1 bg-slate-stone/90 text-white text-[9px] tracking-wider uppercase px-1.5 py-0.5 rounded">Principale</span>
+                            ) : (
+                              /* Changer de photo principale demandait de retirer
+                                 les précédentes puis de tout recharger. Un clic
+                                 suffit, et l'aperçu suit. */
+                              <button
+                                type="button"
+                                title="Mettre cette photo en première"
+                                onClick={() => setProductForm(f => ({
+                                  ...f,
+                                  images: [f.images[idx], ...f.images.filter((_, i) => i !== idx)],
+                                }))}
+                                className="absolute inset-x-1 bottom-1 bg-white/90 text-slate-stone text-[9px] tracking-wider uppercase py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                Mettre en 1re
                               </button>
-                            </div>
-                          ))}
-                          <button type="button"
-                            onClick={() => setProductForm({
-                              ...productForm,
-                              variantes: [...(productForm.variantes || []), { libelle: '', prix: '', poids: '' }]
-                            })}
-                            className="press mt-1 rounded-full border px-4 py-2 text-xs uppercase tracking-widest">
-                            + Ajouter un format
-                          </button>
-
-                          {/* Ce que la boutique montrera, calculé sous ses yeux :
-                              le prix de la fiche et la contenance de la carte
-                              viennent des formats, pas des deux champs que ce
-                              mode a masqués. Autant le dire ici plutôt que de la
-                              laisser le découvrir en ligne. */}
-                          {(() => {
-                            const remplies = (productForm.variantes || [])
-                              .filter((v) => String(v.libelle).trim() && Number(v.prix) > 0);
-                            if (remplies.length === 0) return null;
-                            if (remplies.length === 1) return (
-                              <p className="mt-3 text-[11px] text-amber-700 leading-snug">
-                                Un seul format rempli : la barre de choix ne s'affichera pas, il n'y aurait
-                                rien à choisir. Ajoutez-en un second, ou revenez à « Un seul format ».
-                              </p>
-                            );
-                            const mini = Math.min(...remplies.map((v) => Number(v.prix)));
-                            // La même règle que le serveur, sinon l'aperçu
-                            // promettrait autre chose que ce qui s'affichera.
-                            const libelles = remplies.map((v) => String(v.libelle).trim());
-                            const unites = libelles.map((l) => (l.match(/[a-zA-Z]+\.?$/) || [''])[0].toLowerCase());
-                            const memeUnite = unites[0] && unites.every((u) => u === unites[0]);
-                            const resume = memeUnite
-                              ? libelles.map((l) => l.replace(/\s*[a-zA-Z]+\.?$/, '').trim()).join(' · ') + ' ' + unites[0]
-                              : libelles.join(' · ');
-                            return (
-                              <p className="mt-3 text-[11px] text-stone-gray leading-snug">
-                                Sur la grille, la carte annoncera <strong>dès CHF {mini.toFixed(2)}</strong>,
-                                et sous le nom : <strong>{resume}</strong>.
-                                La fiche s'ouvrira sur le format le moins cher.
-                              </p>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Rang dans la boutique</label>
-                      <input type="number" step="1" placeholder="ex : 1" value={productForm.ordre}
-                        onChange={e => setProductForm({...productForm, ordre: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
-                      <p className="text-[11px] text-stone-gray mt-1 leading-snug">
-                        Plus le nombre est petit, plus la fiche paraît tôt. Laissé vide, elle garde sa
-                        place actuelle, derrière celles qui portent un rang.
+                            )}
+                            <button
+                              type="button"
+                              title="Retirer cette image"
+                              onClick={() => setProductForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }))}
+                              className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 text-white text-xs leading-none shadow hover:bg-red-700"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">
+                        Aucune image. Si vous enregistrez ainsi, le produit s'affichera sans photo.
                       </p>
+                    )}
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        placeholder="…ou collez une URL d'image / un lien Google Drive"
+                        value={imageUrlInput}
+                        onChange={e => setImageUrlInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key !== 'Enter') return;
+                          e.preventDefault();
+                          const v = imageUrlInput.trim();
+                          if (!v) return;
+                          setProductForm(f => ({ ...f, images: [...f.images, v] }));
+                          setImageUrlInput('');
+                        }}
+                        className="px-4 py-2 border rounded flex-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const v = imageUrlInput.trim();
+                          if (!v) return;
+                          setProductForm(f => ({ ...f, images: [...f.images, v] }));
+                          setImageUrlInput('');
+                        }}
+                        className="px-4 py-2 bg-gray-200 rounded text-sm whitespace-nowrap"
+                      >
+                        Ajouter l'URL
+                      </button>
                     </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Étiquettes libres</label>
-                      <input type="text" placeholder="une par ligne, ou séparées par des virgules" value={productForm.etiquettesText}
-                        onChange={e => setProductForm({...productForm, etiquettesText: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Types de peau</label>
-                      <input type="text" placeholder="ex : sèche, sensible" value={productForm.typePeauText}
-                        onChange={e => setProductForm({...productForm, typePeauText: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Besoins</label>
-                      <input type="text" placeholder="ex : hydratation, apaisement" value={productForm.besoinsText}
-                        onChange={e => setProductForm({...productForm, besoinsText: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Ingrédients (en français)</label>
-                      <textarea rows={3} placeholder="Tels que vous les diriez à une cliente." value={productForm.ingredients}
-                        onChange={e => setProductForm({...productForm, ingredients: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
-                    </div>
-                    <div className="md:col-span-2 border-t pt-4 mt-2">
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Prix en recharge (CHF)</label>
-                      <p className="text-[11px] text-stone-gray mb-2">
-                        Si la cliente rapporte son flacon. Laissé vide, aucune recharge n'est proposée.
-                        Une recharge se retire <strong>à la boutique</strong> — le serveur refuse de
-                        l'expédier, et facture bien ce prix-là, pas le prix plein.
-                      </p>
-                      <input type="number" step="0.05" min="0" placeholder="ex : 15.00"
-                        value={productForm.rechargePrix}
-                        onChange={e => setProductForm({...productForm, rechargePrix: e.target.value})}
-                        className="px-4 py-2 border rounded w-full max-w-[200px]" />
-                    </div>
+                    <p className="text-xs text-stone-gray mt-1">La première image est celle affichée sur la boutique. Cliquez sur ✕ pour retirer une image ; les autres champs peuvent être modifiés sans y toucher.</p>
+                  </section>
 
-                    <div className="md:col-span-2 border-t pt-4 mt-2">
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Rituel</label>
-                      <p className="text-[11px] text-stone-gray mb-2">
-                        Donnez le même identifiant à tous les produits d'un même rituel — par exemple
-                        <em> rituel-visage</em> — puis numérotez les étapes. Le bloc « Le rituel complet »
-                        apparaît alors sur chacune de leurs fiches. Laissé vide, rien ne s'affiche.
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <input type="text" placeholder="Identifiant du rituel" value={productForm.rituelId}
-                          onChange={e => setProductForm({...productForm, rituelId: e.target.value})}
-                          className="px-4 py-2 border rounded w-full" />
-                        <input type="text" inputMode="numeric" placeholder="N° d'étape" value={productForm.rituelEtape}
-                          onChange={e => setProductForm({...productForm, rituelEtape: e.target.value})}
-                          className="px-4 py-2 border rounded w-full" />
-                        <input type="text" placeholder="Le geste, en une phrase" value={productForm.rituelGeste}
-                          onChange={e => setProductForm({...productForm, rituelGeste: e.target.value})}
+                  {/* ── Format et poids ──────────────────────────────────── */}
+                  <section id="fiche-format" className="scroll-mt-6 bg-white rounded-2xl border border-slate-stone/10 p-5 sm:p-6 shadow-sm">
+                    <EnteteSection section={SECTIONS_FICHE[2]} form={productForm}
+                      chapeau="Ce produit existe-t-il en un seul format, ou en plusieurs — 15, 30, 50 ml ?" />
+        {/* Format et poids.
+
+            Ces deux champs étaient seuls dans la grille, et le bloc
+            des formats multiples se trouvait huit champs plus bas :
+            rien ne disait qu'on pouvait en déclarer plusieurs, ni
+            que les deux se remplacent l'un l'autre. On pose donc la
+            question d'abord — un format, ou plusieurs — et on ne
+            montre que les champs de la réponse. */}
+        <div className="md:col-span-2 rounded-xl border border-slate-stone/15 bg-ivory/40 p-4">
+          <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Format et poids</label>
+          <p className="text-[11px] text-stone-gray mb-3">
+            Ce produit existe-t-il en un seul format, ou en plusieurs — 15, 30, 50 ml ?
+          </p>
+
+          <div className="inline-flex rounded-full border border-slate-stone/20 bg-white p-1 mb-4">
+            {[false, true].map((multi) => {
+              const enPlusieurs = (productForm.variantes || []).length > 0;
+              const actif = enPlusieurs === multi;
+              return (
+                <button
+                  key={String(multi)}
+                  type="button"
+                  onClick={() => {
+                    if (multi) {
+                      // Deux lignes d'emblée : une liste à une seule
+                      // ligne se lit comme un champ, pas comme une liste.
+                      if (!enPlusieurs) {
+                        setProductForm({ ...productForm, variantes: [
+                          { libelle: '', prix: '', poids: '' },
+                          { libelle: '', prix: '', poids: '' },
+                        ] });
+                      }
+                      return;
+                    }
+                    const remplies = (productForm.variantes || []).filter((v) => v.libelle || v.prix || v.poids);
+                    if (remplies.length > 0 && !window.confirm(
+                      'Revenir à un format unique effacera les ' + remplies.length + ' format(s) saisi(s). Continuer ?'
+                    )) return;
+                    setProductForm({ ...productForm, variantes: [] });
+                  }}
+                  aria-pressed={actif}
+                  className={'press rounded-full px-4 py-2 text-xs ' + (actif ? 'bg-slate-stone text-white' : 'text-slate-stone')}
+                >
+                  {multi ? 'Plusieurs formats' : 'Un seul format'}
+                </button>
+              );
+            })}
+          </div>
+
+          {(productForm.variantes || []).length === 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Contenance</label>
+                <input type="text" placeholder="ex : 100 ml, ou 50 g" value={productForm.contenance}
+                  onChange={e => setProductForm({...productForm, contenance: e.target.value})}
+                  className="px-4 py-2 border rounded w-full" />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Poids expédié (g)</label>
+                <input type="number" min="1" step="1" placeholder="ex : 140" value={productForm.poids}
+                  onChange={e => setProductForm({...productForm, poids: e.target.value})}
+                  className="px-4 py-2 border rounded w-full" />
+                {/* La contenance est ce qu'il y a dedans, le poids ce que
+                    la Poste pèse : emballage compris. Un savon de 90 g
+                    part souvent à 140 g une fois emballé. */}
+                <p className="text-[11px] text-stone-gray mt-1 leading-snug">
+                  Emballage compris. Renseigné sur tous les produits d'une commande, il choisit
+                  le tarif postal au lieu du forfait. Laissé vide, rien ne change.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="text-[11px] text-stone-gray mb-3 leading-snug">
+                Une seule fiche, et une barre de choix sur le site. Chaque format porte son
+                prix et son <strong>poids</strong> — c'est le poids qui décide de l'envoi
+                possible : au-delà de 2 kg, la Poste refuse le colis, et le site refusera de
+                le proposer. Emballage compris, là aussi.
+              </p>
+              {/* L'en-tête ne paraît qu'à partir du moment où les
+                  colonnes s'alignent. En dessous, chaque champ
+                  porte son propre libellé : sur un téléphone, la
+                  ligne se plie, et trois nombres sans étiquette ne
+                  se distinguent plus une fois saisis. */}
+              <div className="hidden sm:grid grid-cols-[1fr_110px_110px_36px] gap-2 mb-1 text-[11px] uppercase tracking-widest text-stone-gray">
+                <span>Format</span><span>Prix (CHF)</span><span>Poids (g)</span><span />
+              </div>
+              {(productForm.variantes || []).map((v, i) => (
+                <div key={i} className="grid grid-cols-2 sm:grid-cols-[1fr_110px_110px_36px] gap-2 mb-3 sm:mb-2 pb-3 sm:pb-0 border-b sm:border-0 border-slate-stone/10 last:border-0">
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="sm:hidden block text-[10px] uppercase tracking-widest text-stone-gray mb-1">Format</span>
+                    <input type="text" placeholder="ex : 50 ml" value={v.libelle} aria-label="Format"
+                      onChange={e => setProductForm({
+                        ...productForm,
+                        variantes: productForm.variantes.map((x, k) => k === i ? { ...x, libelle: e.target.value } : x)
+                      })}
+                      className="px-4 py-2 border rounded w-full" />
+                  </div>
+                  <div>
+                    <span className="sm:hidden block text-[10px] uppercase tracking-widest text-stone-gray mb-1">Prix (CHF)</span>
+                    <input type="number" step="0.05" min="0" placeholder="45.00" value={v.prix} aria-label="Prix en francs"
+                      onChange={e => setProductForm({
+                        ...productForm,
+                        variantes: productForm.variantes.map((x, k) => k === i ? { ...x, prix: e.target.value } : x)
+                      })}
+                      className="px-4 py-2 border rounded w-full" />
+                  </div>
+                  <div>
+                    <span className="sm:hidden block text-[10px] uppercase tracking-widest text-stone-gray mb-1">Poids (g)</span>
+                    <input type="number" step="1" min="0" placeholder="120" value={v.poids} aria-label="Poids en grammes"
+                      onChange={e => setProductForm({
+                        ...productForm,
+                        variantes: productForm.variantes.map((x, k) => k === i ? { ...x, poids: e.target.value } : x)
+                      })}
+                      className="px-4 py-2 border rounded w-full" />
+                  </div>
+                  {/* Une croix de 36 px se vise mal au pouce, et le
+                      mot dit ce qu'elle fait. À l'écran large, la
+                      colonne est trop étroite pour le mot. */}
+                  <button type="button" title="Retirer ce format"
+                    onClick={() => setProductForm({
+                      ...productForm,
+                      variantes: productForm.variantes.filter((_, k) => k !== i)
+                    })}
+                    className="press col-span-2 sm:col-span-1 rounded border px-4 py-2 sm:px-0 sm:py-0 sm:self-end sm:h-[42px] text-xs text-stone-gray hover:text-red-600 hover:border-red-300">
+                    <span className="sm:hidden">Retirer ce format</span>
+                    <span className="hidden sm:inline">×</span>
+                  </button>
+                </div>
+              ))}
+              <button type="button"
+                onClick={() => setProductForm({
+                  ...productForm,
+                  variantes: [...(productForm.variantes || []), { libelle: '', prix: '', poids: '' }]
+                })}
+                className="press mt-1 rounded-full border px-4 py-2 text-xs uppercase tracking-widest">
+                + Ajouter un format
+              </button>
+
+              {/* Ce que la boutique montrera, calculé sous ses yeux :
+                  le prix de la fiche et la contenance de la carte
+                  viennent des formats, pas des deux champs que ce
+                  mode a masqués. Autant le dire ici plutôt que de la
+                  laisser le découvrir en ligne. */}
+              {(() => {
+                const remplies = (productForm.variantes || [])
+                  .filter((v) => String(v.libelle).trim() && Number(v.prix) > 0);
+                if (remplies.length === 0) return null;
+                if (remplies.length === 1) return (
+                  <p className="mt-3 text-[11px] text-amber-700 leading-snug">
+                    Un seul format rempli : la barre de choix ne s'affichera pas, il n'y aurait
+                    rien à choisir. Ajoutez-en un second, ou revenez à « Un seul format ».
+                  </p>
+                );
+                const mini = Math.min(...remplies.map((v) => Number(v.prix)));
+                // La même règle que le serveur, sinon l'aperçu
+                // promettrait autre chose que ce qui s'affichera.
+                const libelles = remplies.map((v) => String(v.libelle).trim());
+                const unites = libelles.map((l) => (l.match(/[a-zA-Z]+\.?$/) || [''])[0].toLowerCase());
+                const memeUnite = unites[0] && unites.every((u) => u === unites[0]);
+                const resume = memeUnite
+                  ? libelles.map((l) => l.replace(/\s*[a-zA-Z]+\.?$/, '').trim()).join(' · ') + ' ' + unites[0]
+                  : libelles.join(' · ');
+                return (
+                  <p className="mt-3 text-[11px] text-stone-gray leading-snug">
+                    Sur la grille, la carte annoncera <strong>dès CHF {mini.toFixed(2)}</strong>,
+                    et sous le nom : <strong>{resume}</strong>.
+                    La fiche s'ouvrira sur le format le moins cher.
+                  </p>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+                  </section>
+
+                  {/* ── Texte ────────────────────────────────────────────── */}
+                  <section id="fiche-texte" className="scroll-mt-6 bg-white rounded-2xl border border-slate-stone/10 p-5 sm:p-6 shadow-sm">
+                    <EnteteSection section={SECTIONS_FICHE[3]} form={productForm}
+                      chapeau="Ce que Google lit, et ce qu'une cliente lit avant d'acheter. Ce sont les mêmes mots." />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Description (HTML accepté)</label>
+                        <RichTextEditor
+                          value={productForm.description}
+                          onChange={(html) => setProductForm({ ...productForm, description: html })}
+                          placeholder="Description du produit — utilisez les boutons ci-dessus pour les sous-titres et le gras"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Ingrédients (en français)</label>
+                        <textarea rows={4} placeholder="Tels que vous les diriez à une cliente." value={productForm.ingredients}
+                          onChange={e => setProductForm({...productForm, ingredients: e.target.value})}
                           className="px-4 py-2 border rounded w-full" />
                       </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Liste INCI</label>
+                        <textarea rows={4} placeholder="La nomenclature réglementaire, telle qu'elle figure sur l'étiquette." value={productForm.inci}
+                          onChange={e => setProductForm({...productForm, inci: e.target.value})}
+                          className="px-4 py-2 border rounded w-full" />
+                        <p className="text-[11px] text-stone-gray mt-1">
+                          Aucune mise en évidence des allergènes n'est faite : elle demanderait de les saisir un à un, produit par produit.
+                        </p>
+                      </div>
                     </div>
+                  </section>
 
-                    <div className="md:col-span-2">
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Liste INCI</label>
-                      <textarea rows={3} placeholder="La nomenclature réglementaire, telle qu'elle figure sur l'étiquette." value={productForm.inci}
-                        onChange={e => setProductForm({...productForm, inci: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
-                      <p className="text-[11px] text-stone-gray mt-1">
-                        Aucune mise en évidence des allergènes n'est faite : elle demanderait de les saisir un à un, produit par produit.
-                      </p>
+                  {/* ── Découverte ───────────────────────────────────────── */}
+                  <section id="fiche-decouverte" className="scroll-mt-6 bg-white rounded-2xl border border-slate-stone/10 p-5 sm:p-6 shadow-sm">
+                    <EnteteSection section={SECTIONS_FICHE[4]} form={productForm}
+                      chapeau="Ce par quoi on tombe sur la fiche sans la chercher : les filtres de la boutique." />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Types de peau</label>
+                        <input type="text" placeholder="ex : sèche, sensible" value={productForm.typePeauText}
+                          onChange={e => setProductForm({...productForm, typePeauText: e.target.value})}
+                          className="px-4 py-2 border rounded w-full" />
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Besoins</label>
+                        <input type="text" placeholder="ex : hydratation, apaisement" value={productForm.besoinsText}
+                          onChange={e => setProductForm({...productForm, besoinsText: e.target.value})}
+                          className="px-4 py-2 border rounded w-full" />
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Étiquettes libres</label>
+                        <input type="text" placeholder="une par ligne, ou séparées par des virgules" value={productForm.etiquettesText}
+                          onChange={e => setProductForm({...productForm, etiquettesText: e.target.value})}
+                          className="px-4 py-2 border rounded w-full" />
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Prix en recharge (CHF)</label>
+                        <input type="number" step="0.05" min="0" placeholder="ex : 15.00"
+                          value={productForm.rechargePrix}
+                          onChange={e => setProductForm({...productForm, rechargePrix: e.target.value})}
+                          className="px-4 py-2 border rounded w-full" />
+                        <p className="text-[11px] text-stone-gray mt-1 leading-snug">
+                          Si la cliente rapporte son flacon. Laissé vide, aucune recharge n'est proposée.
+                          Une recharge se retire <strong>à la boutique</strong> — le serveur refuse de
+                          l'expédier, et facture bien ce prix-là, pas le prix plein.
+                        </p>
+                      </div>
                     </div>
+                  </section>
+
+                  {/* ── Liens ────────────────────────────────────────────── */}
+                  <section id="fiche-liens" className="scroll-mt-6 bg-white rounded-2xl border border-slate-stone/10 p-5 sm:p-6 shadow-sm">
+                    <EnteteSection section={SECTIONS_FICHE[5]} form={productForm}
+                      chapeau="Ce qui relie cette fiche aux autres — et retient la visite une fiche de plus." />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">
+                          « Vous aimerez aussi » — jusqu'à 4 produits
+                        </label>
+                        <p className="text-[11px] text-stone-gray mb-2">
+                          Laissé vide, le site propose automatiquement des produits de la même catégorie.
+                        </p>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {(productForm.related || []).map((rid) => {
+                            const p = products.find((x) => x.id === rid);
+                            return (
+                              <span key={rid} className="inline-flex items-center gap-2 bg-mist-white border border-slate-stone/15 rounded-full px-3 py-1 text-xs text-slate-stone">
+                                {p ? p.name.slice(0, 40) : rid}
+                                <button type="button" aria-label="Retirer"
+                                  onClick={() => setProductForm({ ...productForm, related: productForm.related.filter((x) => x !== rid) })}
+                                  className="text-red-500 hover:text-red-700">×</button>
+                              </span>
+                            );
+                          })}
+                          {(productForm.related || []).length === 0 && (
+                            <span className="text-xs text-stone-gray/70">Sélection automatique</span>
+                          )}
+                        </div>
+                        <select
+                          value=""
+                          disabled={(productForm.related || []).length >= 4}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (!v || (productForm.related || []).includes(v)) return;
+                            setProductForm({ ...productForm, related: [...(productForm.related || []), v] });
+                          }}
+                          className="px-4 py-2 border rounded w-full text-sm disabled:opacity-40"
+                        >
+                          <option value="">{(productForm.related || []).length >= 4 ? 'Maximum atteint (4)' : 'Ajouter un produit…'}</option>
+                          {products.filter((p) => p.id !== productForm.id).map((p) => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Rituel</label>
+                        <p className="text-[11px] text-stone-gray mb-2">
+                          Donnez le même identifiant à tous les produits d'un même rituel — par exemple
+                          <em> rituel-visage</em> — puis numérotez les étapes. Le bloc « Le rituel complet »
+                          apparaît alors sur chacune de leurs fiches. Laissé vide, rien ne s'affiche.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <input type="text" placeholder="Identifiant du rituel" value={productForm.rituelId}
+                            onChange={e => setProductForm({...productForm, rituelId: e.target.value})}
+                            className="px-4 py-2 border rounded w-full" />
+                          <input type="text" inputMode="numeric" placeholder="N° d'étape" value={productForm.rituelEtape}
+                            onChange={e => setProductForm({...productForm, rituelEtape: e.target.value})}
+                            className="px-4 py-2 border rounded w-full" />
+                          <input type="text" placeholder="Le geste, en une phrase" value={productForm.rituelGeste}
+                            onChange={e => setProductForm({...productForm, rituelGeste: e.target.value})}
+                            className="px-4 py-2 border rounded w-full" />
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* L'aperçu passe SOUS le formulaire en dessous de 1024 px :
+                      en colonne étroite, il volerait la place de la saisie. */}
+                  <div className="xl:hidden">
+                    <ApercuFiche productForm={productForm} />
                   </div>
                 </div>
-                <div className="flex items-end">
-                  <label className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-red-50 border border-red-200 rounded w-full">
-                    <input type="checkbox" checked={!productForm.inStock} onChange={e => setProductForm({...productForm, inStock: !e.target.checked})} className="w-4 h-4 accent-red-600" />
-                    <span className="text-sm text-red-700 font-medium">Marquer le produit comme épuisé</span>
-                  </label>
+
+                <div className="hidden xl:block">
+                  <ApercuFiche productForm={productForm} />
                 </div>
-                <div className="md:col-span-2 flex gap-4">
-                  <button type="submit" className="px-6 py-2 bg-slate-stone text-white rounded">{productForm.id ? 'Enregistrer les modifications' : 'Ajouter le produit'}</button>
-                  {productForm.id && <button type="button" onClick={() => { setProductForm(emptyProductForm); setCustomBadge(false); }} className="px-6 py-2 bg-gray-200 rounded">Annuler</button>}
+
+                {/* La barre d'action.
+
+                    Le bouton d'enregistrement se trouvait tout en bas, après
+                    vingt champs : il fallait traverser la fiche entière pour
+                    l'atteindre, et rien ne disait s'il restait quelque chose à
+                    enregistrer. */}
+                <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-4 flex-wrap px-4 sm:px-8 py-3 bg-white/95 backdrop-blur-md border-t border-slate-stone/10 shadow-[0_-8px_24px_rgba(58,51,43,.06)]">
+                  <span className="flex items-center gap-2 text-xs text-stone-gray">
+                    <span className={`w-1.5 h-1.5 rounded-full ${ficheModifiee ? 'bg-amber-600' : 'bg-slate-stone/25'}`} />
+                    {ficheModifiee
+                      ? 'Modifications non enregistrées'
+                      : (productForm.id ? 'Fiche à jour' : 'Nouvelle fiche')}
+                  </span>
+                  <span className="ml-auto flex items-center gap-3">
+                    {productForm.id && (
+                      <button type="button"
+                        onClick={() => {
+                          if (ficheModifiee && !window.confirm('Abandonner les modifications en cours ?')) return;
+                          setProductForm(emptyProductForm);
+                          setCustomBadge(false);
+                          setEmpreinteOuverture(JSON.stringify(emptyProductForm));
+                        }}
+                        className="px-6 py-2 border border-slate-stone/20 text-stone-gray rounded-full text-xs uppercase tracking-widest hover:border-slate-stone hover:text-slate-stone transition-colors">
+                        Annuler
+                      </button>
+                    )}
+                    <button type="submit" className="px-7 py-2.5 bg-slate-stone text-white rounded-full text-xs uppercase tracking-widest">
+                      {productForm.id ? 'Enregistrer les modifications' : 'Ajouter le produit'}
+                    </button>
+                  </span>
                 </div>
               </form>
             </div>
@@ -1547,12 +1735,16 @@ const AdminDashboard = ({ onLogout }) => {
                             // as a new product. Name is suffixed so the two are
                             // distinguishable in the list.
                             setCustomBadge(!!p.ribbon && !['coming-soon', 'best-seller'].includes(p.ribbon));
-                            setProductForm(chargerProduitDansFormulaire(p, { copie: true }));
+                            const forme = chargerProduitDansFormulaire(p, { copie: true });
+                            setProductForm(forme);
+                            setEmpreinteOuverture(JSON.stringify(forme));
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }} className="text-slate-stone underline">Dupliquer</button>
                           <button onClick={() => {
                             setCustomBadge(!!p.ribbon && !['coming-soon', 'best-seller'].includes(p.ribbon));
-                            setProductForm(chargerProduitDansFormulaire(p));
+                            const forme = chargerProduitDansFormulaire(p);
+                            setProductForm(forme);
+                            setEmpreinteOuverture(JSON.stringify(forme));
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }} className="text-blue-500 underline">Modifier</button>
                           <button onClick={() => {
