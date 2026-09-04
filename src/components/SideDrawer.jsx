@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useId } from 'react';
 import { cheminProduit } from '../data/slug';
 import Lien from './Lien';
 import { useLanguage } from '../i18n/LanguageContext';
+import { getAbsenceNotice } from '../services/shop';
 import { getShipping, shippingCostFor, exigeAdresse, getGiftWrap, modeAutorise } from '../services/shop';
 import { totalPanier, nombreArticles } from '../services/panier';
 import { lireCaisse, ecrireCaisse, oublierCaisse } from '../services/caisse';
@@ -10,8 +11,16 @@ import useVerrouDefilement from '../hooks/useVerrouDefilement';
 const CHAMP_CAISSE = 'w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40';
 
 const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, onAddToCart }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const title = type === 'cart' ? t('drawer.cartTitle') : t('drawer.favTitle');
+
+  // Le message d'absence, là où la question se pose vraiment.
+  //
+  // Il existait déjà, en bandeau au-dessus du site — mais on décide d'acheter
+  // dans le panier, pas dans l'en-tête, et « je pars deux semaines » se lit
+  // autrement juste avant de payer. Le même réglage, la même case à cocher :
+  // rien de nouveau à tenir à jour, et rien ne s'affiche le reste de l'année.
+  const messageAbsence = getAbsenceNotice(language);
   const [isCheckoutMode, setIsCheckoutMode] = useState(false);
   // Repris de ce qui a deja ete tape : le tiroir se demonte en se fermant,
   // et repartir du vide effacait le nom et l'adresse des qu'on retournait
@@ -406,6 +415,11 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
             )}
 
             <form onSubmit={handleCheckoutSubmit} className="space-y-6 pt-4">
+              {messageAbsence && (
+                <p className="rounded-2xl border border-[#C8A96B]/40 bg-[#FBF6EC] px-4 py-3 font-sans text-xs leading-relaxed text-[#7A5C2E]">
+                  {messageAbsence}
+                </p>
+              )}
               {contientRecharge && (
                 <p className="rounded-2xl bg-mist-white px-4 py-3 font-sans text-xs leading-relaxed text-stone-gray">
                   {t('drawer.refillPickupOnly')}

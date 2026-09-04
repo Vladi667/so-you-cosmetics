@@ -1632,12 +1632,22 @@ async function getClients() {
 // commandes : une commande supprimée ou une facture annulée ne doit jamais
 // permettre de réattribuer un numéro déjà émis. Une numérotation qui recule est
 // un problème comptable, pas un détail.
+// Le numéro d'une facture : l'année sur deux chiffres, puis le rang de la
+// commande dans cette année-là. 26-1, 26-2… puis 27-1 au premier janvier.
+//
+// « SY-2026-0004 » était juste mais illisible au téléphone : elle voulait
+// pouvoir retrouver une facture de mémoire. Le compteur repart de 1 à chaque
+// changement d'année, tout seul — il n'y a rien à penser au 31 décembre.
 function nextInvoiceNumber() {
   const settings = getShopSettings();
-  const numero = Number(settings.invoice.nextNumber) || 1;
   const annee = new Date().getFullYear();
-  updateShopSettings({ invoice: { ...settings.invoice, nextNumber: numero + 1 } });
-  return `${settings.invoice.prefix || 'SY'}-${annee}-${String(numero).padStart(4, '0')}`;
+  // L'année du dernier numéro émis. Absente sur une boutique qui n'a pas encore
+  // facturé sous cette forme : on prend l'année en cours, et le compteur
+  // enregistré continue plutôt que de repartir à 1 au milieu d'un exercice.
+  const anneeCourante = Number(settings.invoice.annee) || annee;
+  const numero = annee === anneeCourante ? (Number(settings.invoice.nextNumber) || 1) : 1;
+  updateShopSettings({ invoice: { ...settings.invoice, nextNumber: numero + 1, annee } });
+  return `${String(annee).slice(-2)}-${numero}`;
 }
 
 // Journal articles. She asked for "un accès administrateur me permettant de

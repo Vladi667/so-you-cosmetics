@@ -1754,7 +1754,21 @@ const AdminDashboard = ({ onLogout }) => {
             </div>
 
             <div className="mb-4 flex items-center gap-3 flex-wrap">
-              <input type="text" placeholder="Rechercher un produit..." value={productSearch} onChange={e => { setProductSearch(e.target.value); setProductsPage(1); }} className="px-4 py-2 border rounded w-full max-w-xs" />
+              {/* Effacer la recherche demandait d'appuyer sur la touche
+                  d'effacement autant de fois qu'il y avait de lettres. */}
+              <div className="relative w-full max-w-xs">
+                <input type="text" placeholder="Rechercher un produit..." value={productSearch}
+                  onChange={e => { setProductSearch(e.target.value); setProductsPage(1); }}
+                  onKeyDown={e => { if (e.key === 'Escape') { setProductSearch(''); setProductsPage(1); } }}
+                  className="px-4 py-2 pr-10 border rounded w-full" />
+                {productSearch && (
+                  <button type="button" aria-label="Effacer la recherche"
+                    onClick={() => { setProductSearch(''); setProductsPage(1); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full text-stone-gray hover:bg-mist-white hover:text-slate-stone leading-none">
+                    ×
+                  </button>
+                )}
+              </div>
               <div className="inline-flex rounded-full border border-slate-stone/15 bg-white p-1">
                 {[
                   { cle: 'alpha', nom: 'A → Z' },

@@ -268,7 +268,7 @@ function escapeForEmail(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function buildPaymentConfirmedEmail({ name, orderId, total }) {
+function buildPaymentConfirmedEmail({ name, orderId, total, retrait }) {
   return `
       <div style="font-family: sans-serif; color: #444; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
         <h2 style="color: #2c3e50; font-family: serif; border-bottom: 1px solid #eee; padding-bottom: 10px;">Merci pour votre achat !</h2>
@@ -279,7 +279,9 @@ function buildPaymentConfirmedEmail({ name, orderId, total }) {
           <p style="margin: 0 0 10px 0;"><strong>Statut :</strong> Paiement reçu</p>
           <p style="margin: 0;"><strong>Total :</strong> CHF ${parseFloat(total).toFixed(2)}</p>
         </div>
-        <p>Vous recevrez un nouveau message dès l'expédition.</p>
+        <p>${retrait
+          ? 'Vous recevrez un nouveau message dès que votre commande sera prête pour le retrait.'
+          : "Vous recevrez un nouveau message dès l'expédition."}</p>
         <p style="font-style: italic; color: #888;">So You Cosmetics Genève - Faits main en Suisse</p>
       </div>
     `;
@@ -640,18 +642,14 @@ router.post('/orders', async (req, res) => {
     if (!sumupActive) {
       try {
         await db.updateOrderStatus(newOrder.id, 'Paid');
-        await emailService.sendMail({
-          to: email,
-          subject: `Merci pour votre achat ${newOrder.id} - So You Cosmetics`,
-          html: buildPaymentConfirmedEmail({ name, orderId: newOrder.id, total })
-        });
+
         // Les trois mêmes suites qu'un vrai paiement. Ce chemin n'envoyait que
         // la confirmation : ni facture, ni avis à la boutique, ni mouvement de
         // stock. Tant que SumUp est configuré cela ne se voit pas — mais le
         // jour où la clé expire ou est retirée, le site continuerait d'encaisser
         // en apparence tout en cessant silencieusement de facturer, de la
         // prévenir et de décompter ce qui part.
-        await sendInvoiceIfEnabled(newOrder, email);
+        await envoyerConfirmationEtFacture(newOrder, email, name);
         await avertirNouvelleCommande(newOrder);
         await appliquerStockEtAlerter(newOrder);
       } catch (mailErr) {
@@ -716,12 +714,7 @@ async function confirmOrderPaid(orderId, source) {
     return { confirmed: true, status: 'Paid' };
   }
   try {
-    await emailService.sendMail({
-      to: email,
-      subject: `Merci pour votre achat ${order.id} - So You Cosmetics`,
-      html: buildPaymentConfirmedEmail({ name, orderId: order.id, total: order.total })
-    });
-    await sendInvoiceIfEnabled(order, email);
+    await envoyerConfirmationEtFacture(order, email, name);
     await avertirNouvelleCommande(order);
     await appliquerStockEtAlerter(order);
   } catch (mailErr) {
@@ -921,23 +914,51 @@ async function appliquerStockEtAlerter(order) {
 // Émet la facture une seule fois par commande. Le numéro est réservé au moment
 // de l'envoi : une commande confirmée deux fois (webhook puis navigateur) ne
 // doit pas consommer deux numéros ni envoyer deux factures.
-async function sendInvoiceIfEnabled(order, email) {
-  const settings = db.getShopSettings();
-  if (!settings.invoice || !settings.invoice.enabled) return;
-  if (order.invoice_number) return;             // déjà facturée
+async function envoyerConfirmationEtFacture(order, email, name) {
   if (!email) return;
 
+  const settings = db.getShopSettings();
+  const facture = settings.invoice && settings.invoice.enabled;
+  // Le numéro est réservé au moment de l'envoi : une commande confirmée deux
+  // fois — le webhook puis le retour du navigateur — ne doit pas consommer deux
+  // numéros ni envoyer deux fois la même facture.
+  let invoiceNumber = order.invoice_number || null;
+
   try {
-    const invoiceNumber = db.nextInvoiceNumber();
-    await db.updateOrderFields(order.id, { invoice_number: invoiceNumber });
+    if (facture && !invoiceNumber) {
+      invoiceNumber = db.nextInvoiceNumber();
+      await db.updateOrderFields(order.id, { invoice_number: invoiceNumber });
+      order.invoice_number = invoiceNumber;
+    }
+  } catch (err) {
+    // Une facture qui échoue ne doit pas remettre en cause un paiement encaissé,
+    // ni priver la cliente de sa confirmation : on envoie l'un sans l'autre.
+    console.error(`Invoice number for order ${order.id} could not be reserved:`, err.message);
+    invoiceNumber = null;
+  }
+
+  // Un retrait en boutique ne s'expédie pas : la phrase de fin doit le dire.
+  const retrait = !db.exigeAdresse(order.shipping && order.shipping.id);
+
+  const corps = buildPaymentConfirmedEmail({
+    name, orderId: order.id, total: order.total, retrait,
+  }) + (invoiceNumber
+    ? `<div style="height:28px"></div>${buildInvoiceHtml({ invoiceNumber, order, settings })}`
+    : '');
+
+  try {
     await emailService.sendMail({
       to: email,
-      subject: `Facture ${invoiceNumber} - So You Cosmetics`,
-      html: buildInvoiceHtml({ invoiceNumber, order, settings }),
+      // Deux e-mails arrivaient à la suite : la confirmation, puis la facture.
+      // « Je trouve ça plus simple pour le client » — et c'est vrai : une
+      // commande, un message, qu'on retrouve d'une seule recherche.
+      subject: invoiceNumber
+        ? `Votre commande ${order.id} et sa facture ${invoiceNumber} - So You Cosmetics`
+        : `Merci pour votre achat ${order.id} - So You Cosmetics`,
+      html: corps,
     });
   } catch (err) {
-    // Une facture qui échoue ne doit pas remettre en cause un paiement encaissé.
-    console.error(`Invoice for order ${order.id} could not be sent:`, err.message);
+    console.error(`Confirmation for order ${order.id} could not be sent:`, err.message);
   }
 }
 
