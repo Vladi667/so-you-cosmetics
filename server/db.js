@@ -779,6 +779,23 @@ function normalizeProductInput(input, base = {}) {
   // variantes.
   if (Array.isArray(out.variantes) && out.variantes.length > 0) {
     out.price = Math.min(...out.variantes.map((v) => Number(v.prix)));
+
+    // Et la contenance de la fiche résume les formats.
+    //
+    // C'est elle que la carte affiche sous le nom, sur la grille. Une fiche qui
+    // propose 15, 30 et 50 ml et affiche « 15 ml » ment à qui la survole ; et
+    // depuis que l'admin masque ce champ dès qu'il y a plusieurs formats, plus
+    // personne ne peut le corriger à la main. Il se déduit donc d'eux.
+    //
+    // Quand tous les formats partagent la même unité — le cas courant — on ne
+    // l'écrit qu'une fois : « 15 · 30 · 50 ml » plutôt que « 15 ml · 30 ml ·
+    // 50 ml », qui déborde de la carte.
+    const libelles = out.variantes.map((v) => String(v.libelle).trim());
+    const unites = libelles.map((l) => (l.match(/[a-zA-Z]+\.?$/) || [''])[0].toLowerCase());
+    const memeUnite = unites[0] && unites.every((u) => u === unites[0]);
+    out.contenance = memeUnite
+      ? libelles.map((l) => l.replace(/\s*[a-zA-Z]+\.?$/, '').trim()).join(' · ') + ' ' + unites[0]
+      : libelles.join(' · ');
   }
 
   if (input.rituel !== undefined) {

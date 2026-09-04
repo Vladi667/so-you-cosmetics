@@ -1202,12 +1202,181 @@ const AdminDashboard = ({ onLogout }) => {
                         celui que le navigateur envoie.
                       </p>
                     </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Contenance</label>
-                      <input type="text" placeholder="ex : 100 ml, ou 50 g" value={productForm.contenance}
-                        onChange={e => setProductForm({...productForm, contenance: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
+                    {/* Format et poids.
+
+                        Ces deux champs étaient seuls dans la grille, et le bloc
+                        des formats multiples se trouvait huit champs plus bas :
+                        rien ne disait qu'on pouvait en déclarer plusieurs, ni
+                        que les deux se remplacent l'un l'autre. On pose donc la
+                        question d'abord — un format, ou plusieurs — et on ne
+                        montre que les champs de la réponse. */}
+                    <div className="md:col-span-2 rounded-xl border border-slate-stone/15 bg-ivory/40 p-4">
+                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Format et poids</label>
+                      <p className="text-[11px] text-stone-gray mb-3">
+                        Ce produit existe-t-il en un seul format, ou en plusieurs — 15, 30, 50 ml ?
+                      </p>
+
+                      <div className="inline-flex rounded-full border border-slate-stone/20 bg-white p-1 mb-4">
+                        {[false, true].map((multi) => {
+                          const enPlusieurs = (productForm.variantes || []).length > 0;
+                          const actif = enPlusieurs === multi;
+                          return (
+                            <button
+                              key={String(multi)}
+                              type="button"
+                              onClick={() => {
+                                if (multi) {
+                                  // Deux lignes d'emblée : une liste à une seule
+                                  // ligne se lit comme un champ, pas comme une liste.
+                                  if (!enPlusieurs) {
+                                    setProductForm({ ...productForm, variantes: [
+                                      { libelle: '', prix: '', poids: '' },
+                                      { libelle: '', prix: '', poids: '' },
+                                    ] });
+                                  }
+                                  return;
+                                }
+                                const remplies = (productForm.variantes || []).filter((v) => v.libelle || v.prix || v.poids);
+                                if (remplies.length > 0 && !window.confirm(
+                                  'Revenir à un format unique effacera les ' + remplies.length + ' format(s) saisi(s). Continuer ?'
+                                )) return;
+                                setProductForm({ ...productForm, variantes: [] });
+                              }}
+                              aria-pressed={actif}
+                              className={'press rounded-full px-4 py-2 text-xs ' + (actif ? 'bg-slate-stone text-white' : 'text-slate-stone')}
+                            >
+                              {multi ? 'Plusieurs formats' : 'Un seul format'}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {(productForm.variantes || []).length === 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Contenance</label>
+                            <input type="text" placeholder="ex : 100 ml, ou 50 g" value={productForm.contenance}
+                              onChange={e => setProductForm({...productForm, contenance: e.target.value})}
+                              className="px-4 py-2 border rounded w-full" />
+                          </div>
+                          <div>
+                            <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Poids expédié (g)</label>
+                            <input type="number" min="1" step="1" placeholder="ex : 140" value={productForm.poids}
+                              onChange={e => setProductForm({...productForm, poids: e.target.value})}
+                              className="px-4 py-2 border rounded w-full" />
+                            {/* La contenance est ce qu'il y a dedans, le poids ce que
+                                la Poste pèse : emballage compris. Un savon de 90 g
+                                part souvent à 140 g une fois emballé. */}
+                            <p className="text-[11px] text-stone-gray mt-1 leading-snug">
+                              Emballage compris. Renseigné sur tous les produits d'une commande, il choisit
+                              le tarif postal au lieu du forfait. Laissé vide, rien ne change.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-[11px] text-stone-gray mb-3 leading-snug">
+                            Une seule fiche, et une barre de choix sur le site. Chaque format porte son
+                            prix et son <strong>poids</strong> — c'est le poids qui décide de l'envoi
+                            possible : au-delà de 2 kg, la Poste refuse le colis, et le site refusera de
+                            le proposer. Emballage compris, là aussi.
+                          </p>
+                          {/* L'en-tête ne paraît qu'à partir du moment où les
+                              colonnes s'alignent. En dessous, chaque champ
+                              porte son propre libellé : sur un téléphone, la
+                              ligne se plie, et trois nombres sans étiquette ne
+                              se distinguent plus une fois saisis. */}
+                          <div className="hidden sm:grid grid-cols-[1fr_110px_110px_36px] gap-2 mb-1 text-[11px] uppercase tracking-widest text-stone-gray">
+                            <span>Format</span><span>Prix (CHF)</span><span>Poids (g)</span><span />
+                          </div>
+                          {(productForm.variantes || []).map((v, i) => (
+                            <div key={i} className="grid grid-cols-2 sm:grid-cols-[1fr_110px_110px_36px] gap-2 mb-3 sm:mb-2 pb-3 sm:pb-0 border-b sm:border-0 border-slate-stone/10 last:border-0">
+                              <div className="col-span-2 sm:col-span-1">
+                                <span className="sm:hidden block text-[10px] uppercase tracking-widest text-stone-gray mb-1">Format</span>
+                                <input type="text" placeholder="ex : 50 ml" value={v.libelle} aria-label="Format"
+                                  onChange={e => setProductForm({
+                                    ...productForm,
+                                    variantes: productForm.variantes.map((x, k) => k === i ? { ...x, libelle: e.target.value } : x)
+                                  })}
+                                  className="px-4 py-2 border rounded w-full" />
+                              </div>
+                              <div>
+                                <span className="sm:hidden block text-[10px] uppercase tracking-widest text-stone-gray mb-1">Prix (CHF)</span>
+                                <input type="number" step="0.05" min="0" placeholder="45.00" value={v.prix} aria-label="Prix en francs"
+                                  onChange={e => setProductForm({
+                                    ...productForm,
+                                    variantes: productForm.variantes.map((x, k) => k === i ? { ...x, prix: e.target.value } : x)
+                                  })}
+                                  className="px-4 py-2 border rounded w-full" />
+                              </div>
+                              <div>
+                                <span className="sm:hidden block text-[10px] uppercase tracking-widest text-stone-gray mb-1">Poids (g)</span>
+                                <input type="number" step="1" min="0" placeholder="120" value={v.poids} aria-label="Poids en grammes"
+                                  onChange={e => setProductForm({
+                                    ...productForm,
+                                    variantes: productForm.variantes.map((x, k) => k === i ? { ...x, poids: e.target.value } : x)
+                                  })}
+                                  className="px-4 py-2 border rounded w-full" />
+                              </div>
+                              {/* Une croix de 36 px se vise mal au pouce, et le
+                                  mot dit ce qu'elle fait. À l'écran large, la
+                                  colonne est trop étroite pour le mot. */}
+                              <button type="button" title="Retirer ce format"
+                                onClick={() => setProductForm({
+                                  ...productForm,
+                                  variantes: productForm.variantes.filter((_, k) => k !== i)
+                                })}
+                                className="press col-span-2 sm:col-span-1 rounded border px-4 py-2 sm:px-0 sm:py-0 sm:self-end sm:h-[42px] text-xs text-stone-gray hover:text-red-600 hover:border-red-300">
+                                <span className="sm:hidden">Retirer ce format</span>
+                                <span className="hidden sm:inline">×</span>
+                              </button>
+                            </div>
+                          ))}
+                          <button type="button"
+                            onClick={() => setProductForm({
+                              ...productForm,
+                              variantes: [...(productForm.variantes || []), { libelle: '', prix: '', poids: '' }]
+                            })}
+                            className="press mt-1 rounded-full border px-4 py-2 text-xs uppercase tracking-widest">
+                            + Ajouter un format
+                          </button>
+
+                          {/* Ce que la boutique montrera, calculé sous ses yeux :
+                              le prix de la fiche et la contenance de la carte
+                              viennent des formats, pas des deux champs que ce
+                              mode a masqués. Autant le dire ici plutôt que de la
+                              laisser le découvrir en ligne. */}
+                          {(() => {
+                            const remplies = (productForm.variantes || [])
+                              .filter((v) => String(v.libelle).trim() && Number(v.prix) > 0);
+                            if (remplies.length === 0) return null;
+                            if (remplies.length === 1) return (
+                              <p className="mt-3 text-[11px] text-amber-700 leading-snug">
+                                Un seul format rempli : la barre de choix ne s'affichera pas, il n'y aurait
+                                rien à choisir. Ajoutez-en un second, ou revenez à « Un seul format ».
+                              </p>
+                            );
+                            const mini = Math.min(...remplies.map((v) => Number(v.prix)));
+                            // La même règle que le serveur, sinon l'aperçu
+                            // promettrait autre chose que ce qui s'affichera.
+                            const libelles = remplies.map((v) => String(v.libelle).trim());
+                            const unites = libelles.map((l) => (l.match(/[a-zA-Z]+\.?$/) || [''])[0].toLowerCase());
+                            const memeUnite = unites[0] && unites.every((u) => u === unites[0]);
+                            const resume = memeUnite
+                              ? libelles.map((l) => l.replace(/\s*[a-zA-Z]+\.?$/, '').trim()).join(' · ') + ' ' + unites[0]
+                              : libelles.join(' · ');
+                            return (
+                              <p className="mt-3 text-[11px] text-stone-gray leading-snug">
+                                Sur la grille, la carte annoncera <strong>dès CHF {mini.toFixed(2)}</strong>,
+                                et sous le nom : <strong>{resume}</strong>.
+                                La fiche s'ouvrira sur le format le moins cher.
+                              </p>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </div>
+
                     <div>
                       <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Rang dans la boutique</label>
                       <input type="number" step="1" placeholder="ex : 1" value={productForm.ordre}
@@ -1216,19 +1385,6 @@ const AdminDashboard = ({ onLogout }) => {
                       <p className="text-[11px] text-stone-gray mt-1 leading-snug">
                         Plus le nombre est petit, plus la fiche paraît tôt. Laissé vide, elle garde sa
                         place actuelle, derrière celles qui portent un rang.
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Poids expédié (g)</label>
-                      <input type="number" min="1" step="1" placeholder="ex : 140" value={productForm.poids}
-                        onChange={e => setProductForm({...productForm, poids: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
-                      {/* La contenance est ce qu'il y a dedans, le poids ce que
-                          la Poste pèse : emballage compris. Un savon de 90 g
-                          part souvent à 140 g une fois emballé. */}
-                      <p className="text-[11px] text-stone-gray mt-1 leading-snug">
-                        Emballage compris. Renseigné sur tous les produits d'une commande, il choisit
-                        le tarif postal au lieu du forfait. Laissé vide, rien ne change.
                       </p>
                     </div>
                     <div>
@@ -1255,77 +1411,6 @@ const AdminDashboard = ({ onLogout }) => {
                         onChange={e => setProductForm({...productForm, ingredients: e.target.value})}
                         className="px-4 py-2 border rounded w-full" />
                     </div>
-                    {/* Les contenances.
-
-                        Un même soin en 15, 50 et 75 ml occupait trois fiches :
-                        trois photos à charger, trois descriptions à corriger le
-                        jour où la formule change, et une cliente qui tombe sur
-                        le 15 ml sans savoir que le 75 existe. Ici, une fiche et
-                        trois lignes.
-
-                        Tant qu'aucune ligne n'est remplie, la fiche reste
-                        exactement ce qu'elle était : son prix, son poids, aucune
-                        barre de choix sur le site. */}
-                    <div className="md:col-span-2 border-t pt-4 mt-2">
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Contenances</label>
-                      <p className="text-[11px] text-stone-gray mb-3">
-                        Si ce produit existe en plusieurs formats, ajoutez-les ici : la fiche en
-                        proposera une seule, avec une barre de choix. Laissé vide, rien ne change.
-                        Le <strong>poids</strong> de chaque format décide de l'envoi possible — au-delà
-                        de 2 kg, la poste refuse le colis, et le site refusera de le proposer.
-                      </p>
-                      {(productForm.variantes || []).length > 0 && (
-                        <div className="grid grid-cols-[1fr_120px_120px_40px] gap-2 mb-1 text-[11px] uppercase tracking-widest text-stone-gray">
-                          <span>Format</span><span>Prix (CHF)</span><span>Poids (g)</span><span />
-                        </div>
-                      )}
-                      {(productForm.variantes || []).map((v, i) => (
-                        <div key={i} className="grid grid-cols-[1fr_120px_120px_40px] gap-2 mb-2">
-                          <input type="text" placeholder="ex : 50 ml" value={v.libelle}
-                            onChange={e => setProductForm({
-                              ...productForm,
-                              variantes: productForm.variantes.map((x, k) => k === i ? { ...x, libelle: e.target.value } : x)
-                            })}
-                            className="px-4 py-2 border rounded w-full" />
-                          <input type="number" step="0.05" min="0" placeholder="45.00" value={v.prix}
-                            onChange={e => setProductForm({
-                              ...productForm,
-                              variantes: productForm.variantes.map((x, k) => k === i ? { ...x, prix: e.target.value } : x)
-                            })}
-                            className="px-4 py-2 border rounded w-full" />
-                          <input type="number" step="1" min="0" placeholder="120" value={v.poids}
-                            onChange={e => setProductForm({
-                              ...productForm,
-                              variantes: productForm.variantes.map((x, k) => k === i ? { ...x, poids: e.target.value } : x)
-                            })}
-                            className="px-4 py-2 border rounded w-full" />
-                          <button type="button" title="Retirer cette contenance"
-                            onClick={() => setProductForm({
-                              ...productForm,
-                              variantes: productForm.variantes.filter((_, k) => k !== i)
-                            })}
-                            className="press rounded border text-stone-gray hover:text-red-600 hover:border-red-300">
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                      <button type="button"
-                        onClick={() => setProductForm({
-                          ...productForm,
-                          variantes: [...(productForm.variantes || []), { libelle: '', prix: '', poids: '' }]
-                        })}
-                        className="press mt-1 rounded-full border px-4 py-2 text-xs uppercase tracking-widest">
-                        + Ajouter une contenance
-                      </button>
-                      {(productForm.variantes || []).length === 1 && (
-                        <p className="mt-2 text-[11px] text-amber-700">
-                          Une seule contenance : la barre de choix ne s'affichera pas — il n'y aurait
-                          rien à choisir. Ajoutez-en une deuxième, ou retirez celle-ci et servez-vous
-                          du champ « Contenance » plus haut.
-                        </p>
-                      )}
-                    </div>
-
                     <div className="md:col-span-2 border-t pt-4 mt-2">
                       <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Prix en recharge (CHF)</label>
                       <p className="text-[11px] text-stone-gray mb-2">
