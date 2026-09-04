@@ -1748,6 +1748,34 @@ router.put('/admin/orders/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// Supprimer une commande.
+//
+// Réservée à celles qui ont d'abord été annulées ou remboursées. Ce n'est pas
+// une formalité : c'est ce qui rend impossible d'effacer une vraie commande
+// d'un seul geste. Il faut l'écarter, la voir écartée, puis décider de
+// l'effacer — deux décisions séparées par un rechargement de la liste.
+router.delete('/admin/orders/:id', requireAdmin, async (req, res) => {
+  try {
+    const commande = await db.getOrderById(req.params.id);
+    if (!commande) return res.status(404).json({ error: 'Commande introuvable' });
+
+    const statut = db.canonicalOrderStatus(commande.status);
+    if (!['Cancelled', 'Refunded'].includes(statut)) {
+      return res.status(409).json({
+        error: "Cette commande n'est ni annulée ni remboursée. Changez d'abord son statut : "
+             + 'on ne supprime que ce qui a déjà été écarté.',
+      });
+    }
+
+    const fait = await db.deleteOrder(req.params.id);
+    if (!fait) return res.status(500).json({ error: 'La suppression a échoué ; rien n\'a été retiré.' });
+    res.json({ message: 'Commande supprimée.' });
+  } catch (err) {
+    console.error('deleteOrder error', err);
+    res.status(500).json({ error: 'La suppression a échoué' });
+  }
+});
+
 // 11. Admin Get Bookings
 router.get('/admin/bookings', requireAdmin, async (req, res) => {
   try {

@@ -9,6 +9,8 @@ const productsData = require('./products.json');
 // Paths for local JSON files
 const DATA_DIR = path.join(__dirname, 'data');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
+// Les commandes supprimées y sont recopiées avant de quitter orders.json.
+const CORBEILLE_COMMANDES = path.join(DATA_DIR, 'orders_supprimees.json');
 const BOOKINGS_FILE = path.join(DATA_DIR, 'bookings.json');
 const CONTACTS_FILE = path.join(DATA_DIR, 'contacts.json');
 const ADMIN_FILE = path.join(DATA_DIR, 'admin.json');
@@ -1479,6 +1481,51 @@ async function updateOrderStatus(orderId, status) {
   return false;
 }
 
+// Retire une commande — et la garde de côté.
+//
+// Une commande est une pièce comptable : on n'en efface pas une par mégarde
+// entre deux clics. Deux garde-fous, donc, et ils ne se remplacent pas.
+//
+// Le premier est ailleurs, dans la route : seule une commande DÉJÀ annulée ou
+// remboursée peut être supprimée. Écarter d'abord, effacer ensuite — une
+// commande vivante ne peut pas disparaître d'un seul geste.
+//
+// Le second est ici : la commande est recopiée entière dans orders_supprimees
+// avant d'être retirée. Le fichier ne sert à rien tant que personne ne se
+// trompe ; le jour où quelqu'un se trompe, il est tout ce qui reste.
+async function deleteOrder(orderId) {
+  const commande = await getOrderById(orderId);
+  if (!commande) return false;
+
+  try {
+    const corbeille = fs.existsSync(CORBEILLE_COMMANDES)
+      ? JSON.parse(fs.readFileSync(CORBEILLE_COMMANDES, 'utf8'))
+      : [];
+    corbeille.push({ supprimee_le: new Date().toISOString(), commande });
+    ecrireJson(CORBEILLE_COMMANDES, corbeille);
+  } catch (err) {
+    // Sans copie de sauvegarde, on ne supprime pas : le filet passe avant le
+    // ménage.
+    console.error('Corbeille des commandes indisponible, suppression refusée', err);
+    return false;
+  }
+
+  if (pool) {
+    try {
+      await pool.query('DELETE FROM orders WHERE id = ?', [orderId]);
+      return true;
+    } catch (err) {
+      console.error('MySQL deleteOrder failed, falling back to JSON file', err);
+    }
+  }
+
+  const data = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
+  const restantes = data.filter((o) => o.id !== orderId);
+  if (restantes.length === data.length) return false;
+  ecrireJson(ORDERS_FILE, restantes);
+  return true;
+}
+
 // 10. Get All Bookings
 async function getBookings() {
   if (pool) {
@@ -1962,6 +2009,7 @@ module.exports = {
   updateOrderStatus,
   updateOrderFields,
   canonicalOrderStatus,
+  deleteOrder,
   getBookings,
   getClients,
   hashPassword,

@@ -670,6 +670,41 @@ const AdminDashboard = ({ onLogout }) => {
       .catch(err => alert(err.message));
   };
 
+  // Supprimer une commande définitivement.
+  //
+  // Le serveur exige qu'elle ait d'abord été annulée ou remboursée ; ici on
+  // demande de RECOPIER son numéro. Ni l'un ni l'autre n'est une formalité :
+  // le premier sépare la décision d'écarter de celle d'effacer, le second
+  // empêche qu'un clic de trop parte tout seul. Le numéro n'est pas rappelé
+  // dans la demande — il est à l'écran, il faut aller le lire.
+  const handleDeleteOrder = (order) => {
+    const statut = String(order.status || '');
+    if (!['Cancelled', 'Refunded'].includes(statut)) {
+      alert("Passez d'abord cette commande en « Annulée » ou « Remboursée ».\n\n"
+        + 'On ne supprime que ce qui a déjà été écarté : une vraie commande ne '
+        + "doit pas pouvoir disparaître d'un seul geste.");
+      return;
+    }
+    const saisi = window.prompt(
+      'Suppression définitive.\n\n'
+      + 'Recopiez le numéro de la commande, tel qu\'il est affiché au-dessus, '
+      + 'pour confirmer.'
+    );
+    if (saisi === null) return;
+    if (saisi.trim() !== order.id) {
+      alert('Le numéro ne correspond pas. Rien n\'a été supprimé.');
+      return;
+    }
+    fetch(`/api/admin/orders/${order.id}`, { method: 'DELETE', headers: fetchHeaders })
+      .then(async (res) => {
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(d.error || 'La suppression a échoué');
+        setOrders((prev) => prev.filter((o) => o.id !== order.id));
+        setSelectedOrder(null);
+      })
+      .catch((err) => alert(err.message));
+  };
+
   const handleChangePassword = (e) => {
     e.preventDefault();
     setPasswordStatus({ success: '', error: '' });
@@ -2322,6 +2357,24 @@ const AdminDashboard = ({ onLogout }) => {
                   <option value="Cancelled">Annulée</option>
                   <option value="Refunded">Remboursée</option>
                 </select>
+                {/* La suppression ne paraît qu'une fois la commande écartée.
+                    Tant qu'elle est vivante, il n'y a rien à effacer — et un
+                    bouton rouge dormant à côté du menu finirait par se cliquer. */}
+                {['Cancelled', 'Refunded'].includes(selectedOrder.status) && (
+                  <div className="mt-4 pt-4 border-t border-slate-stone/10">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteOrder(selectedOrder)}
+                      className="text-xs text-red-700 hover:text-red-900 underline underline-offset-2"
+                    >
+                      Supprimer définitivement cette commande
+                    </button>
+                    <p className="text-[11px] text-stone-gray mt-1 leading-snug max-w-[46ch]">
+                      Il faudra recopier son numéro. Une copie est conservée sur le
+                      serveur, hors de la liste.
+                    </p>
+                  </div>
+                )}
                 <button 
                   onClick={() => {
                     setEmailModal({ 
