@@ -570,6 +570,20 @@ function Catalog({ globalActiveCategory = 'All', rubriques = null, addToCart, to
                         {product.name}
                       </h3>
                     </Lien>
+                    {/* La contenance, sous le nom.
+                        Elle était saisie sur 104 fiches et n'apparaissait nulle
+                        part en boutique. Or c'est souvent la seule chose qui
+                        distingue deux fiches voisines : « Absolute » existe en
+                        15, 30 et 50 ml, sous un nom trop long pour que la
+                        mention tienne dans les deux lignes du titre. Trois
+                        vignettes identiques, à trois prix — la cliente l'a
+                        signalé, et le titre tronqué ne pouvait pas y répondre.
+                        Le champ dédié, lui, ne se fait jamais couper. */}
+                    {product.contenance && (
+                      <p className="mt-1 font-sans text-[10px] sm:text-xs text-stone-gray/80 tracking-wide">
+                        {product.contenance}
+                      </p>
+                    )}
                     {/* Le nombre de senteurs, pas la liste : sur une carte de
                         catalogue, quinze noms de parfums ne se lisent pas. */}
                     {product.estRecette && (
