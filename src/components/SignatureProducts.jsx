@@ -237,13 +237,25 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
         <div
           ref={trackRef}
           className="flex overflow-x-auto hide-scrollbar cursor-grab active:cursor-grabbing select-none px-4"
-          style={{ touchAction: 'pan-y pinch-zoom', overscrollBehaviorX: 'contain' }}
+          // « pan-y » seul interdisait le geste horizontal — sur un carrousel
+          // horizontal. Le doigt ne pouvait pas faire défiler la bande : le
+          // navigateur réservait tout mouvement à la page. Les deux axes sont
+          // désormais autorisés, et `overscrollBehaviorX: contain` empêche que
+          // le défilement de la bande, arrivé au bout, entraîne la page ou
+          // déclenche un retour arrière.
+          style={{ touchAction: 'pan-x pan-y pinch-zoom', overscrollBehaviorX: 'contain' }}
           onMouseEnter={() => { holdRef.current = true; }}
           onMouseLeave={() => { holdRef.current = false; endDrag(); }}
           onFocusCapture={() => pauseDrift(6000)}
           onWheel={() => pauseDrift()}
           onTouchStart={() => { holdRef.current = true; }}
           onTouchEnd={() => { holdRef.current = false; pauseDrift(); }}
+          // Un geste peut être annulé plutôt que terminé — le navigateur reprend
+          // la main pour faire défiler la page, l'appel arrive, le doigt sort de
+          // l'écran. C'est alors « touchcancel » qui part, jamais « touchend ».
+          // Sans cette ligne, le verrou posé au premier contact ne se levait
+          // plus et la bande cessait de défiler pour de bon.
+          onTouchCancel={() => { holdRef.current = false; pauseDrift(); }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
