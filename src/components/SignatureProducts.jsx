@@ -361,6 +361,17 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                       {product.name}
                     </h3>
                   </Lien>
+                  {/* La contenance, comme sur la grille de la boutique.
+                      Ici le titre est coupé à UNE ligne : « 'Absolute' - Gel
+                      Crème Visage à l'extra… ». Tout ce qui distingue les trois
+                      contenances d'un même produit disparaît donc du nom, et la
+                      bande montre trois vignettes que seul le prix sépare. Le
+                      champ dédié le dit sans dépendre de la longueur du titre. */}
+                  {product.contenance && (
+                    <p className="font-sans text-[11px] sm:text-xs text-stone-gray/80 tracking-wide mb-1">
+                      {product.contenance}
+                    </p>
+                  )}
                   <p className="font-sans text-sm text-stone-gray">CHF {Number(product.price || 0).toFixed(2)}</p>
                 </div>
               </div>

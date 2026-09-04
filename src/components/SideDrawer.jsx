@@ -751,6 +751,16 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                       <h4 className="font-sans text-sm font-medium text-slate-stone truncate">{getName(item)}</h4>
                     )}
 
+                    {/* La contenance, dans le panier aussi.
+                        Le nom d'une ligne est tronqué, et c'est justement en fin
+                        de nom que se trouve « 15 ml » ou « 50 ml ». Deux
+                        contenances de la même crème arrivaient donc au paiement
+                        sous un libellé identique, à des prix différents : c'est
+                        le pire endroit où laisser un doute. */}
+                    {item.contenance && (
+                      <p className="font-sans text-xs text-stone-gray/70 mt-0.5">{item.contenance}</p>
+                    )}
+
                     {/* Le prix de ligne en clair. « CHF 12.90 » sur une ligne de
                         deux articles laissait le lecteur faire le calcul, puis
                         douter du sous-total. */}

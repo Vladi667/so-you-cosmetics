@@ -731,8 +731,16 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                     <div className="p-3 sm:p-6 flex flex-col flex-grow">
                       <Lien to={cheminProduit(p)} className="block">
                         <p className="font-sans text-[9px] sm:text-[10px] tracking-[0.2em] uppercase text-stone-gray mb-1 sm:mb-2">{p.collections[0] ? tCategory(p.collections[0]) : 'So You'}</p>
-                        <h3 className="font-serif text-sm sm:text-xl text-slate-stone mb-2 sm:mb-3 line-clamp-2 group-hover:text-stone-gray transition-colors">{p.name}</h3>
+                        <h3 className="font-serif text-sm sm:text-xl text-slate-stone mb-1 sm:mb-2 line-clamp-2 group-hover:text-stone-gray transition-colors">{p.name}</h3>
                       </Lien>
+                      {/* La contenance, comme sur la grille, la bande et le
+                          panier. C'est ici qu'on la voit le plus : « Vous
+                          aimerez aussi » propose volontiers les autres formats
+                          du produit qu'on regarde, et un titre tronqué à deux
+                          lignes ne dit pas lequel. */}
+                      {p.contenance && (
+                        <p className="font-sans text-[10px] sm:text-xs text-stone-gray/80 mb-2 sm:mb-3">{p.contenance}</p>
+                      )}
                       <div className="mt-auto flex items-center justify-between pt-2 sm:pt-4 border-t border-slate-stone/10">
                         <span className="font-sans text-xs sm:text-sm text-stone-gray">CHF {p.price.toFixed(2)}</span>
                         <div className="flex gap-1.5 sm:gap-2">
