@@ -756,6 +756,19 @@ function normalizeProductInput(input, base = {}) {
         return true;
       });
   }
+  // Les identifiants des fiches que celle-ci a absorbées.
+  //
+  // Sans cette ligne, la fusion écrirait la liste, le serveur l'accepterait
+  // sans broncher, et elle s'évaporerait au premier enregistrement suivant :
+  // les deux adresses supprimées retomberaient en 404 des semaines plus tard,
+  // sans que rien ne relie la panne à sa cause.
+  if (input.anciensIds !== undefined) {
+    const vus = new Set();
+    out.anciensIds = (Array.isArray(input.anciensIds) ? input.anciensIds : [])
+      .map((v) => String(v || '').trim())
+      .filter((v) => v && v !== out.id && !vus.has(v) && vus.add(v));
+  }
+
   // Le prix de la fiche suit la contenance la moins chère.
   //
   // Partout ailleurs — grille, bande signature, « vous aimerez aussi », balises

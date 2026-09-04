@@ -605,7 +605,14 @@ function Catalog({ globalActiveCategory = 'All', rubriques = null, addToCart, to
                           promettrait un montant que la caisse ne confirmerait
                           pas : le serveur facture par identifiant. */}
                       {Number(product.price) > 0
-                        ? (product.prixVariable
+                        ? ((product.prixVariable
+                            // Une fiche à contenances porte le prix de la plus
+                            // petite. Annoncer « CHF 33.50 » tout court pour un
+                            // soin qui monte à 82.50 se découvrirait sur la
+                            // fiche, et se lirait comme un appât.
+                            || (Array.isArray(product.variantes)
+                                && product.variantes.length > 1
+                                && new Set(product.variantes.map((v) => Number(v.prix))).size > 1))
                             ? t('catalog.fromPrice', { price: product.price.toFixed(2) })
                             : `CHF ${product.price.toFixed(2)}`)
                         : t('catalog.onQuote')}

@@ -407,9 +407,14 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                     {Number(product.price) > 0 ? `CHF ${prixCourant.toFixed(2)}` : t('catalog.onQuote')}
                   </p>
                   {/* La contenance appartient au prix : « CHF 24.00 » ne veut
-                      rien dire tant qu'on ignore si c'est pour 30 ml ou 200. */}
-                  {product.contenance && (
-                    <span className="font-sans text-sm text-stone-gray/70">· {product.contenance}</span>
+                      rien dire tant qu'on ignore si c'est pour 30 ml ou 200.
+                      Quand la fiche propose des formats, c'est celui qui est
+                      choisi qui s'affiche — sinon le prix changerait sous une
+                      contenance restée fixe, ce qui se lit comme une erreur. */}
+                  {(varianteChoisie ? varianteChoisie.libelle : product.contenance) && (
+                    <span className="font-sans text-sm text-stone-gray/70">
+                      · {varianteChoisie ? varianteChoisie.libelle : product.contenance}
+                    </span>
                   )}
                   {product.inStock === false && (
                     <span className="inline-block bg-red-100 text-red-700 text-xs tracking-widest uppercase px-3 py-1 rounded-full font-medium">

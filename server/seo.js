@@ -1216,7 +1216,22 @@ function trouverProduit(parametre, produits) {
   const direct = produits.find((p) => p.id === brut);
   if (direct) return direct;
   const emp = brut.slice(-LONGUEUR_EMPREINTE).toLowerCase();
-  return produits.find((p) => empreinte(p.id) === emp) || null;
+  const parEmpreinte = produits.find((p) => empreinte(p.id) === emp);
+  if (parEmpreinte) return parEmpreinte;
+
+  // Les fiches absorbées par une autre.
+  //
+  // Fondre trois contenances en une seule fiche supprime deux enregistrements,
+  // donc deux adresses qui existent aujourd'hui : elles sont dans le plan du
+  // site, dans les résultats de Google, peut-être dans un message envoyé la
+  // semaine dernière. Sans cette recherche, elles répondraient 404 et tout ce
+  // qu'elles avaient accumulé serait perdu.
+  //
+  // La fiche survivante garde les identifiants de celles qu'elle remplace ;
+  // l'appelant redirige ensuite en 301 vers son adresse canonique.
+  return produits.find((p) => Array.isArray(p.anciensIds) && p.anciensIds.some(
+    (ancien) => ancien === brut || empreinte(ancien) === emp
+  )) || null;
 }
 
 module.exports = {

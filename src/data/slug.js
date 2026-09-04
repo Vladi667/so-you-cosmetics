@@ -76,7 +76,16 @@ export function trouverProduit(parametre, produits) {
 
   // Sinon, les huit caractères de fin.
   const emp = brut.slice(-LONGUEUR_SUFFIXE).toLowerCase();
-  return produits.find((p) => empreinte(p.id) === emp) || null;
+  const parEmpreinte = produits.find((p) => empreinte(p.id) === emp);
+  if (parEmpreinte) return parEmpreinte;
+
+  // Enfin, les fiches qu'une autre a absorbées : trois contenances devenues une
+  // seule fiche laissent deux adresses derrière elles. Le serveur les redirige,
+  // mais la résolution doit tenir sans lui — en navigation interne depuis un
+  // lien ancien, aucune requête ne repasse par le serveur.
+  return produits.find((p) => Array.isArray(p.anciensIds) && p.anciensIds.some(
+    (ancien) => ancien === brut || empreinte(ancien) === emp
+  )) || null;
 }
 
 // Vrai si l'adresse demandée n'est pas la forme canonique de cette fiche.
