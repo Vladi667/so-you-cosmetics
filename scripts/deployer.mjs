@@ -85,6 +85,9 @@ const FICHIERS_SERVEUR = [
   'email.js',
   'imap.js',
   'uploads.js',
+  // Les comptes clientes. Requis par routes.js : sans lui, le serveur tombe
+  // au premier redémarrage sur MODULE_NOT_FOUND.
+  'comptes.js',
   'package.json',
 ];
 

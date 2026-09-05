@@ -875,6 +875,10 @@ function routeConnue(cheminComplet) {
   if (Object.prototype.hasOwnProperty.call(PAGES, chemin)) return true;
   if (chemin === '/workshops' || chemin === '/journal') return true;
   if (chemin === '/admin' || chemin.startsWith('/admin/')) return true;
+  // Le compte de la cliente. Connu, mais tenu hors des moteurs comme
+  // l'administration : il n'y a rien à indexer sur une page de connexion, et
+  // moins encore derrière.
+  if (chemin === '/compte' || chemin.startsWith('/compte/')) return true;
   return ROUTES_DYNAMIQUES.some((r) => r.test(chemin));
 }
 
@@ -894,6 +898,7 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
   // L'administration et la recherche : connues, volontairement muettes.
   // public/robots.txt les interdit déjà, il n'y a rien à leur écrire.
   if (chemin === '/admin' || chemin.startsWith('/admin/')) return undefined;
+  if (chemin === '/compte' || chemin.startsWith('/compte/')) return undefined;
   if (/^\/search\//.test(chemin)) return undefined;
 
   const fixe = pagesPourLangue(langue)[chemin];

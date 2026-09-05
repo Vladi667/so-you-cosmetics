@@ -25,6 +25,8 @@ import WorkshopDetailPage from './pages/WorkshopDetailPage';
 import JournalPage from './pages/JournalPage';
 import ContactPage from './pages/ContactPage';
 import ProductPage from './pages/ProductPage';
+import ComptePage from './pages/ComptePage';
+import ReinitialiserPage from './pages/ReinitialiserPage';
 import SearchPage from './pages/SearchPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
@@ -232,6 +234,10 @@ function App() {
           }
         />
       ))}
+      {/* Le compte cliente. Deux adresses seulement : la page elle-même, et
+          celle où l'on choisit un nouveau mot de passe depuis le lien reçu. */}
+      <Route path="compte" element={<ComptePage />} />
+      <Route path="compte/reinitialiser" element={<ReinitialiserPage />} />
       <Route path="terms" element={<TermsPage />} />
       <Route path="privacy" element={<PrivacyPage />} />
       <Route

@@ -250,6 +250,13 @@ const Navbar = ({ cartCount, favCount, onCartClick, onFavClick }) => {
               )}
             </button>
             
+            {/* Le compte. Discret, à côté des favoris : on peut commander sans,
+                et rien ne doit laisser croire le contraire. */}
+            <Lien to="/compte" aria-label={t('nav.compte')} className={`transition-colors duration-200 p-1.5 sm:p-2 ${getTextColor()}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 1115 0" />
+              </svg>
+            </Lien>
             <button id="cart-icon" onClick={onCartClick} aria-label={t('nav.cart')} className={`relative transition-colors duration-200 p-1.5 sm:p-2 ${getTextColor()}`}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />

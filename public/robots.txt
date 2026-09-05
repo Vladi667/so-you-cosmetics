@@ -13,6 +13,9 @@ Disallow: /api/
 # Les pages de résultats de recherche : autant de variantes qu'il y a de
 # requêtes, aucune n'ayant de contenu propre.
 Disallow: /search/
+# Le compte d'une cliente : rien a indexer sur une page de connexion, et
+# moins encore derriere.
+Disallow: /compte
 
 # Le plan du site, construit à la demande par le serveur depuis la base.
 #

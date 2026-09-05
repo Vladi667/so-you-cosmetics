@@ -9,6 +9,7 @@ const imapService = require('./imap');
 
 // Directory for admin-uploaded product images (served at /uploads by index.js).
 const { UPLOADS_DIR, ensureUploadsDir, empreinteContenu, fichierExistant } = require('./uploads');
+const comptes = require('./comptes');
 
 // Compare two strings in constant time; tolerates length mismatch
 function timingSafeEqualStr(a, b) {
@@ -2165,6 +2166,278 @@ router.post('/admin/products/upload-image', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('upload-image error', err);
     res.status(500).json({ error: "Échec du téléversement de l'image" });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Les comptes clientes.
+//
+// Elles peuvent toujours commander sans compte : exiger une inscription avant
+// d'acheter fait perdre des ventes, et ce n'est pas ce qu'on cherche ici. Le
+// compte sert à RELIRE ce qu'on a déjà commandé.
+//
+// Une règle traverse toutes ces routes : les commandes ne sont jamais cherchées
+// par un identifiant venu du navigateur, mais par l'adresse VÉRIFIÉE du compte
+// ouvert. Une cliente ne peut donc demander que ce qui lui appartient, même en
+// forgeant la requête.
+// ─────────────────────────────────────────────────────────────────────────
+
+// La session cliente, quand il y en a une. N'échoue jamais : les routes qui
+// l'exigent le disent elles-mêmes.
+function clienteConnectee(req) {
+  const entete = String(req.headers.authorization || '');
+  const jeton = entete.startsWith('Bearer ') ? entete.slice(7) : null;
+  return comptes.compteDeLaSession(jeton);
+}
+
+const exigeCompte = (req, res, next) => {
+  const compte = clienteConnectee(req);
+  if (!compte) return res.status(401).json({ error: 'Connectez-vous pour accéder à votre compte.' });
+  req.compte = compte;
+  next();
+};
+
+// Une adresse plausible et un mot de passe qui vaut la peine d'être haché.
+// Douze caractères plutôt qu'une exigence de majuscules et de chiffres : la
+// longueur protège, les règles compliquées font écrire « Motdepasse1! ».
+function refusInscription({ email, motDePasse }) {
+  if (!/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(String(email || '').trim())) {
+    return 'Cette adresse e-mail ne semble pas valide.';
+  }
+  if (String(motDePasse || '').length < 12) {
+    return 'Choisissez un mot de passe d’au moins 12 caractères. Une phrase dont vous vous souvenez fait un très bon mot de passe.';
+  }
+  return null;
+}
+
+function gabaritCompte({ titre, bonjour, texte, lien, libelleLien, apres }) {
+  return `
+    <div style="font-family:sans-serif;color:#3A332B;max-width:600px;margin:0 auto;padding:24px;">
+      <h2 style="font-family:serif;font-weight:400;color:#3A332B;">${titre}</h2>
+      <p>Bonjour${bonjour ? ' <strong>' + escapeForEmail(bonjour) + '</strong>' : ''},</p>
+      <p>${texte}</p>
+      <p style="margin:26px 0;">
+        <a href="${lien}" style="display:inline-block;padding:12px 24px;background:#3A332B;color:#FDFBF7;text-decoration:none;border-radius:999px;">${libelleLien}</a>
+      </p>
+      <p style="color:#6A6157;font-size:13px;">${apres}</p>
+      <p style="color:#6A6157;font-size:12px;">Si le bouton ne fonctionne pas, copiez cette adresse dans votre navigateur :<br />${lien}</p>
+      <p style="font-style:italic;color:#8C8178;font-size:13px;">So You Cosmetics Genève — faits main en Suisse</p>
+    </div>`;
+}
+
+// Inscription. La réponse est la même que l'adresse soit déjà connue ou non :
+// autrement, ce formulaire dirait qui est cliente ici.
+router.post('/compte/inscription', async (req, res) => {
+  const { email, motDePasse, nom } = req.body || {};
+  const refus = refusInscription({ email, motDePasse });
+  if (refus) return res.status(400).json({ error: refus });
+
+  try {
+    const { deja, compte } = await comptes.creerCompte({ email, motDePasse, nom });
+    if (!deja) {
+      // Vers l'API, pas vers une page : le lien doit fonctionner depuis
+      // n'importe quelle boîte mail, même là où le JavaScript ne tourne pas.
+      // La route vérifie, puis renvoie vers la page du compte.
+      const lien = `${publicBaseUrl()}/api/compte/verifier/${compte.verif_jeton}`;
+      await emailService.sendMail({
+        to: compte.email,
+        subject: 'Confirmez votre adresse — So You Cosmetics',
+        html: gabaritCompte({
+          titre: 'Bienvenue',
+          bonjour: compte.nom,
+          texte: 'Il ne reste qu’à confirmer votre adresse pour ouvrir votre compte et retrouver vos commandes.',
+          lien,
+          libelleLien: 'Confirmer mon adresse',
+          apres: 'Ce lien est valable 24 heures. Si vous n’êtes pas à l’origine de cette demande, ignorez ce message : aucun compte ne sera ouvert.',
+        }),
+      });
+    }
+    res.status(201).json({
+      message: 'Si cette adresse peut recevoir du courrier, un message vient de lui être envoyé. Ouvrez-le pour confirmer votre compte.',
+    });
+  } catch (err) {
+    console.error('Inscription impossible :', err);
+    res.status(500).json({ error: 'L’inscription a échoué. Réessayez dans un instant.' });
+  }
+});
+
+// Le lien reçu par courrier. Répond en HTML : c'est une adresse qu'on ouvre
+// depuis sa boîte, pas un appel de l'application.
+router.get('/compte/verifier/:jeton', (req, res) => {
+  const r = comptes.verifierAdresse(req.params.jeton);
+  const vers = (etat) => res.redirect(302, `/compte?verification=${etat}`);
+  if (!r) return vers('inconnu');
+  if (r.expire) return vers('expire');
+  return vers('ok');
+});
+
+router.post('/compte/connexion', async (req, res) => {
+  const { email, motDePasse } = req.body || {};
+  const cle = comptes.normaliserEmail(email) + '|' + (req.ip || '');
+
+  if (comptes.tropDeTentatives(cle)) {
+    return res.status(429).json({
+      error: 'Trop de tentatives. Patientez un quart d’heure, ou passez par « mot de passe oublié ».',
+    });
+  }
+
+  try {
+    const compte = await comptes.motDePasseValide(email, motDePasse);
+    if (!compte) {
+      comptes.noterTentative(cle);
+      // Une seule phrase pour « adresse inconnue » et « mot de passe faux » :
+      // les distinguer dirait à un inconnu quelles adresses sont inscrites.
+      return res.status(401).json({ error: 'Adresse ou mot de passe incorrect.' });
+    }
+    if (!compte.verifie) {
+      return res.status(403).json({
+        error: 'Votre adresse n’est pas encore confirmée. Ouvrez le message que nous vous avons envoyé.',
+        codeNonVerifie: true,
+      });
+    }
+    comptes.oublierTentatives(cle);
+    res.json({ jeton: comptes.ouvrirSession(compte.id), cliente: comptes.vueCliente(compte) });
+  } catch (err) {
+    console.error('Connexion impossible :', err);
+    res.status(500).json({ error: 'La connexion a échoué. Réessayez dans un instant.' });
+  }
+});
+
+router.post('/compte/deconnexion', (req, res) => {
+  const entete = String(req.headers.authorization || '');
+  if (entete.startsWith('Bearer ')) comptes.fermerSession(entete.slice(7));
+  res.json({ message: 'Vous êtes déconnectée.' });
+});
+
+router.post('/compte/mot-de-passe-oublie', async (req, res) => {
+  const { email } = req.body || {};
+  const reponse = {
+    message: 'Si un compte existe pour cette adresse, un message vient de lui être envoyé.',
+  };
+  try {
+    const compte = comptes.compteParEmail(email);
+    if (compte) {
+      const j = comptes.poserJetonReinitialisation(compte);
+      await emailService.sendMail({
+        to: compte.email,
+        subject: 'Réinitialiser votre mot de passe — So You Cosmetics',
+        html: gabaritCompte({
+          titre: 'Nouveau mot de passe',
+          bonjour: compte.nom,
+          texte: 'Vous avez demandé à changer le mot de passe de votre compte.',
+          lien: `${publicBaseUrl()}/compte/reinitialiser?jeton=${j}`,
+          libelleLien: 'Choisir un nouveau mot de passe',
+          apres: 'Ce lien est valable une heure et ne peut servir qu’une fois. Si vous n’avez rien demandé, ignorez ce message : votre mot de passe actuel reste valable.',
+        }),
+      });
+    }
+    res.json(reponse);
+  } catch (err) {
+    console.error('Réinitialisation impossible :', err);
+    res.json(reponse);   // même réponse : une panne ne doit pas révéler l'existence du compte
+  }
+});
+
+router.post('/compte/reinitialiser', async (req, res) => {
+  const { jeton, motDePasse } = req.body || {};
+  if (String(motDePasse || '').length < 12) {
+    return res.status(400).json({ error: 'Choisissez un mot de passe d’au moins 12 caractères.' });
+  }
+  const compte = comptes.compteParJetonReinitialisation(jeton);
+  if (!compte) {
+    return res.status(400).json({ error: 'Ce lien a expiré ou a déjà servi. Demandez-en un nouveau.' });
+  }
+  try {
+    await comptes.changerMotDePasse(compte, motDePasse);
+    res.json({ message: 'Mot de passe changé. Vous pouvez vous connecter.' });
+  } catch (err) {
+    console.error('Changement de mot de passe impossible :', err);
+    res.status(500).json({ error: 'Le changement a échoué. Réessayez dans un instant.' });
+  }
+});
+
+// Le compte : les coordonnées, les commandes, les ateliers.
+//
+// Tout est cherché par l'adresse VÉRIFIÉE de la session — jamais par un
+// identifiant fourni par le navigateur.
+router.get('/compte', exigeCompte, async (req, res) => {
+  try {
+    const email = req.compte.email;
+    const [commandes, reservations] = await Promise.all([db.getOrders(), db.getBookings()]);
+
+    const siennes = (commandes || [])
+      .filter((c) => comptes.normaliserEmail(c.customer_email) === email)
+      .map((c) => ({
+        id: c.id,
+        date: c.created_at,
+        statut: db.canonicalOrderStatus(c.status),
+        total: c.total,
+        facture: c.invoice_number || null,
+        expedition: c.shipping || null,
+        adresse: c.address || null,
+        articles: (c.items || []).map((a) => ({
+          nom: a.name, qty: a.qty, prix: a.price, recharge: Boolean(a.recharge),
+        })),
+      }))
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+    const ateliers = (reservations || [])
+      .filter((r) => comptes.normaliserEmail(r.customer_email) === email)
+      .map((r) => ({
+        id: r.id, atelier: r.workshop_id, date: r.slot_date,
+        places: r.seats, statut: r.status,
+      }))
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+    res.json({ cliente: comptes.vueCliente(req.compte), commandes: siennes, ateliers });
+  } catch (err) {
+    console.error('Lecture du compte impossible :', err);
+    res.status(500).json({ error: 'Votre compte n’a pas pu être lu. Réessayez dans un instant.' });
+  }
+});
+
+router.put('/compte', exigeCompte, (req, res) => {
+  try {
+    const { nom, telephone, adresse } = req.body || {};
+    const compte = comptes.majCoordonnees(req.compte, { nom, telephone, adresse });
+    res.json({ cliente: comptes.vueCliente(compte) });
+  } catch (err) {
+    console.error('Mise à jour des coordonnées impossible :', err);
+    res.status(500).json({ error: 'L’enregistrement a échoué.' });
+  }
+});
+
+// Une facture, en page imprimable.
+//
+// Pas de bibliothèque PDF sur le serveur : le navigateur en fabrique un
+// meilleur que ce qu'on écrirait ici, avec « Imprimer → Enregistrer en PDF ».
+// C'est une dépendance de moins à installer et à tenir à jour sur l'hôte.
+router.get('/compte/facture/:orderId', exigeCompte, async (req, res) => {
+  try {
+    const commande = await db.getOrderById(req.params.orderId);
+    // La commande doit exister ET appartenir à la session. Sans cette seconde
+    // condition, changer le numéro dans l'adresse suffirait à lire la facture
+    // d'une autre.
+    if (!commande || comptes.normaliserEmail(commande.customer_email) !== req.compte.email) {
+      return res.status(404).send('Facture introuvable.');
+    }
+    if (!commande.invoice_number) {
+      return res.status(404).send('Cette commande n’a pas encore de facture.');
+    }
+    const settings = db.getShopSettings();
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(`<!doctype html><html lang="fr"><head><meta charset="utf-8" />
+      <title>Facture ${escapeForEmail(commande.invoice_number)} — So You Cosmetics</title>
+      <style>body{margin:0;background:#F7F3EC;font-family:sans-serif}
+        .barre{padding:16px;text-align:center}
+        button{font:inherit;padding:10px 22px;border:0;border-radius:999px;background:#3A332B;color:#FDFBF7;cursor:pointer}
+        @media print{.barre{display:none}body{background:#fff}}</style></head>
+      <body><div class="barre"><button onclick="window.print()">Imprimer ou enregistrer en PDF</button></div>
+      ${buildInvoiceHtml({ invoiceNumber: commande.invoice_number, order: commande, settings })}
+      </body></html>`);
+  } catch (err) {
+    console.error('Facture illisible :', err);
+    res.status(500).send('La facture n’a pas pu être produite.');
   }
 });
 
