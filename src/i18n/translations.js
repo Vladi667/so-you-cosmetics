@@ -565,7 +565,7 @@ const translations = {
     },
     privacy: {
       title: 'Politique de confidentialité',
-      lastUpdated: 'Août 2026',
+      lastUpdated: 'Septembre 2026',
       intro: "So You Cosmetics accorde une grande importance à la protection de votre sphère privée. La présente politique explique quelles données personnelles nous collectons, dans quel but et comment elles sont protégées, conformément à la Loi fédérale sur la protection des données (nLPD).",
       sections: [
         { heading: '1. Responsable du traitement', body: [
@@ -579,6 +579,7 @@ const translations = {
             "Données de commande : produits commandés, montant et historique d’achat.",
             "Réservations d’ateliers : nom, e-mail et date choisie.",
             'Newsletter : votre adresse e-mail, si vous vous y inscrivez.',
+            'Compte client, si vous en ouvrez un : votre adresse e-mail, votre mot de passe (conservé sous forme chiffrée, jamais en clair) et, si vous les renseignez, votre nom, votre téléphone et votre adresse de livraison. Le compte n’est pas nécessaire pour commander.',
             'Messages : le contenu des formulaires de contact que vous nous envoyez.',
           ],
           'Les données de paiement (carte bancaire) sont traitées directement par notre prestataire SumUp et ne sont jamais stockées sur nos serveurs.',
@@ -614,16 +615,18 @@ const translations = {
         ]},
         { heading: '8. Durée de conservation', body: [
           "Nous conservons vos données aussi longtemps que nécessaire aux finalités décrites et dans le respect des délais légaux, notamment l’obligation de conservation des pièces commerciales pendant 10 ans. Les adresses inscrites à la newsletter sont conservées jusqu’à votre désinscription.",
+          'Les données de votre compte client sont conservées jusqu’à ce que vous le supprimiez. La suppression du compte efface votre adresse, votre mot de passe et vos coordonnées ; elle n’efface pas vos commandes, qui restent soumises au délai légal de 10 ans mentionné ci-dessus.',
         ]},
         { heading: '9. Sécurité', body: [
           'Nous mettons en œuvre des mesures techniques et organisationnelles appropriées (connexion sécurisée HTTPS, accès restreint aux données) afin de protéger vos informations contre tout accès, perte ou utilisation non autorisés.',
         ]},
         { heading: '10. Vos droits', body: [
           "Conformément à la nLPD, vous disposez d’un droit d’accès, de rectification, d’effacement et d’opposition concernant vos données personnelles. Vous pouvez exercer ces droits à tout moment en écrivant à contact@soyoucosmetics.com.",
+          'Si vous avez ouvert un compte, vous pouvez le supprimer vous-même à tout moment depuis la page « Mon compte », sans avoir à nous écrire.',
           'Vous avez également le droit de vous adresser au Préposé fédéral à la protection des données et à la transparence (PFPDT).',
         ]},
         { heading: '11. Newsletter', body: [
-          'Chaque newsletter contient un lien de désinscription. Vous pouvez aussi demander votre retrait à tout moment par e-mail à contact@soyoucosmetics.com.',
+          'Chaque newsletter contient un lien de désinscription. Vous pouvez aussi vous désinscrire à tout moment depuis la page soyoucosmetics.com/desabonnement, ou nous écrire à contact@soyoucosmetics.com.',
         ]},
         { heading: '12. Modifications', body: [
           'La présente politique peut être mise à jour. La version applicable est celle publiée sur cette page.',
@@ -1160,7 +1163,7 @@ const translations = {
     },
     privacy: {
       title: 'Privacy Policy',
-      lastUpdated: 'August 2026',
+      lastUpdated: 'September 2026',
       intro: 'So You Cosmetics attaches great importance to protecting your privacy. This policy explains which personal data we collect, for what purpose and how it is protected, in accordance with the Swiss Federal Act on Data Protection (nFADP).',
       sections: [
         { heading: '1. Data controller', body: [
@@ -1174,6 +1177,7 @@ const translations = {
             'Order data: products ordered, amount and purchase history.',
             'Workshop bookings: name, email and chosen date.',
             'Newsletter: your email address, if you subscribe.',
+            'Customer account, if you open one: your email address, your password (stored hashed, never in clear text) and, if you provide them, your name, phone number and delivery address. An account is not required in order to order.',
             'Messages: the content of the contact forms you send us.',
           ],
           'Payment data (bank card) is processed directly by our provider SumUp and is never stored on our servers.',
@@ -1209,16 +1213,18 @@ const translations = {
         ]},
         { heading: '8. Retention period', body: [
           'We keep your data for as long as necessary for the purposes described and in compliance with legal deadlines, in particular the obligation to retain commercial records for 10 years. Addresses subscribed to the newsletter are kept until you unsubscribe.',
+          'Customer account data is kept until you delete the account. Deleting it erases your address, your password and your details; it does not erase your orders, which remain subject to the ten-year legal period mentioned above.',
         ]},
         { heading: '9. Security', body: [
           'We implement appropriate technical and organisational measures (secure HTTPS connection, restricted access to data) to protect your information against any unauthorised access, loss or use.',
         ]},
         { heading: '10. Your rights', body: [
           'In accordance with the nFADP, you have the right to access, rectify, erase and object to your personal data. You can exercise these rights at any time by writing to contact@soyoucosmetics.com.',
+          'If you have opened an account, you can delete it yourself at any time from the “My account” page, without writing to us.',
           'You also have the right to contact the Federal Data Protection and Information Commissioner (FDPIC).',
         ]},
         { heading: '11. Newsletter', body: [
-          'Each newsletter contains an unsubscribe link. You can also request removal at any time by email at contact@soyoucosmetics.com.',
+          'Each newsletter contains an unsubscribe link. You can also unsubscribe at any time from soyoucosmetics.com/desabonnement, or write to us at contact@soyoucosmetics.com.',
         ]},
         { heading: '12. Changes', body: [
           'This policy may be updated. The applicable version is the one published on this page.',
@@ -1755,7 +1761,7 @@ const translations = {
     },
     privacy: {
       title: 'Datenschutzerklärung',
-      lastUpdated: 'August 2026',
+      lastUpdated: 'September 2026',
       intro: 'So You Cosmetics legt grossen Wert auf den Schutz Ihrer Privatsphäre. Diese Erklärung erläutert, welche personenbezogenen Daten wir erheben, zu welchem Zweck und wie sie geschützt werden, gemäss dem Schweizer Bundesgesetz über den Datenschutz (revDSG).',
       sections: [
         { heading: '1. Verantwortlicher', body: [
@@ -1769,6 +1775,7 @@ const translations = {
             'Bestelldaten: bestellte Produkte, Betrag und Kaufhistorie.',
             'Workshop-Buchungen: Name, E-Mail und gewähltes Datum.',
             'Newsletter: Ihre E-Mail-Adresse, falls Sie sich anmelden.',
+            'Kundenkonto, sofern Sie eines eröffnen: Ihre E-Mail-Adresse, Ihr Passwort (verschlüsselt gespeichert, nie im Klartext) sowie — wenn Sie sie angeben — Name, Telefonnummer und Lieferadresse. Für eine Bestellung ist kein Konto nötig.',
             'Nachrichten: der Inhalt der Kontaktformulare, die Sie uns senden.',
           ],
           'Zahlungsdaten (Bankkarte) werden direkt von unserem Dienstleister SumUp verarbeitet und niemals auf unseren Servern gespeichert.',
@@ -1804,16 +1811,18 @@ const translations = {
         ]},
         { heading: '8. Aufbewahrungsdauer', body: [
           'Wir bewahren Ihre Daten so lange auf, wie es für die beschriebenen Zwecke erforderlich ist und gesetzliche Fristen es verlangen, insbesondere die Pflicht zur Aufbewahrung von Geschäftsunterlagen während 10 Jahren. Newsletter-Adressen werden bis zu Ihrer Abmeldung aufbewahrt.',
+          'Die Daten Ihres Kundenkontos bleiben bestehen, bis Sie es löschen. Die Löschung entfernt Ihre Adresse, Ihr Passwort und Ihre Angaben; Ihre Bestellungen bleiben davon unberührt und unterliegen der oben genannten Zehnjahresfrist.',
         ]},
         { heading: '9. Sicherheit', body: [
           'Wir setzen angemessene technische und organisatorische Massnahmen ein (sichere HTTPS-Verbindung, eingeschränkter Datenzugriff), um Ihre Informationen vor unbefugtem Zugriff, Verlust oder Nutzung zu schützen.',
         ]},
         { heading: '10. Ihre Rechte', body: [
           'Gemäss revDSG haben Sie das Recht auf Auskunft, Berichtigung, Löschung und Widerspruch bezüglich Ihrer personenbezogenen Daten. Sie können diese Rechte jederzeit per E-Mail an contact@soyoucosmetics.com ausüben.',
+          'Wenn Sie ein Konto eröffnet haben, können Sie es jederzeit selbst über die Seite «Mein Konto» löschen, ohne uns schreiben zu müssen.',
           'Sie haben zudem das Recht, sich an den Eidgenössischen Datenschutz- und Öffentlichkeitsbeauftragten (EDÖB) zu wenden.',
         ]},
         { heading: '11. Newsletter', body: [
-          'Jeder Newsletter enthält einen Abmeldelink. Sie können Ihre Löschung auch jederzeit per E-Mail an contact@soyoucosmetics.com verlangen.',
+          'Jeder Newsletter enthält einen Abmeldelink. Sie können sich auch jederzeit über soyoucosmetics.com/desabonnement abmelden oder uns an contact@soyoucosmetics.com schreiben.',
         ]},
         { heading: '12. Änderungen', body: [
           'Diese Erklärung kann aktualisiert werden. Massgebend ist die auf dieser Seite veröffentlichte Version.',
