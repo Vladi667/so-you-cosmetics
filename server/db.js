@@ -19,6 +19,10 @@ const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 const CONTENT_FILE = path.join(DATA_DIR, 'content.json');
 const ARTICLES_FILE = path.join(DATA_DIR, 'articles.json');
 const NEWSLETTER_FILE = path.join(DATA_DIR, 'newsletter.json');
+// Le secret qui signe les liens de désabonnement. Tiré une fois, puis relu :
+// s'il changeait à chaque démarrage, tous les liens déjà envoyés cesseraient
+// de fonctionner — et un lien de désabonnement mort est pire que pas de lien.
+const SECRET_FILE = path.join(DATA_DIR, 'secret_newsletter.txt');
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 const PRODUCTS_FILE = path.join(__dirname, 'products.json');
 
@@ -420,7 +424,10 @@ function mapOrderRow(r) {
 }
 
 // 1. Get Products
-async function getProducts() {
+// Le catalogue entier, fiches en attente comprises. Réservé à ce qui regarde
+// EN ARRIÈRE — l'administration, et les vignettes des commandes déjà passées,
+// où une fiche retirée de la vente doit continuer de porter son image.
+async function getProduitsTous() {
   if (pool) {
     try {
       const [rows] = await pool.query('SELECT * FROM products');
@@ -430,6 +437,19 @@ async function getProducts() {
     }
   }
   return productsData.products;
+}
+
+// Le catalogue tel que la boutique le montre.
+//
+// C'est CETTE fonction qui porte le nom court, et ce n'est pas un hasard : une
+// dizaine d'endroits l'appellent — la grille, le rendu serveur, le plan du
+// site, le flux Google, et le calcul du total d'une commande. En oublier un
+// laisserait une fiche en attente s'afficher, ou pire, s'acheter. Nommer ainsi
+// la version filtrée fait que l'oubli se trompe du bon côté : la fiche reste
+// cachée au lieu d'apparaître.
+async function getProducts() {
+  const tous = await getProduitsTous();
+  return (tous || []).filter((p) => p.enLigne !== false);
 }
 
 // 2. Get Product By ID
@@ -653,6 +673,12 @@ function normalizeProductInput(input, base = {}) {
   }
   if (input.inStock !== undefined) {
     out.inStock = !!input.inStock;
+  }
+  // « En attente » : la fiche existe dans l'administration, mais la boutique
+  // ne la connaît pas. À distinguer d'« épuisé », qui s'affiche et se voit —
+  // ici, la cliente ne saura jamais que le produit existe.
+  if (input.enLigne !== undefined) {
+    out.enLigne = input.enLigne !== false;
   }
 
   // Ce qu'il y a dans le flacon.
@@ -1207,6 +1233,33 @@ async function getNewsletterSubscribers() {
 // sur simple demande. Sans cette fonction, honorer cette promesse voulait dire
 // ouvrir un fichier JSON sur le serveur — autant dire que la promesse ne
 // tenait pas.
+// La signature d'une adresse, pour qu'un lien de désabonnement ne puisse pas
+// être forgé. Sans elle, il suffirait de deviner des adresses pour désabonner
+// les clientes d'une concurrente — ou les siennes.
+function secretNewsletter() {
+  try {
+    return fs.readFileSync(SECRET_FILE, 'utf8').trim();
+  } catch (_) {
+    const secret = crypto.randomBytes(32).toString('hex');
+    try { fs.writeFileSync(SECRET_FILE, secret); } catch (e) { console.error('Secret newsletter non conservé :', e.message); }
+    return secret;
+  }
+}
+
+function signerEmailNewsletter(email) {
+  return crypto.createHmac('sha256', secretNewsletter())
+    .update(String(email || '').trim().toLowerCase())
+    .digest('hex')
+    .slice(0, 32);
+}
+
+function signatureNewsletterValide(email, signature) {
+  const attendue = signerEmailNewsletter(email);
+  const a = Buffer.from(attendue);
+  const b = Buffer.from(String(signature || ''));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 async function removeNewsletterSubscriber(email) {
   const cible = String(email || '').trim().toLowerCase();
   if (!cible) return false;
@@ -1974,6 +2027,7 @@ async function updateOrderFulfillment(orderId, patch) {
 
 module.exports = {
   getProducts,
+  getProduitsTous,
   importerMetadonnees,
   getProductById,
   createProduct,
@@ -2008,6 +2062,8 @@ module.exports = {
   createNewsletterSubscriber,
   getNewsletterSubscribers,
   removeNewsletterSubscriber,
+  signerEmailNewsletter,
+  signatureNewsletterValide,
   // Admin DB functions
   getAdmin,
   updateAdminPassword,

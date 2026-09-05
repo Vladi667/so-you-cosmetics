@@ -879,6 +879,7 @@ function routeConnue(cheminComplet) {
   // l'administration : il n'y a rien à indexer sur une page de connexion, et
   // moins encore derrière.
   if (chemin === '/compte' || chemin.startsWith('/compte/')) return true;
+  if (chemin === '/desabonnement') return true;
   return ROUTES_DYNAMIQUES.some((r) => r.test(chemin));
 }
 
@@ -899,6 +900,7 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
   // public/robots.txt les interdit déjà, il n'y a rien à leur écrire.
   if (chemin === '/admin' || chemin.startsWith('/admin/')) return undefined;
   if (chemin === '/compte' || chemin.startsWith('/compte/')) return undefined;
+  if (chemin === '/desabonnement') return undefined;
   if (/^\/search\//.test(chemin)) return undefined;
 
   const fixe = pagesPourLangue(langue)[chemin];

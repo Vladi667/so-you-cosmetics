@@ -203,6 +203,26 @@ function majCoordonnees(compte, { nom, telephone, adresse }) {
   return compte;
 }
 
+// Efface un compte.
+//
+// Le compte, et lui seul. Les commandes restent : ce sont des pièces
+// comptables, que la boutique doit conserver dix ans — sa propre politique de
+// confidentialité le dit. Effacer le compte retire ce qui n'existait que pour
+// la consultation : l'adresse, le mot de passe, le téléphone, l'adresse de
+// livraison, et toutes les sessions ouvertes.
+//
+// La distinction n'est pas un détail juridique : promettre « tout est effacé »
+// tout en gardant les commandes serait un mensonge, et l'interface doit dire
+// exactement ce qui part et ce qui reste.
+function supprimerCompte(compteId) {
+  const comptes = tousLesComptes();
+  const restants = comptes.filter((c) => c.id !== compteId);
+  if (restants.length === comptes.length) return false;
+  ecrire(COMPTES_FILE, restants);
+  fermerToutesLesSessions(compteId);
+  return true;
+}
+
 // ── Sessions ──────────────────────────────────────────────────────────────
 function ouvrirSession(compteId) {
   const sessions = lire(SESSIONS_FILE).filter((s) => s.expire > Date.now());
@@ -280,6 +300,7 @@ module.exports = {
   ouvrirSession,
   compteDeLaSession,
   fermerSession,
+  supprimerCompte,
   vueCliente,
   tropDeTentatives,
   noterTentative,

@@ -95,6 +95,9 @@ const AdminDashboard = ({ onLogout }) => {
   const [productForm, setProductForm] = useState({ id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [] });
   const [productSearch, setProductSearch] = useState('');
   const [productsPage, setProductsPage] = useState(1);
+  // La cliente dont on regarde l'historique. Une seule à la fois : déplier tout
+  // le fichier donnerait un mur qu'on ne lit pas.
+  const [clienteOuverte, setClienteOuverte] = useState(null);
   // Cent soixante-dix-huit fiches dans l'ordre de l'export Wix : pour retrouver
   // un savon, il fallait le chercher au nom ou tourner sept pages.
   const [triProduits, setTriProduits] = useState('alpha');
@@ -104,7 +107,7 @@ const AdminDashboard = ({ onLogout }) => {
   const [customBadge, setCustomBadge] = useState(false);
   const [workshopImageUploading, setWorkshopImageUploading] = useState(false);
   const PRODUCTS_PER_PAGE = 25;
-  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], ordre: '', poids: '', contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '', rechargePrix: '', variantes: [] };
+  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], ordre: '', poids: '', contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '', rechargePrix: '', variantes: [], enLigne: true };
   // Charger un produit dans le formulaire.
   //
   // Les deux entrées — « Modifier » et « Dupliquer » — construisaient chacune
@@ -129,6 +132,7 @@ const AdminDashboard = ({ onLogout }) => {
     description: p.description || '',
     stock: p.stock == null ? '' : String(p.stock),
     inStock: p.inStock !== false,
+    enLigne: p.enLigne !== false,
     related: Array.isArray(p.related) ? [...p.related] : [],
     contenance: p.contenance || '',
     poids: p.poids ?? '',
@@ -424,6 +428,14 @@ const AdminDashboard = ({ onLogout }) => {
             .then((r) => (r.ok ? r.json() : []))
             .then((l) => setAbonnees(Array.isArray(l) ? l : []))
             .catch(() => setAbonnees([]));
+          // Les commandes aussi : le fichier clients ne donne qu'un compte et
+          // un total. « Trois commandes » ne dit pas lesquelles, ni quand, ni
+          // ce qu'il y avait dedans — c'est pourtant ce qu'on cherche quand on
+          // ouvre la fiche de quelqu'un.
+          fetch('/api/admin/orders', { headers: fetchHeaders })
+            .then((r) => (r.ok ? r.json() : []))
+            .then((l) => setOrders(Array.isArray(l) ? l : []))
+            .catch(() => { /* le tableau reste utilisable sans l'historique */ });
         }
         if (activeTab === 'workshops') setWorkshops(data);
         if (activeTab === 'products') setProducts(data);
@@ -1000,11 +1012,34 @@ const AdminDashboard = ({ onLogout }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {clients.map((client, idx) => (
-                      <tr key={idx} className="border-b border-slate-stone/5 hover:bg-mist-white/20 transition-colors text-sm text-slate-stone font-light">
+                    {clients.map((client, idx) => {
+                      const ouverte = clienteOuverte === client.email;
+                      // Ses commandes, retrouvées par l'adresse — la même clé
+                      // que le fichier clients emploie pour les regrouper.
+                      const siennes = ouverte
+                        ? orders
+                            .filter((o) => String(o.customer_email || '').trim().toLowerCase() === String(client.email || '').trim().toLowerCase())
+                            .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+                        : [];
+                      return (
+                      <React.Fragment key={idx}>
+                      <tr className="border-b border-slate-stone/5 hover:bg-mist-white/20 transition-colors text-sm text-slate-stone font-light">
                         <td className="p-6 font-medium">{client.name || 'Client Anonyme'}</td>
                         <td className="p-6 font-mono text-xs text-stone-gray">{client.email}</td>
-                        <td className="p-6 text-center font-bold text-slate-stone/60">{client.order_count}</td>
+                        <td className="p-6 text-center">
+                          {client.order_count > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => setClienteOuverte(ouverte ? null : client.email)}
+                              aria-expanded={ouverte}
+                              className="press font-bold text-slate-stone underline underline-offset-4 decoration-slate-stone/30 hover:decoration-slate-stone"
+                            >
+                              {client.order_count}
+                            </button>
+                          ) : (
+                            <span className="font-bold text-slate-stone/60">0</span>
+                          )}
+                        </td>
                         <td className="p-6 text-center font-bold text-slate-stone/60">{client.booking_count}</td>
                         <td className="p-6 text-right font-medium text-slate-stone">CHF {client.total_spent.toFixed(2)}</td>
                         <td className="p-6 text-center">
@@ -1016,7 +1051,52 @@ const AdminDashboard = ({ onLogout }) => {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                      {ouverte && (
+                        <tr className="border-b border-slate-stone/5 bg-mist-white/40">
+                          <td colSpan={6} className="px-6 py-5">
+                            {siennes.length === 0 ? (
+                              <p className="text-xs text-stone-gray">
+                                Ses commandes n'ont pas pu être chargées. Ouvrez l'onglet Commandes, puis revenez.
+                              </p>
+                            ) : (
+                              <div className="flex flex-col gap-3">
+                                {siennes.map((o) => (
+                                  <div key={o.id} className="rounded-xl border border-slate-stone/10 bg-white p-4">
+                                    <div className="flex items-baseline justify-between flex-wrap gap-2">
+                                      <span className="font-medium text-sm text-slate-stone">
+                                        {new Date(o.created_at).toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                        <span className="ml-2 font-mono text-[11px] text-stone-gray">{o.id}</span>
+                                      </span>
+                                      <span className="text-sm text-slate-stone tabular-nums">
+                                        CHF {Number(o.total).toFixed(2)}
+                                        <span className="ml-2 text-[11px] uppercase tracking-widest text-stone-gray">{o.status}</span>
+                                      </span>
+                                    </div>
+                                    <ul className="mt-2 flex flex-col gap-0.5">
+                                      {(o.items || []).map((a, k) => (
+                                        <li key={k} className="text-xs text-stone-gray">
+                                          {a.qty > 1 && <span className="text-stone-gray/60">{a.qty} × </span>}
+                                          {a.name}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedOrder(o)}
+                                      className="press mt-3 text-[11px] uppercase tracking-widest text-slate-stone underline underline-offset-4"
+                                    >
+                                      Ouvrir le détail
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1109,6 +1189,7 @@ const AdminDashboard = ({ onLogout }) => {
                   stock: productForm.stock === '' ? null : productForm.stock,
                   related: productForm.related || [],
                   inStock: !!productForm.inStock,
+                  enLigne: productForm.enLigne !== false,
                   // Le quatrième endroit. La liste blanche du serveur est
                   // stricte : un champ absent d'ici est saisi, paraît accepté,
                   // et s'évapore au rechargement sans qu'aucune erreur ne le
@@ -1296,6 +1377,15 @@ const AdminDashboard = ({ onLogout }) => {
                           <input type="checkbox" checked={!!productForm.bonCadeau}
                             onChange={e => setProductForm({...productForm, bonCadeau: e.target.checked})} />
                           Ce produit est un bon cadeau
+                        </label>
+                        {/* « En attente » n'est pas « épuisé » : épuisé
+                            s'affiche en boutique avec sa pastille rouge, en
+                            attente n'y existe pas du tout. */}
+                        <label className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-amber-50 border border-amber-200 rounded">
+                          <input type="checkbox" checked={productForm.enLigne === false}
+                            onChange={e => setProductForm({...productForm, enLigne: !e.target.checked})}
+                            className="w-4 h-4 accent-amber-600" />
+                          <span className="text-sm text-amber-800 font-medium">Garder en attente (hors ligne)</span>
                         </label>
                       </div>
                       <p className="md:col-span-2 text-[11px] text-stone-gray -mt-2">
@@ -1834,6 +1924,9 @@ const AdminDashboard = ({ onLogout }) => {
                           <span className="font-medium">{p.name}</span>
                           {p.inStock === false && (
                             <span className="inline-block self-start bg-red-100 text-red-700 text-[10px] tracking-widest uppercase px-2 py-0.5 rounded font-medium">Épuisé</span>
+                          )}
+                          {p.enLigne === false && (
+                            <span className="inline-block self-start bg-amber-100 text-amber-800 text-[10px] tracking-widest uppercase px-2 py-0.5 rounded font-medium">En attente</span>
                           )}
                           {/* Dupliquer une fiche pour en dériver une variante est
                               normal — c'est le nom qu'on oublie ensuite. Trois

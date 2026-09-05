@@ -27,6 +27,7 @@ import ContactPage from './pages/ContactPage';
 import ProductPage from './pages/ProductPage';
 import ComptePage from './pages/ComptePage';
 import ReinitialiserPage from './pages/ReinitialiserPage';
+import DesabonnementPage from './pages/DesabonnementPage';
 import SearchPage from './pages/SearchPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
@@ -238,6 +239,8 @@ function App() {
           celle où l'on choisit un nouveau mot de passe depuis le lien reçu. */}
       <Route path="compte" element={<ComptePage />} />
       <Route path="compte/reinitialiser" element={<ReinitialiserPage />} />
+      {/* Ce que promet la politique de confidentialité depuis le premier jour. */}
+      <Route path="desabonnement" element={<DesabonnementPage />} />
       <Route path="terms" element={<TermsPage />} />
       <Route path="privacy" element={<PrivacyPage />} />
       <Route

@@ -140,6 +140,26 @@ function ComptePage() {
     }
   };
 
+  // Le mot de passe est redemandé : un onglet resté ouvert sur un ordinateur
+  // partagé ne doit pas suffire à effacer un compte.
+  const supprimerLeCompte = async () => {
+    const motDePasse = window.prompt(t('compte.supprimerConfirme'));
+    if (motDePasse === null) return;
+    try {
+      const r = await fetch('/api/compte', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + jeton },
+        body: JSON.stringify({ motDePasse }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setErreur(d.error || 'La suppression a échoué.'); return; }
+      ecrireJeton(null); setJeton(null); setDonnees(null);
+      setMessage(d.message || t('compte.supprimerFait'));
+    } catch {
+      setErreur('La connexion au site a échoué. Réessayez dans un instant.');
+    }
+  };
+
   const dateLisible = (iso) => {
     if (!iso) return '';
     try {
@@ -223,6 +243,20 @@ function ComptePage() {
           <Section titre={t('compte.mesCoordonnees')}>
             <Coordonnees cliente={donnees.cliente} jeton={jeton} t={t} onEnregistre={() => charger(jeton)} />
           </Section>
+
+          {/* La suppression, en bas et sans emphase : c'est un droit, pas une
+              action qu'on met en avant. Le texte dit exactement ce qui part et
+              ce qui reste — promettre « tout est effacé » tout en gardant les
+              commandes serait un mensonge. */}
+          <div className="pt-8 mt-4 border-t border-slate-stone/10">
+            <p className="font-sans text-xs text-stone-gray leading-relaxed max-w-[62ch] mb-3">
+              {t('compte.supprimerExplique')}
+            </p>
+            <button type="button" onClick={supprimerLeCompte}
+              className="press font-sans text-xs text-[#8A3E33] hover:underline underline-offset-4">
+              {t('compte.supprimerCompte')}
+            </button>
+          </div>
         </div>
       </div>
     );

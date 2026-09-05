@@ -771,7 +771,9 @@ function blocAdresseEmail(order) {
 // lectures de fichier pour afficher un tableau de bord.
 async function catalogueParId() {
   try {
-    const catalogue = await db.getProducts();
+    // Tout le catalogue : une commande passée sur une fiche depuis retirée doit
+    // garder sa vignette.
+    const catalogue = await db.getProduitsTous();
     return new Map((catalogue || []).map((p) => [String(p.id), p]));
   } catch (err) {
     // Un catalogue illisible ne doit pas empêcher l'alerte de partir : mieux
@@ -2075,7 +2077,9 @@ router.delete('/admin/workshops/:id', requireAdmin, async (req, res) => {
 // 18. Admin List Products
 router.get('/admin/products', requireAdmin, async (req, res) => {
   try {
-    const products = await db.getProducts();
+    // Tout, y compris les fiches en attente : c'est justement là qu'elle les
+    // retrouve pour les remettre en ligne.
+    const products = await db.getProduitsTous();
     res.json(products);
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve products' });
@@ -2166,6 +2170,77 @@ router.post('/admin/products/upload-image', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('upload-image error', err);
     res.status(500).json({ error: "Échec du téléversement de l'image" });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Le désabonnement de la newsletter.
+//
+// La politique de confidentialité promet depuis le premier jour que « chaque
+// newsletter contient un lien de désabonnement ». Ce lien n'existait pas.
+// Aucune newsletter n'étant encore partie, personne n'a été lésé — mais il doit
+// exister avant le premier envoi, pas après.
+//
+// Deux chemins, et le second existe parce que le premier ne suffit pas : celle
+// qui a supprimé le message ne peut plus cliquer nulle part.
+// ─────────────────────────────────────────────────────────────────────────
+
+// Le lien à glisser dans une newsletter. Signé, pour qu'on ne puisse pas
+// désabonner une inconnue en devinant son adresse.
+function lienDesabonnement(email) {
+  const e = encodeURIComponent(String(email || '').trim().toLowerCase());
+  return `${publicBaseUrl()}/desabonnement?e=${e}&s=${db.signerEmailNewsletter(email)}`;
+}
+
+// Le désabonnement lui-même. En POST, jamais en GET : certains logiciels de
+// messagerie visitent les liens d'un message pour les prévisualiser, et un
+// désabonnement en GET partirait tout seul, sans que personne l'ait demandé.
+router.post('/newsletter/desabonnement', async (req, res) => {
+  const { email, signature } = req.body || {};
+  if (!db.signatureNewsletterValide(email, signature)) {
+    return res.status(400).json({ error: 'Ce lien de désabonnement n’est pas valable. Demandez-en un nouveau.' });
+  }
+  try {
+    await db.removeNewsletterSubscriber(email);
+    // On répond la même chose que l'adresse ait été inscrite ou non : sinon la
+    // page dit qui est abonnée ici.
+    res.json({ message: 'C’est fait : vous ne recevrez plus la newsletter.' });
+  } catch (err) {
+    console.error('Désabonnement impossible :', err);
+    res.status(500).json({ error: 'Le désabonnement a échoué. Écrivez-nous à contact@soyoucosmetics.com.' });
+  }
+});
+
+// Pour celle qui n'a plus le message : elle donne son adresse, on lui envoie le
+// lien signé. Réponse identique dans tous les cas.
+router.post('/newsletter/desabonnement/demande', async (req, res) => {
+  const { email } = req.body || {};
+  const reponse = { message: 'Si cette adresse est inscrite, un message vient de lui être envoyé.' };
+  try {
+    const inscrites = await db.getNewsletterSubscribers();
+    const cible = comptes.normaliserEmail(email);
+    const inscrite = (inscrites || []).some((n) => {
+      const e = typeof n === 'string' ? n : (n && n.email);
+      return comptes.normaliserEmail(e) === cible;
+    });
+    if (inscrite) {
+      await emailService.sendMail({
+        to: cible,
+        subject: 'Vous désabonner de la newsletter — So You Cosmetics',
+        html: gabaritCompte({
+          titre: 'Se désabonner',
+          bonjour: '',
+          texte: 'Voici le lien qui vous retire de notre liste de diffusion.',
+          lien: lienDesabonnement(cible),
+          libelleLien: 'Me désabonner',
+          apres: 'Si vous n’avez rien demandé, ignorez ce message : rien ne change tant que le lien n’est pas ouvert.',
+        }),
+      });
+    }
+    res.json(reponse);
+  } catch (err) {
+    console.error('Demande de désabonnement impossible :', err);
+    res.json(reponse);
   }
 });
 
@@ -2404,6 +2479,32 @@ router.put('/compte', exigeCompte, (req, res) => {
   } catch (err) {
     console.error('Mise à jour des coordonnées impossible :', err);
     res.status(500).json({ error: 'L’enregistrement a échoué.' });
+  }
+});
+
+// Supprimer son compte.
+//
+// Le mot de passe est redemandé : un onglet resté ouvert sur un ordinateur
+// partagé ne doit pas suffire à effacer un compte. C'est le même geste que
+// pour se connecter, et il vaut ici comme preuve que c'est bien elle.
+//
+// Ce qui part : l'adresse, le mot de passe, le téléphone, l'adresse de
+// livraison, les sessions. Ce qui reste : les commandes, que la boutique est
+// tenue de conserver dix ans — sa politique de confidentialité l'annonce déjà.
+router.delete('/compte', exigeCompte, async (req, res) => {
+  const { motDePasse } = req.body || {};
+  try {
+    const verifie = await comptes.motDePasseValide(req.compte.email, motDePasse);
+    if (!verifie) {
+      return res.status(403).json({ error: 'Mot de passe incorrect. Le compte n’a pas été supprimé.' });
+    }
+    comptes.supprimerCompte(req.compte.id);
+    res.json({
+      message: 'Votre compte est supprimé. Vos commandes restent enregistrées : la boutique doit les conserver dix ans.',
+    });
+  } catch (err) {
+    console.error('Suppression de compte impossible :', err);
+    res.status(500).json({ error: 'La suppression a échoué. Réessayez dans un instant.' });
   }
 });
 
