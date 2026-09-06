@@ -11,6 +11,7 @@ const imapService = require('./imap');
 const { UPLOADS_DIR, ensureUploadsDir, empreinteContenu, fichierExistant } = require('./uploads');
 const comptes = require('./comptes');
 const infolettre = require('./infolettre');
+const rebonds = require('./rebonds');
 
 // Compare two strings in constant time; tolerates length mismatch
 function timingSafeEqualStr(a, b) {
@@ -2302,6 +2303,98 @@ router.post('/admin/infolettres/:id/arreter', requireAdmin, (req, res) => {
     return res.status(409).json({ error: 'Cette infolettre n’est pas en cours d’envoi.' });
   }
   res.json({ message: 'Envoi interrompu. Il pourra être repris là où il s’est arrêté.' });
+});
+
+// ── Les rebonds ──────────────────────────────────────────────────────────
+//
+// Deux moitiés, et il fallait les deux.
+//
+// La première se règle à l'envoi : quand le serveur refuse tout de suite,
+// server/rebonds.js décide si l'adresse est morte ou si c'est le nôtre qui
+// tousse — voir ce fichier, la distinction est ce qui fait tout.
+//
+// La seconde est ici. Un serveur accepte souvent le message, puis renonce et
+// renvoie un avis de non-remise quelques minutes plus tard : l'envoi a donc
+// « réussi » alors que personne ne l'a lu, et seule la boîte de réception le
+// sait. La relève est déclenchée à la main plutôt qu'en tâche de fond : elle
+// lit la boîte de la boutique, et ce n'est pas une chose à faire dans le dos
+// de quelqu'un.
+
+router.get('/admin/rebonds', requireAdmin, (req, res) => {
+  res.json({
+    ecartees: rebonds.ecartees(),
+    suivies: rebonds.lire().filter((a) => !a.ecartee && a.echecs > 0),
+    seuil: rebonds.SEUIL_PASSAGERS,
+    boiteConfiguree: imapService.isConfigured(),
+  });
+});
+
+router.post('/admin/rebonds/relever', requireAdmin, async (req, res) => {
+  if (!imapService.isConfigured()) {
+    return res.status(400).json({
+      error: 'La boîte de réception n’est pas configurée : impossible de relever les avis de non-remise.',
+    });
+  }
+  try {
+    const messages = await imapService.listMessages({ limit: 100 });
+    const avis = (messages || []).filter((m) => rebonds.estUnAvisDeNonRemise(m));
+
+    const nosDomaines = ['soyoucosmetics.com'];
+    const traites = [];
+    for (const m of avis) {
+      let corps = '';
+      try {
+        const complet = await imapService.getMessage(m.uid);
+        corps = `${complet.text || ''}\n${complet.html || ''}\n${complet.raw || ''}`;
+      } catch (_) {
+        continue;                       // un message illisible n'arrête pas la relève
+      }
+      const adresse = rebonds.adresseEnCause(corps, nosDomaines);
+      if (!adresse) continue;
+
+      // Le doute profite à l'adresse : sans code d'état lisible, l'avis est
+      // traité comme passager. Écarter une cliente réelle sur une devinette
+      // coûterait plus cher qu'un rebond détecté un envoi plus tard.
+      const code = rebonds.codeDeLAvis(corps);
+      const verdict = rebonds.noterEchec(adresse, {
+        code,
+        message: m.subject || 'Avis de non-remise',
+      }, 'boîte de réception');
+      traites.push({ adresse, ecartee: verdict.ecartee, definitif: verdict.definitif });
+    }
+
+    res.json({
+      message: avis.length === 0
+        ? 'Aucun avis de non-remise dans les 100 derniers messages.'
+        : `${traites.length} adresse(s) relevée(s) sur ${avis.length} avis.`,
+      lus: messages.length,
+      avis: avis.length,
+      traites,
+    });
+  } catch (err) {
+    console.error('Relève des rebonds impossible :', err);
+    res.status(500).json({ error: 'La boîte n’a pas pu être lue : ' + err.message });
+  }
+});
+
+router.post('/admin/rebonds/reintegrer', requireAdmin, (req, res) => {
+  const { adresse } = req.body || {};
+  if (!rebonds.reintegrer(adresse)) return res.status(404).json({ error: 'Adresse inconnue.' });
+  res.json({ message: adresse + ' recevra de nouveau les infolettres.' });
+});
+
+router.post('/admin/rebonds/oublier', requireAdmin, async (req, res) => {
+  const { adresse } = req.body || {};
+  try {
+    // Retirée de la liste de diffusion ET de la table des rebonds : c'est le
+    // geste « cette adresse n'existe plus, qu'on n'en parle plus ».
+    await db.removeNewsletterSubscriber(adresse);
+    rebonds.oublier(adresse);
+    res.json({ message: adresse + ' a été retirée de la liste.' });
+  } catch (err) {
+    console.error('Retrait impossible :', err);
+    res.status(500).json({ error: 'Le retrait a échoué.' });
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────

@@ -90,6 +90,8 @@ const FICHIERS_SERVEUR = [
   'comptes.js',
   // L'infolettre. Requis par routes.js.
   'infolettre.js',
+  // Le traitement des rebonds. Requis par infolettre.js et routes.js.
+  'rebonds.js',
   'package.json',
 ];
 

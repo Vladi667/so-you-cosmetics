@@ -38,6 +38,16 @@ async function sendMail({ to, subject, html, text, replyTo }) {
   const fromName = 'So You Cosmetics Genève';
   const fromEmail = process.env.SMTP_FROM || 'no-reply@soyoucosmetics.com';
   
+  // Pourquoi l'envoi a échoué, quand il échoue.
+  //
+  // Ce service retombe volontairement sur un journal local dès que le SMTP
+  // refuse : une confirmation de commande ne doit jamais faire échouer un
+  // paiement encaissé. Mais l'appelant n'apprenait RIEN de la cause, et
+  // l'infolettre a besoin de la connaître — une adresse qui n'existe pas et un
+  // serveur momentanément indisponible demandent deux réactions opposées.
+  // L'objet renvoyé porte donc le motif ; le comportement, lui, ne change pas.
+  let echec = null;
+
   if (transporter) {
     try {
       const info = await transporter.sendMail({
@@ -50,10 +60,25 @@ async function sendMail({ to, subject, html, text, replyTo }) {
         text: text || html.replace(/<[^>]*>/g, ''), // Strip tags for plain text fallback
         html
       });
-      console.log(`Email sent successfully via SMTP. Message ID: ${info.messageId}`);
-      return { success: true, messageId: info.messageId };
+      // Un serveur peut accepter le message ET refuser un destinataire, sans
+      // lever d'erreur. Sans cette vérification, l'envoi passerait pour réussi.
+      if (Array.isArray(info.rejected) && info.rejected.length > 0) {
+        echec = {
+          message: 'Destinataire refusé par le serveur',
+          code: info.rejectedErrors && info.rejectedErrors[0] && info.rejectedErrors[0].responseCode,
+          reponse: info.response,
+        };
+      } else {
+        console.log(`Email sent successfully via SMTP. Message ID: ${info.messageId}`);
+        return { success: true, messageId: info.messageId };
+      }
     } catch (err) {
       console.error('SMTP Email transmission failed, logging locally instead:', err);
+      echec = {
+        message: err.message,
+        code: err.responseCode || err.code,
+        reponse: err.response,
+      };
     }
   }
 
@@ -83,7 +108,7 @@ async function sendMail({ to, subject, html, text, replyTo }) {
     console.error('Failed to save email log to file:', err);
   }
 
-  return { success: true, messageId: logEntry.id, mock: true };
+  return { success: true, messageId: logEntry.id, mock: true, echec };
 }
 
 module.exports = {

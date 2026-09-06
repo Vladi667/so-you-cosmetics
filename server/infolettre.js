@@ -31,6 +31,7 @@ const crypto = require('node:crypto');
 
 const emailService = require('./email');
 const db = require('./db');
+const rebonds = require('./rebonds');
 
 const FICHIER = path.join(__dirname, 'data', 'infolettres.json');
 
@@ -127,6 +128,11 @@ async function destinataires() {
     const e = String((typeof n === 'string' ? n : (n && n.email)) || '').trim().toLowerCase();
     if (!e || vues.has(e)) continue;
     vues.add(e);
+    // Une adresse écartée pour rebonds ne reçoit plus rien. Elle reste
+    // inscrite — c'est peut-être une faute de frappe qu'elle corrigera — mais
+    // continuer d'écrire à une boîte morte abîme la réputation de l'expéditeur,
+    // et c'est à celles qui existent encore que ça coûte.
+    if (rebonds.estEcartee(e)) continue;
     liste.push(e);
   }
   return liste;
@@ -182,26 +188,67 @@ async function unEnvoi(adresse, lettre, base) {
     // « mock » veut dire que le SMTP a refusé et que le message n'est parti
     // nulle part. En développement c'est le fonctionnement normal ; en
     // production, c'est un échec qu'il ne faut pas compter comme un succès.
-    if (r && r.mock && process.env.SMTP_HOST) return { ok: false, motif: 'SMTP indisponible' };
+    if (r && r.mock && process.env.SMTP_HOST) {
+      const cause = r.echec || { message: 'SMTP indisponible' };
+      return { ok: false, cause, motif: cause.message || 'SMTP indisponible' };
+    }
     return { ok: true };
   } catch (err) {
-    return { ok: false, motif: err.message || 'erreur inconnue' };
+    const cause = { message: err.message, code: err.responseCode || err.code };
+    return { ok: false, cause, motif: err.message || 'erreur inconnue' };
   }
 }
 
 async function boucle(id, adresses, base) {
+  // A-t-on réussi ne serait-ce qu'un envoi depuis le début ?
+  //
+  // C'est la question qui protège la liste. Un échec passager — un serveur
+  // injoignable, un délai dépassé — ne dit rien de l'adresse tant qu'on n'a pas
+  // la preuve que le tuyau fonctionne. Si RIEN n'est parti de tout l'envoi,
+  // l'explication tient en un mot : c'est notre serveur, pas les trois cents
+  // adresses qui auraient toutes disparu le même jour.
+  //
+  // Sans cette précaution, trois envois ratés d'affilée écartaient la liste
+  // entière — le contrôle l'a montré, et c'est précisément le dégât qu'un
+  // traitement naïf des rebonds provoque.
+  //
+  // Un refus DÉFINITIF, lui, compte toujours : un « adresse inconnue » désigne
+  // cette adresse-là et reste vrai même si le reste de l'envoi échoue.
+  let auMoinsUnSucces = false;
+
   for (const adresse of adresses) {
     const lettre = parId(id);
     if (!lettre || lettre.etat !== 'envoi') return;        // arrêtée entre-temps
     if (lettre.envoi.faits.includes(adresse)) continue;    // déjà servie
 
     const r = await unEnvoi(adresse, lettre, base);
+
+    let verdict = null;
+    if (r.ok) {
+      auMoinsUnSucces = true;
+      rebonds.noterSucces(adresse);
+    } else {
+      const definitif = rebonds.estDefinitif(r.cause);
+      if (definitif || auMoinsUnSucces) {
+        verdict = rebonds.noterEchec(adresse, r.cause, 'envoi');
+      }
+    }
+
     // On réécrit à CHAQUE message plutôt qu'à la fin : c'est ce qui permet à
     // un envoi interrompu de reprendre sans réexpédier ce qui est parti.
     const suite = parId(id);
     if (!suite) return;
     if (r.ok) suite.envoi.faits.push(adresse);
-    else suite.envoi.echecs.push({ adresse, motif: r.motif, quand: new Date().toISOString() });
+    else suite.envoi.echecs.push({
+      adresse,
+      motif: r.motif,
+      ecartee: Boolean(verdict && verdict.ecartee),
+      definitif: Boolean(verdict && verdict.definitif),
+      // Un échec qu'on n'a pas retenu contre l'adresse : on le dit, sinon
+      // l'écran laisserait croire à un oubli.
+      nonImpute: !verdict && !r.ok,
+      quand: new Date().toISOString(),
+    });
     enregistrer(suite);
 
     await dormir(PAUSE_MS);
