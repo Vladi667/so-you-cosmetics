@@ -230,6 +230,7 @@ const translations = {
       subscribing: 'Inscription…',
       subscribeError: "L’inscription n’a pas pu être enregistrée. Réessayez.",
       rights: '© {year} So You Cosmetics Genève. Tous droits réservés.',
+      mentions: 'Mentions légales',
       terms: 'Conditions générales',
       privacy: 'Politique de confidentialité',
     },
@@ -651,6 +652,52 @@ const translations = {
       ]},
     ],
   },
+    mentions: {
+      title: 'Mentions légales',
+      lastUpdated: 'Septembre 2026',
+      intro: 'Informations relatives à l’éditeur du site www.soyoucosmetics.com, conformément au droit suisse.',
+      sections: [
+        { heading: '1. Éditeur du site', body: [
+          'So You SARL',
+          'Société à responsabilité limitée de droit suisse',
+          'Siège : avenue Pictet-De-Rochemont 3, 1207 Genève, Suisse',
+          'Inscrite au Registre du commerce du canton de Genève sous le numéro IDE CHE-131.511.202',
+          'So You Cosmetics est la marque commerciale exploitée par So You SARL. Soap Opera by So You Cosmetics est le nom commercial de la boutique.',
+        ]},
+        { heading: '2. Contact', body: [
+          'E-mail : contact@soyoucosmetics.com',
+          'Téléphone : 022 556 69 92',
+          'Adresse de la boutique : 3 avenue Pictet-De-Rochemont, 1207 Genève, Suisse',
+        ]},
+        { heading: '3. Responsable de la publication', body: [
+          'La responsabilité éditoriale du site est assumée par So You SARL.',
+        ]},
+        { heading: '4. Taxe sur la valeur ajoutée', body: [
+          'Conformément à la législation suisse applicable, les prix indiqués sur ce site ne sont actuellement pas soumis à la taxe sur la valeur ajoutée (TVA). Si So You SARL devient assujettie, la TVA sera facturée conformément à la législation en vigueur et apparaîtra distinctement sur la facture.',
+        ]},
+        { heading: '5. Hébergement', body: [
+          'Le site est hébergé par Infomaniak Network SA, rue Eugène-Marziano 25, 1227 Genève, Suisse — www.infomaniak.com.',
+          'Les données sont principalement hébergées en Suisse. Voir la Politique de confidentialité pour le détail des traitements et des éventuels transferts.',
+        ]},
+        { heading: '6. Propriété intellectuelle', body: [
+          'Les textes, photographies, illustrations, logos, marques, éléments graphiques et autres contenus présents sur ce site sont protégés par les dispositions applicables en matière de propriété intellectuelle. Sauf autorisation préalable et écrite de So You SARL ou disposition légale contraire, toute reproduction, modification, diffusion ou utilisation de ces éléments, en tout ou partie, est interdite.',
+        ]},
+        { heading: '7. Données personnelles', body: [
+          'Le traitement des données personnelles est décrit dans la Politique de confidentialité, accessible depuis ce site.',
+        ]},
+        { heading: '8. Conditions de vente', body: [
+          'Les ventes réalisées sur ce site sont régies par les Conditions Générales de Vente, accessibles depuis ce site.',
+        ]},
+        { heading: '9. Responsabilité', body: [
+          'So You SARL s’efforce d’assurer l’exactitude des informations publiées sur ce site. Elle ne saurait toutefois garantir qu’elles soient exemptes d’erreurs, d’omissions ou de modifications intervenues postérieurement à leur publication.',
+          'Les informations, conseils et commentaires figurant sur ce site sont fournis à titre informatif et ne constituent en aucun cas un avis médical, un diagnostic ou une recommandation de traitement.',
+          'Ce site peut contenir des liens vers des sites tiers, sur le contenu desquels So You SARL n’exerce aucun contrôle.',
+        ]},
+        { heading: '10. Droit applicable', body: [
+          'Le présent site et son utilisation sont régis par le droit suisse. Le for est à Genève, sous réserve des règles impératives de compétence.',
+        ]},
+      ],
+    },
     privacy: {
       title: 'Politique de confidentialité',
       lastUpdated: 'Septembre 2026',
@@ -959,6 +1006,7 @@ const translations = {
       subscribing: 'Subscribing…',
       subscribeError: 'We could not record your subscription. Please try again.',
       rights: '© {year} So You Cosmetics Geneva. All rights reserved.',
+      mentions: 'Legal Notice',
       terms: 'Terms & Conditions',
       privacy: 'Privacy Policy',
     },
@@ -1360,6 +1408,52 @@ const translations = {
       ]},
     ],
   },
+    mentions: {
+      title: 'Legal Notice',
+      lastUpdated: 'September 2026',
+      intro: 'Information about the publisher of www.soyoucosmetics.com, in accordance with Swiss law. This is a translation: in the event of any discrepancy, the French version prevails.',
+      sections: [
+        { heading: '1. Site publisher', body: [
+          'So You SARL',
+          'Limited liability company incorporated under Swiss law',
+          'Registered office: avenue Pictet-De-Rochemont 3, 1207 Geneva, Switzerland',
+          'Entered in the Commercial Register of the Canton of Geneva under UID number CHE-131.511.202',
+          'So You Cosmetics is the trade mark operated by So You SARL. Soap Opera by So You Cosmetics is the trade name of the shop.',
+        ]},
+        { heading: '2. Contact', body: [
+          'Email: contact@soyoucosmetics.com',
+          'Telephone: +41 22 556 69 92',
+          'Shop address: 3 avenue Pictet-De-Rochemont, 1207 Geneva, Switzerland',
+        ]},
+        { heading: '3. Editorial responsibility', body: [
+          'Editorial responsibility for this site rests with So You SARL.',
+        ]},
+        { heading: '4. Value added tax', body: [
+          'In accordance with applicable Swiss law, the prices shown on this site are currently not subject to value added tax (VAT). Should So You SARL become liable, VAT will be charged in accordance with the law in force and shown separately on the invoice.',
+        ]},
+        { heading: '5. Hosting', body: [
+          'This site is hosted by Infomaniak Network SA, rue Eugène-Marziano 25, 1227 Geneva, Switzerland — www.infomaniak.com.',
+          'Data is mainly hosted in Switzerland. See the Privacy Policy for details of processing and any transfers.',
+        ]},
+        { heading: '6. Intellectual property', body: [
+          'Texts, photographs, illustrations, logos, trade marks, graphic elements and other content on this site are protected by applicable intellectual property provisions. Save with the prior written authorisation of So You SARL or where the law provides otherwise, any reproduction, modification, distribution or use of these elements, in whole or in part, is prohibited.',
+        ]},
+        { heading: '7. Personal data', body: [
+          'The processing of personal data is described in the Privacy Policy, available from this site.',
+        ]},
+        { heading: '8. Terms of sale', body: [
+          'Sales made on this site are governed by the Terms and Conditions of Sale, available from this site.',
+        ]},
+        { heading: '9. Liability', body: [
+          'So You SARL endeavours to ensure the accuracy of the information published on this site. It cannot, however, guarantee that it is free from errors, omissions or changes occurring after publication.',
+          'Information, advice and comments on this site are provided for information only and do not constitute medical advice, a diagnosis or a treatment recommendation.',
+          'This site may contain links to third-party sites over whose content So You SARL exercises no control.',
+        ]},
+        { heading: '10. Governing law', body: [
+          'This site and its use are governed by Swiss law. The place of jurisdiction is Geneva, subject to mandatory rules of jurisdiction.',
+        ]},
+      ],
+    },
     privacy: {
       title: 'Privacy Policy',
       lastUpdated: 'September 2026',
@@ -1668,6 +1762,7 @@ const translations = {
       subscribing: 'Anmeldung…',
       subscribeError: 'Ihre Anmeldung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.',
       rights: '© {year} So You Cosmetics Genf. Alle Rechte vorbehalten.',
+      mentions: 'Impressum',
       terms: 'AGB',
       privacy: 'Datenschutz',
     },
@@ -2069,6 +2164,52 @@ const translations = {
       ]},
     ],
   },
+    mentions: {
+      title: 'Impressum',
+      lastUpdated: 'September 2026',
+      intro: 'Angaben zum Betreiber der Website www.soyoucosmetics.com nach schweizerischem Recht. Dies ist eine Übersetzung: Bei Abweichungen ist die französische Fassung massgebend.',
+      sections: [
+        { heading: '1. Betreiberin der Website', body: [
+          'So You SARL',
+          'Gesellschaft mit beschränkter Haftung schweizerischen Rechts',
+          'Sitz: avenue Pictet-De-Rochemont 3, 1207 Genf, Schweiz',
+          'Eingetragen im Handelsregister des Kantons Genf unter der UID-Nummer CHE-131.511.202',
+          'So You Cosmetics ist die von der So You SARL geführte Marke. Soap Opera by So You Cosmetics ist der Geschäftsname der Boutique.',
+        ]},
+        { heading: '2. Kontakt', body: [
+          'E-Mail: contact@soyoucosmetics.com',
+          'Telefon: +41 22 556 69 92',
+          'Adresse der Boutique: 3 avenue Pictet-De-Rochemont, 1207 Genf, Schweiz',
+        ]},
+        { heading: '3. Verantwortung für den Inhalt', body: [
+          'Die redaktionelle Verantwortung für diese Website trägt die So You SARL.',
+        ]},
+        { heading: '4. Mehrwertsteuer', body: [
+          'Nach geltendem schweizerischem Recht unterliegen die auf dieser Website angegebenen Preise derzeit nicht der Mehrwertsteuer (MWST). Wird So You SARL mehrwertsteuerpflichtig, wird die MWST gemäss geltendem Recht verrechnet und auf der Rechnung gesondert ausgewiesen.',
+        ]},
+        { heading: '5. Hosting', body: [
+          'Die Website wird gehostet von Infomaniak Network SA, rue Eugène-Marziano 25, 1227 Genf, Schweiz — www.infomaniak.com.',
+          'Die Daten werden hauptsächlich in der Schweiz gehostet. Einzelheiten zur Bearbeitung und zu allfälligen Übermittlungen finden Sie in der Datenschutzerklärung.',
+        ]},
+        { heading: '6. Geistiges Eigentum', body: [
+          'Texte, Fotografien, Illustrationen, Logos, Marken, grafische Elemente und weitere Inhalte dieser Website sind durch die anwendbaren Bestimmungen des Immaterialgüterrechts geschützt. Ohne vorgängige schriftliche Zustimmung der So You SARL oder entgegenstehende gesetzliche Bestimmung ist jede Vervielfältigung, Änderung, Verbreitung oder Verwendung dieser Elemente, ganz oder teilweise, untersagt.',
+        ]},
+        { heading: '7. Personendaten', body: [
+          'Die Bearbeitung von Personendaten ist in der Datenschutzerklärung beschrieben, die über diese Website zugänglich ist.',
+        ]},
+        { heading: '8. Verkaufsbedingungen', body: [
+          'Für Verkäufe über diese Website gelten die Allgemeinen Geschäftsbedingungen, die über diese Website zugänglich sind.',
+        ]},
+        { heading: '9. Haftung', body: [
+          'So You SARL bemüht sich um die Richtigkeit der auf dieser Website veröffentlichten Informationen. Sie kann jedoch nicht gewährleisten, dass diese frei von Fehlern, Auslassungen oder nachträglichen Änderungen sind.',
+          'Informationen, Ratschläge und Kommentare auf dieser Website dienen ausschliesslich der Information und stellen keine medizinische Beratung, Diagnose oder Behandlungsempfehlung dar.',
+          'Diese Website kann Links zu Websites Dritter enthalten, auf deren Inhalt die So You SARL keinen Einfluss hat.',
+        ]},
+        { heading: '10. Anwendbares Recht', body: [
+          'Diese Website und ihre Nutzung unterstehen schweizerischem Recht. Gerichtsstand ist Genf, vorbehältlich zwingender Zuständigkeitsvorschriften.',
+        ]},
+      ],
+    },
     privacy: {
       title: 'Datenschutzerklärung',
       lastUpdated: 'September 2026',

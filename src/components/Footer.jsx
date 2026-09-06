@@ -167,6 +167,7 @@ const Footer = () => {
             {t('footer.rights', { year: new Date().getFullYear() })}
           </p>
           <div className="flex gap-6 text-xs text-mist-white/40 font-light tracking-wide">
+            <Lien to="/mentions-legales" className="hover:text-white transition-colors duration-200">{t('footer.mentions')}</Lien>
             <Lien to="/terms" className="hover:text-white transition-colors duration-200">{t('footer.terms')}</Lien>
             <Lien to="/privacy" className="hover:text-white transition-colors duration-200">{t('footer.privacy')}</Lien>
           </div>

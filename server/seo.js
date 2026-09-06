@@ -518,6 +518,11 @@ const PAGES_EN = {
     description: 'Custom soaps and cosmetics made in Geneva: corporate gifts, weddings, christenings, baby showers. By quotation, three months’ notice.',
     image: '/artisanal_soap_crafting.png',
   },
+  '/mentions-legales': {
+    titre: 'Legal notice',
+    description: 'Publisher of soyoucosmetics.com: So You SARL, Geneva, UID CHE-131.511.202 — contact, hosting and applicable law.',
+    image: '',
+  },
   '/terms': {
     titre: 'Terms and conditions of sale',
     description: 'So You Cosmetics terms of sale: orders, prices in Swiss francs, delivery, right of withdrawal and warranty.',
@@ -596,6 +601,11 @@ const PAGES_DE = {
     description: 'Individuelle Seifen und Kosmetik aus Genf: Firmengeschenke, Hochzeiten, Taufen, Baby-Partys. Auf Anfrage, drei Monate Vorlauf.',
     image: '/artisanal_soap_crafting.png',
   },
+  '/mentions-legales': {
+    titre: 'Impressum',
+    description: 'Betreiberin von soyoucosmetics.com: So You SARL, Genf, UID CHE-131.511.202 — Kontakt, Hosting und anwendbares Recht.',
+    image: '',
+  },
   '/terms': {
     titre: 'Allgemeine Geschäftsbedingungen',
     description: 'Verkaufsbedingungen von So You Cosmetics: Bestellungen, Preise in Schweizer Franken, Lieferung, Widerrufsrecht und Garantie.',
@@ -668,6 +678,11 @@ const PAGES = {
     titre: 'Savons personnalisés — entreprise, mariage, naissance',
     description: 'Savons et cosmétiques personnalisés fabriqués à Genève : cadeaux d’entreprise, mariage, baptême, baby shower. Sur devis, prévoir trois mois.',
     image: '/artisanal_soap_crafting.png',
+  },
+  '/mentions-legales': {
+    titre: 'Mentions légales',
+    description: 'Éditeur de soyoucosmetics.com : So You SARL, Genève, IDE CHE-131.511.202 — contact, hébergement et droit applicable.',
+    image: '',
   },
   '/terms': {
     titre: 'Conditions générales de vente',
@@ -1166,6 +1181,7 @@ async function construireSitemap(base, db) {
     // elles qu'on atteint en cherchant un besoin plutôt qu'une marque, et
     // elles suivent le rythme du catalogue qu'elles présentent.
     ...SLUGS_FAMILLES.map((s) => url(`/${s}`, '0.8', 'monthly')),
+    url('/mentions-legales', '0.2', 'yearly'),
     url('/terms', '0.2', 'yearly'),
     url('/privacy', '0.2', 'yearly'),
   ].join('');

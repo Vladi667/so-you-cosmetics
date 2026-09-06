@@ -26,6 +26,7 @@ import JournalPage from './pages/JournalPage';
 import ContactPage from './pages/ContactPage';
 import ProductPage from './pages/ProductPage';
 import ComptePage from './pages/ComptePage';
+import MentionsPage from './pages/MentionsPage';
 import ReinitialiserPage from './pages/ReinitialiserPage';
 import DesabonnementPage from './pages/DesabonnementPage';
 import SearchPage from './pages/SearchPage';
@@ -241,6 +242,7 @@ function App() {
       <Route path="compte/reinitialiser" element={<ReinitialiserPage />} />
       {/* Ce que promet la politique de confidentialité depuis le premier jour. */}
       <Route path="desabonnement" element={<DesabonnementPage />} />
+      <Route path="mentions-legales" element={<MentionsPage />} />
       <Route path="terms" element={<TermsPage />} />
       <Route path="privacy" element={<PrivacyPage />} />
       <Route
