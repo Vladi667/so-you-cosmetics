@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import Lien from '../components/Lien';
 import { useParams } from 'react-router-dom';
-import { getProducts, imageUrl } from '../services/products';
+import { getProducts, imageUrl, catalogueInitial } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
 import ProductPlaceholder from '../components/ProductPlaceholder';
 import ProductBadge from '../components/ProductBadge';
@@ -71,28 +71,167 @@ const SqueletteFiche = () => (
   </div>
 );
 
+// Tout ce qu'une fiche déduit du catalogue, en une fonction pure.
+//
+// Ce calcul vivait dans un effet. Or un effet ne s'exécute pas pendant
+// renderToString : le serveur rendait donc les cent soixante-dix-huit fiches
+// vides — le gabarit de chargement, sans nom, sans prix, sans photo, sans
+// titre de niveau un. Mille caractères de menu et de pied de page, et rien
+// d'autre. C'était la part du site la plus mal lue par les robots, alors que
+// c'est celle qu'on cherche quand on cherche un savon.
+//
+// Sortie de l'effet, la même logique sert deux fois : pour l'état de départ,
+// calculé sur le catalogue que le serveur a posé dans la page, et pour l'effet
+// qui suit les changements d'adresse. Les deux passent par ici, donc ils ne
+// peuvent pas diverger — et le rendu serveur reste identique au premier rendu
+// du navigateur, ce que l'hydratation exige.
+const FICHE_VIDE = {
+  product: null, introuvable: false, varianteId: null,
+  rituel: [], senteurs: [], relatedProducts: [],
+};
+
+function etatDeLaFiche(id, productsList) {
+  // L'adresse porte un slug lisible ; l'empreinte de huit caractères qui
+  // le termine désigne la fiche. Les anciennes adresses, faites de
+  // l'identifiant Wix entier, restent reconnues — le serveur les redirige
+  // vers la nouvelle forme, mais la résolution doit tenir sans lui, par
+  // exemple en navigation interne depuis un lien ancien.
+  const foundProduct = trouverProduit(id, productsList);
+
+  if (!foundProduct) {
+    // Une référence inconnue renvoyait à l'accueil sans un mot. Quelqu'un
+    // qui ouvre un lien reçu par message se retrouvait sur la page
+    // d'accueil et en concluait qu'il s'était trompé de lien — alors que
+    // le produit avait simplement quitté le catalogue. Les liens de
+    // produits vivent longtemps dans les messageries et les publications.
+    return { ...FICHE_VIDE, introuvable: true };
+  }
+
+  // On ouvre sur la contenance la moins chère, et non sur la première de
+  // la liste : c'est ce montant que la grille vient d'annoncer, et voir le
+  // prix grimper en arrivant sur la fiche se lit comme un piège.
+  const formats = Array.isArray(foundProduct.variantes) ? foundProduct.variantes : [];
+  const varianteId = formats.length > 0
+    ? formats.reduce((a, b) => (Number(b.prix) < Number(a.prix) ? b : a)).id
+    : null;
+
+  // Le rituel auquel ce produit appartient. Les étapes sont triées par
+  // leur numéro, et un rituel d'un seul produit n'en est pas un.
+  const idRituel = foundProduct.rituel && foundProduct.rituel.id;
+  let rituel = [];
+  if (idRituel) {
+    const etapes = productsList
+      .filter((p) => p.rituel && p.rituel.id === idRituel)
+      .sort((a, b) => (parseInt(a.rituel.etape, 10) || 0) - (parseInt(b.rituel.etape, 10) || 0));
+    rituel = etapes.length > 1 ? etapes : [];
+  }
+
+  // Les autres senteurs de la même recette. Dérivées du nom, comme au
+  // catalogue : rien n'est écrit, et une fiche renommée suit d'elle-même.
+  const recette = lireRecette(foundProduct.name);
+  let senteurs = [];
+  if (recette) {
+    const memeRecette = productsList
+      .filter((p) => {
+        const r = lireRecette(p.name);
+        return r && r.cle === recette.cle;
+      })
+      .sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+    // Une senteur seule n'est pas un choix : on n'affiche le sélecteur
+    // que s'il y a réellement de quoi choisir.
+    senteurs = memeRecette.length > 1
+      ? memeRecette.map((p) => ({ ...p, senteur: lireRecette(p.name).senteur }))
+      : [];
+  }
+
+  // Ce qu'elle a choisi elle-même passe avant tout calcul : « dans la
+  // section Vous aimerez aussi, j'aimerais pouvoir choisir moi-même les
+  // produits qui apparaissent, plutôt que de laisser une sélection
+  // automatique ». Elle connaît ses clients mieux qu'un score de
+  // catégories communes.
+  //
+  // Les identifiants absents du catalogue sont ignorés : un produit
+  // supprimé ne doit pas laisser un trou dans la rangée.
+  const choisis = (foundProduct.related || [])
+    .map((rid) => productsList.find((p) => p.id === rid))
+    .filter(Boolean);
+  if (choisis.length > 0) {
+    return { product: foundProduct, introuvable: false, varianteId, rituel, senteurs,
+             relatedProducts: choisis.slice(0, 4) };
+  }
+
+  // Sinon, la sélection automatique d'origine : classer les autres
+  // produits par nombre de catégories partagées, pour qu'un savon suggère
+  // des savons et un hydrolat des hydrolats.
+  const currentCols = foundProduct.collections || [];
+  const scored = productsList
+    .filter((p) => p.id !== id)
+    .map((p) => ({
+      product: p,
+      shared: (p.collections || []).filter((c) => currentCols.includes(c)).length,
+    }))
+    .filter((x) => x.shared > 0)
+    .sort((a, b) => b.shared - a.shared);
+
+  let related = scored.slice(0, 4).map((x) => x.product);
+
+  // Fallback: if too few share a category, top up with other products so
+  // the section is never awkwardly empty.
+  if (related.length < 4) {
+    const taken = new Set([id, ...related.map((r) => r.id)]);
+    const fillers = productsList.filter((p) => !taken.has(p.id)).slice(0, 4 - related.length);
+    related = related.concat(fillers);
+  }
+
+  return { product: foundProduct, introuvable: false, varianteId, rituel, senteurs,
+           relatedProducts: related };
+}
+
+
 const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   const { t, tCategory } = useLanguage();
   const { id } = useParams();
-  const [product, setProduct] = useState(null);
-  const [introuvable, setIntrouvable] = useState(false);
+
+  // L'état de départ, calculé sans rien attendre.
+  //
+  // Le catalogue est déjà dans la page : le serveur l'y pose avant de rendre,
+  // et le navigateur le retrouve au même endroit en reprenant la main. C'est le
+  // même objet des deux côtés, donc le rendu serveur et le premier rendu client
+  // sont identiques — condition de l'hydratation, et raison pour laquelle on ne
+  // peut pas se contenter d'un effet.
+  //
+  // Sans catalogue posé — navigation interne, ou repli sur l'API — on repart de
+  // rien et l'effet plus bas fait le travail comme avant. « introuvable » reste
+  // faux dans ce cas : on n'annonce pas un produit disparu alors qu'on ne l'a
+  // simplement pas encore chargé.
+  //
+  // Calculé une fois, au montage seulement : les changements d'adresse sont
+  // l'affaire de l'effet.
+  const depart = useMemo(() => {
+    const liste = catalogueInitial();
+    return liste ? etatDeLaFiche(id, liste) : FICHE_VIDE;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [product, setProduct] = useState(depart.product);
+  const [introuvable, setIntrouvable] = useState(depart.introuvable);
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [relatedProducts, setRelatedProducts] = useState(depart.relatedProducts);
   // La seule confirmation d'un ajout etait un chiffre qui changeait dans
   // l'en-tete — souvent hors du champ de vision sur mobile, ou l'on regarde le
   // bouton qu'on vient de toucher.
   const [ajoute, setAjoute] = useState(false);
   const [visionneuseOuverte, setVisionneuseOuverte] = useState(false);
-  const [senteurs, setSenteurs] = useState([]);
-  const [rituel, setRituel] = useState([]);
+  const [senteurs, setSenteurs] = useState(depart.senteurs);
+  const [rituel, setRituel] = useState(depart.rituel);
   // Faux par défaut : on n'engage pas quelqu'un à rapporter un flacon qu'il
   // n'a peut-être pas.
   const [enRecharge, setEnRecharge] = useState(false);
   // La contenance choisie. Nul au montage : on la fixe sur la première quand la
   // fiche arrive, pour qu'un prix soit toujours affiché et qu'un ajout immédiat
   // ne parte pas sans format.
-  const [varianteId, setVarianteId] = useState(null);
+  const [varianteId, setVarianteId] = useState(depart.varianteId);
   // La barre d'achat collante ne paraît que lorsque le vrai bouton a quitté
   // l'écran. L'afficher en permanence doublerait un bouton déjà visible et
   // mangerait le bas de la fiche pour rien.
@@ -104,110 +243,20 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
     // d'une fiche à l'autre, donc sans cette ligne un seul lien mort suffisait
     // à faire passer pour supprimés tous les produits consultés ensuite.
     setIntrouvable(false);
-    getProducts().then(data => handleProductsLoaded(data));
-
-    function handleProductsLoaded(productsList) {
-      // L'adresse porte un slug lisible ; l'empreinte de huit caractères qui
-      // le termine désigne la fiche. Les anciennes adresses, faites de
-      // l'identifiant Wix entier, restent reconnues — le serveur les redirige
-      // vers la nouvelle forme, mais la résolution doit tenir sans lui, par
-      // exemple en navigation interne depuis un lien ancien.
-      const foundProduct = trouverProduit(id, productsList);
-      
-      if (foundProduct) {
-        setProduct(foundProduct);
-        setActiveImage(0);
-        setQuantity(1);
-        // Sans cette ligne, le 50 ml choisi sur une fiche resterait sélectionné
-        // sur la suivante, où cet identifiant ne veut plus rien dire.
-        //
-        // On ouvre sur la contenance la moins chère, et non sur la première de
-        // la liste : c'est ce montant que la grille vient d'annoncer, et voir le
-        // prix grimper en arrivant sur la fiche se lit comme un piège.
-        const formats = Array.isArray(foundProduct.variantes) ? foundProduct.variantes : [];
-        setVarianteId(
-          formats.length > 0
-            ? formats.reduce((a, b) => (Number(b.prix) < Number(a.prix) ? b : a)).id
-            : null
-        );
-        
-        // Ce qu'elle a choisi elle-même passe avant tout calcul : « dans la
-        // section Vous aimerez aussi, j'aimerais pouvoir choisir moi-même les
-        // produits qui apparaissent, plutôt que de laisser une sélection
-        // automatique ». Elle connaît ses clients mieux qu'un score de
-        // catégories communes.
-        //
-        // Les identifiants absents du catalogue sont ignorés : un produit
-        // supprimé ne doit pas laisser un trou dans la rangée.
-        // Le rituel auquel ce produit appartient. Les étapes sont triées par
-        // leur numéro, et un rituel d'un seul produit n'en est pas un.
-        const idRituel = foundProduct.rituel && foundProduct.rituel.id;
-        if (idRituel) {
-          const etapes = productsList
-            .filter((p) => p.rituel && p.rituel.id === idRituel)
-            .sort((a, b) => (parseInt(a.rituel.etape, 10) || 0) - (parseInt(b.rituel.etape, 10) || 0));
-          setRituel(etapes.length > 1 ? etapes : []);
-        } else {
-          setRituel([]);
-        }
-
-        // Les autres senteurs de la même recette. Dérivées du nom, comme au
-        // catalogue : rien n'est écrit, et une fiche renommée suit d'elle-même.
-        const recette = lireRecette(foundProduct.name);
-        if (recette) {
-          const memeRecette = productsList
-            .filter((p) => {
-              const r = lireRecette(p.name);
-              return r && r.cle === recette.cle;
-            })
-            .sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
-          // Une senteur seule n'est pas un choix : on n'affiche le sélecteur
-          // que s'il y a réellement de quoi choisir.
-          setSenteurs(memeRecette.length > 1 ? memeRecette.map((p) => ({ ...p, senteur: lireRecette(p.name).senteur })) : []);
-        } else {
-          setSenteurs([]);
-        }
-
-        const choisis = (foundProduct.related || [])
-          .map((rid) => productsList.find((p) => p.id === rid))
-          .filter(Boolean);
-        if (choisis.length > 0) {
-          setRelatedProducts(choisis.slice(0, 4));
-          return;
-        }
-
-        // Sinon, la sélection automatique d'origine : classer les autres
-        // produits par nombre de catégories partagées, pour qu'un savon suggère
-        // des savons et un hydrolat des hydrolats.
-        const currentCols = foundProduct.collections || [];
-        const scored = productsList
-          .filter(p => p.id !== id)
-          .map(p => ({
-            product: p,
-            shared: (p.collections || []).filter(c => currentCols.includes(c)).length
-          }))
-          .filter(x => x.shared > 0)
-          .sort((a, b) => b.shared - a.shared);
-
-        let related = scored.slice(0, 4).map(x => x.product);
-
-        // Fallback: if too few share a category, top up with other products so
-        // the section is never awkwardly empty.
-        if (related.length < 4) {
-          const taken = new Set([id, ...related.map(r => r.id)]);
-          const fillers = productsList.filter(p => !taken.has(p.id)).slice(0, 4 - related.length);
-          related = related.concat(fillers);
-        }
-        setRelatedProducts(related);
-      } else {
-        // Une référence inconnue renvoyait à l'accueil sans un mot. Quelqu'un
-        // qui ouvre un lien reçu par message se retrouvait sur la page
-        // d'accueil et en concluait qu'il s'était trompé de lien — alors que
-        // le produit avait simplement quitté le catalogue. Les liens de
-        // produits vivent longtemps dans les messageries et les publications.
-        setIntrouvable(true);
-      }
-    }
+    getProducts().then((productsList) => {
+      // Même fonction que pour l'état de départ : c'est ce qui garantit qu'un
+      // rafraîchissement du catalogue ne fasse pas apparaître autre chose que
+      // ce que le serveur avait rendu.
+      const etat = etatDeLaFiche(id, productsList);
+      setProduct(etat.product);
+      setIntrouvable(etat.introuvable);
+      setVarianteId(etat.varianteId);
+      setRituel(etat.rituel);
+      setSenteurs(etat.senteurs);
+      setRelatedProducts(etat.relatedProducts);
+      setActiveImage(0);
+      setQuantity(1);
+    });
   }, [id]);
 
   useEffect(() => {
