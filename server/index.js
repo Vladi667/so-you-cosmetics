@@ -15,6 +15,44 @@ const flux = require('./flux');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Une seule adresse pour un seul site : www renvoie au domaine nu.
+//
+// Aujourd'hui `www.soyoucosmetics.com` ne résout pas du tout — qui le tape
+// tombe sur une erreur DNS. Le jour où l'enregistrement sera posé chez
+// l'hébergeur, le site répondrait sur deux noms servant le même contenu, et un
+// moteur devrait deviner lequel garder. C'est précisément le contenu dupliqué
+// que le plan du site, les adresses canoniques et les redirections de fiches
+// s'emploient à éviter ailleurs.
+//
+// La règle est étroite à dessein : on ne redirige que l'exact préfixe « www. »
+// du domaine annoncé par PUBLIC_BASE_URL. Rien d'autre — ni localhost, ni une
+// adresse IP, ni l'hôte de recette, ni un nom inconnu. Une redirection d'hôte
+// trop large est une des rares fautes qui rendent un site entièrement
+// inaccessible, en boucle, sans qu'on puisse s'y reconnecter pour la défaire.
+//
+// Les défis ACME sont exclus : l'hébergeur doit pouvoir prouver la possession
+// de `www` pour lui délivrer un certificat, et cette preuve se fait justement
+// sur ce nom-là.
+const CANONIQUE = (() => {
+  try {
+    const u = new URL(process.env.PUBLIC_BASE_URL || 'https://soyoucosmetics.com');
+    return { hote: u.hostname, origine: u.origin };
+  } catch {
+    return { hote: 'soyoucosmetics.com', origine: 'https://soyoucosmetics.com' };
+  }
+})();
+
+app.use((req, res, next) => {
+  if (req.path.startsWith('/.well-known/')) return next();
+  // Le port est retiré : en développement l'hôte porte « :5199 ».
+  const hote = String(req.headers.host || '').split(':')[0].toLowerCase();
+  if (hote !== `www.${CANONIQUE.hote}`) return next();
+  // Vers l'origine canonique entière, schéma compris, plutôt que vers le
+  // schéma d'arrivée : sans cela une visite en clair sur www ferait deux sauts
+  // — vers le domaine nu en clair, puis vers le même en chiffré. Un seul suffit.
+  return res.redirect(301, CANONIQUE.origine + req.originalUrl);
+});
+
 // Les en-têtes de sécurité, posés avant tout le reste pour couvrir aussi bien
 // les pages que les fichiers servis en statique.
 //
