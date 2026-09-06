@@ -646,6 +646,40 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 </p>
               )}
 
+              {/* À qui ça s'adresse, juste sous le bouton.
+                  Ces étiquettes se trouvaient tout en bas, après la
+                  description — c'est-à-dire après le moment où l'on décide de
+                  lire ou non. Or elles répondent à la seule question qu'on se
+                  pose devant une crème : est-ce que c'est pour moi ? Y
+                  répondre avant le texte long, c'est donner une raison de le
+                  lire.
+
+                  Les deux familles sont nommées plutôt que fondues en une
+                  rangée : « Mature » et « Hydratation » ne disent pas la même
+                  chose, et sans intitulé le lecteur doit deviner laquelle est
+                  laquelle. */}
+              {((product.typePeau || []).length > 0 || (product.besoins || []).length > 0) && (
+                <div className="mt-7 flex flex-col gap-3">
+                  {[
+                    { titre: t('product.forSkin'), valeurs: product.typePeau || [] },
+                    { titre: t('product.actsOn'), valeurs: product.besoins || [] },
+                  ].filter((g) => g.valeurs.length > 0).map((g) => (
+                    <div key={g.titre} className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+                      <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-stone-gray/70 shrink-0">
+                        {g.titre}
+                      </span>
+                      <span className="flex flex-wrap gap-2">
+                        {g.valeurs.map((v, i) => (
+                          <span key={i} className="rounded-full bg-ivory border border-slate-stone/10 px-3 py-1 font-sans text-[10px] uppercase tracking-[0.14em] text-stone-gray">
+                            {v}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="h-px w-full bg-slate-stone/10 my-8"></div>
 
               {/* HTML Description */}
@@ -675,17 +709,8 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   suggestions hors de l'écran.
                   Rien ne s'affiche tant qu'elle n'a rien saisi : un intitulé
                   vide vaudrait moins que son absence. */}
-              {(product.ingredients || product.inci || (product.typePeau || []).length > 0 || (product.besoins || []).length > 0) && (
+              {(product.ingredients || product.inci) && (
                 <div className="mb-10 border-t border-slate-stone/10 pt-6">
-                  {((product.typePeau || []).length > 0 || (product.besoins || []).length > 0) && (
-                    <div className="mb-5 flex flex-wrap gap-2">
-                      {[...(product.typePeau || []), ...(product.besoins || [])].map((etiquette, i) => (
-                        <span key={i} className="rounded-full bg-ivory border border-slate-stone/10 px-3 py-1 font-sans text-[10px] uppercase tracking-[0.14em] text-stone-gray">
-                          {etiquette}
-                        </span>
-                      ))}
-                    </div>
-                  )}
 
                   {product.ingredients && (
                     <details className="group border-b border-slate-stone/10 pb-3 mb-3">
