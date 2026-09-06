@@ -383,10 +383,10 @@ function allegerCatalogue(produits, cheminNu) {
 // Jamais d'exception vers l'appelant : une page servie sans son corps rendu
 // reste une page qui marche, tandis qu'une erreur ici priverait la boutique de
 // tout affichage. Le filet est le point entier de la mise en place.
-function rendreCorps(url, contenu, reglages, catalogue, seoClient) {
+function rendreCorps(url, contenu, reglages, catalogue, seoClient, journal) {
   if (!moteur || typeof moteur.rendre !== 'function') return '';
   try {
-    return moteur.rendre({ url, contenu, reglages, catalogue, seo: seoClient }) || '';
+    return moteur.rendre({ url, contenu, reglages, catalogue, seo: seoClient, journal }) || '';
   } catch (err) {
     console.error('Rendu serveur échoué pour', url, ':', err.message);
     return '';
@@ -586,15 +586,44 @@ app.get('*', async (req, res, next) => {
       }
     }
 
+    // Le journal, pour les mêmes raisons que le catalogue.
+    //
+    // La page du journal partait d'un état « chargement » et n'allait chercher
+    // ses articles que par un effet : le serveur rendait donc trois points de
+    // suspension, et rien d'autre — ni titre, ni chapô, ni liste. Un article
+    // entier tenait dans ce même point de suspension. C'est le contenu qui
+    // pourrait répondre à une question posée à un moteur, et c'était celui
+    // qu'aucun moteur ne lisait.
+    //
+    // Chargé seulement pour les routes du journal : injecter les articles dans
+    // chaque fiche produit alourdirait cent soixante-dix-sept pages pour rien.
+    let journal = null;
+    if (rendable && /^\/journal(\/|$)/.test(cheminNu)) {
+      try {
+        const article = cheminNu.match(/^\/journal\/(.+)$/);
+        if (article) {
+          const trouve = db.getArticleBySlug(decodeURIComponent(article[1]));
+          // Un brouillon reste invisible : non listé n'est pas privé, et cette
+          // règle vaut ici autant que sur la route publique.
+          journal = { liste: null, article: trouve && trouve.published ? trouve : null };
+        } else {
+          journal = { liste: db.getArticles({ publishedOnly: true }), article: null };
+        }
+      } catch {
+        journal = null;
+      }
+    }
+
     tag += `<script nonce="${res.locals.cspNonce}">window.__CONTENT__=${serialiseContent(content)};` +
            `window.__SHOP__=${serialiseContent(reglagesPublics(shop))};` +
            `window.__CATALOGUE__=${serialiseContent(catalogue)};` +
+           `window.__JOURNAL__=${serialiseContent(journal)};` +
            `window.__SEO__=${serialiseContent(seoClient)}</script>`;
 
     let page = html.replace('</head>', `${tag}</head>`);
 
     if (rendable) {
-      const corps = rendreCorps(req.path, content, reglagesPublics(shop), catalogue, seoClient);
+      const corps = rendreCorps(req.path, content, reglagesPublics(shop), catalogue, seoClient, journal);
       // Une chaîne vide veut dire que le rendu a échoué ou n'est pas
       // disponible : on sert alors la coquille, exactement comme avant cette
       // étape. Le site ne doit jamais tomber pour une optimisation.

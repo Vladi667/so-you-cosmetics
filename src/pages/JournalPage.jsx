@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Lien from '../components/Lien';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -23,14 +23,44 @@ const JournalPage = () => {
   const { slug } = useParams();
   const { t, language } = useLanguage();
   useMetadonnees({ titre: t('journal.title'), description: t('journal.intro') });
-  const [articles, setArticles] = useState([]);
-  const [article, setArticle] = useState(null);
-  const [state, setState] = useState('loading');
+  // Le journal déjà servi avec la page, quand le serveur l'y a posé.
+  //
+  // Sans cela, l'état de départ est « chargement » et le rendu serveur ne
+  // produit que trois points de suspension : ni titre, ni chapô, ni liste, et
+  // pour un article, pas une ligne de son texte. Les moteurs et les robots qui
+  // n'exécutent pas de JavaScript ne voyaient rien du seul contenu rédigé du
+  // site.
+  //
+  // On lit au même endroit que le serveur — window EST globalThis dans un
+  // navigateur — donc le premier rendu client reproduit le rendu serveur et
+  // l'hydratation ne signale rien. Sans données posées, on repart de
+  // « chargement » et l'effet fait le travail comme avant.
+  const depart = useMemo(() => {
+    const pose = globalThis.__JOURNAL__;
+    if (!pose) return null;
+    if (slug) {
+      return pose.article
+        ? { article: pose.article, state: 'ready' }
+        : { article: null, state: 'missing' };
+    }
+    return { articles: Array.isArray(pose.liste) ? pose.liste : [], state: 'ready' };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [articles, setArticles] = useState((depart && depart.articles) || []);
+  const [article, setArticle] = useState((depart && depart.article) || null);
+  const [state, setState] = useState((depart && depart.state) || 'loading');
+  // Le premier passage de l'effet ne doit pas effacer ce que le serveur a déjà
+  // rendu : sans ce garde-fou, la page afficherait ses trois points le temps
+  // d'un aller-retour qu'elle n'a pas besoin d'attendre. Les changements
+  // d'adresse suivants, eux, repassent bien par « chargement ».
+  const dejaServi = useRef(Boolean(depart));
 
   useEffect(() => {
     let active = true;
     const url = slug ? `/api/articles/${slug}` : '/api/articles';
-    setState('loading');
+    if (dejaServi.current) dejaServi.current = false;
+    else setState('loading');
     fetch(url)
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((data) => {

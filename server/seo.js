@@ -17,6 +17,30 @@
 // titre d'un produit sur la page suivante.
 
 const SITE_NOM = 'So You Cosmetics';
+
+// Un titre de page, taillé pour ce qu'un résultat de recherche montre.
+//
+// « Nom du produit — So You Cosmetics » : le suffixe coûte dix-neuf
+// caractères, et un résultat en affiche une soixantaine. Sur quatre-vingt-dix
+// des cent soixante-dix-sept fiches, il poussait donc le nom du produit hors
+// du cadre — or c'est le nom qu'on cherche, et c'était lui qu'on perdait. Le
+// suffixe, lui, disparaissait de toute façon dans la troncature : il ne
+// coûtait que de la place.
+//
+// On le garde quand il tient, on le retire sinon. La marque reste lisible :
+// elle est dans le domaine affiché au-dessus du titre, dans le fil d'Ariane,
+// et dans les données structurées.
+//
+// Trente et un noms dépassent seuls la limite. Ils ne sont pas coupés ici :
+// tronquer le nom d'un produit dans un résultat de recherche se lit comme une
+// erreur, et ces noms sont ceux du catalogue — les raccourcir est une décision
+// de commerçante, pas de programme.
+const LIMITE_TITRE = 60;
+
+function titreDePage(nom) {
+  const complet = `${nom} — ${SITE_NOM}`;
+  return complet.length <= LIMITE_TITRE ? complet : nom;
+}
 const TITRE_DEFAUT = 'So You Cosmetics — Cosmétiques naturels faits main à Genève';
 
 // La langue est dans l'adresse. Le français reste à la racine — aucune adresse
@@ -960,7 +984,7 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
     ], langue));
     return {
       ...commun,
-      titre: `${produit.name} — ${SITE_NOM}`,
+      titre: titreDePage(produit.name),
       description,
       image: absolutiser((produit.images || [])[0], base),
       type: 'product',
@@ -981,7 +1005,7 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
     const textes = rubriquePourLangue(nom, langue);
     return {
       ...commun,
-      titre: `${textes.titre} — ${SITE_NOM}`,
+      titre: titreDePage(textes.titre),
       description: textes.description,
       image: absolutiser('/premium_product_stone.png', base),
       type: 'website',
@@ -1004,7 +1028,7 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
     const suffixe = { fr: 'Atelier à Genève', en: 'Workshop in Geneva', de: 'Kurs in Genf' }[langue];
     return {
       ...commun,
-      titre: `${trouve.title} — ${suffixe} — ${SITE_NOM}`,
+      titre: titreDePage(`${trouve.title} — ${suffixe}`),
       description: resumerTexte(trouve.description),
       image: absolutiser(trouve.image_url, base),
       type: 'article',
@@ -1027,7 +1051,7 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
     if (!trouve || !trouve.published) return null;
     return {
       ...commun,
-      titre: `${trouve.title} — Journal — ${SITE_NOM}`,
+      titre: titreDePage(`${trouve.title} — Journal`),
       description: resumerTexte(trouve.excerpt || trouve.body),
       image: absolutiser(trouve.image_url, base),
       type: 'article',
