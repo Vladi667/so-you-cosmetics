@@ -88,6 +88,8 @@ const FICHIERS_SERVEUR = [
   // Les comptes clientes. Requis par routes.js : sans lui, le serveur tombe
   // au premier redémarrage sur MODULE_NOT_FOUND.
   'comptes.js',
+  // L'infolettre. Requis par routes.js.
+  'infolettre.js',
   'package.json',
 ];
 

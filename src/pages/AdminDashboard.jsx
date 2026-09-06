@@ -3,6 +3,7 @@ import ContentEditor from './admin/ContentEditor';
 import ShopSettings from './admin/ShopSettings';
 import RichTextEditor from './admin/RichTextEditor';
 import JournalEditor from './admin/JournalEditor';
+import InfolettreEditor from './admin/InfolettreEditor';
 import ApercuFiche from './ApercuFiche';
 import { imageUrl } from '../services/products';
 import { SHOP_CATEGORIES } from '../data/categories';
@@ -801,6 +802,7 @@ const AdminDashboard = ({ onLogout }) => {
               { id: 'sumup', label: 'API SumUp', icon: '💳' },
               { id: 'content', label: 'Textes du site', icon: '✏️' },
               { id: 'journal', label: 'Journal', icon: '📝' },
+              { id: 'infolettre', label: 'Infolettres', icon: '📬' },
               { id: 'shop', label: 'Horaires & absences', icon: '🕓' },
               { id: 'settings', label: 'Configuration et mot de passe', icon: '⚙️' }
             ].map(tab => (
@@ -2201,6 +2203,7 @@ const AdminDashboard = ({ onLogout }) => {
         {activeTab === 'content' && <ContentEditor fetchHeaders={fetchHeaders} />}
 
         {activeTab === 'journal' && <JournalEditor fetchHeaders={fetchHeaders} />}
+        {activeTab === 'infolettre' && <InfolettreEditor fetchHeaders={fetchHeaders} />}
 
         {activeTab === 'shop' && <ShopSettings fetchHeaders={fetchHeaders} />}
 

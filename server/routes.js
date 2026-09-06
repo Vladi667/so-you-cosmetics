@@ -10,6 +10,7 @@ const imapService = require('./imap');
 // Directory for admin-uploaded product images (served at /uploads by index.js).
 const { UPLOADS_DIR, ensureUploadsDir, empreinteContenu, fichierExistant } = require('./uploads');
 const comptes = require('./comptes');
+const infolettre = require('./infolettre');
 
 // Compare two strings in constant time; tolerates length mismatch
 function timingSafeEqualStr(a, b) {
@@ -2171,6 +2172,88 @@ router.post('/admin/products/upload-image', requireAdmin, async (req, res) => {
     console.error('upload-image error', err);
     res.status(500).json({ error: "Échec du téléversement de l'image" });
   }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// L'infolettre : rédiger, essayer, envoyer.
+//
+// L'onglet ne faisait que collecter des adresses ; il n'y avait ni rédaction
+// ni envoi. Le travail se fait ici, dans la boutique, plutôt que chez un
+// prestataire — avec les précautions que cela impose, décrites en tête de
+// server/infolettre.js.
+// ─────────────────────────────────────────────────────────────────────────
+
+router.get('/admin/infolettres', requireAdmin, async (req, res) => {
+  try {
+    res.json({
+      lettres: infolettre.lire(),
+      inscrites: (await infolettre.destinataires()).length,
+    });
+  } catch (err) {
+    console.error('Lecture des infolettres impossible :', err);
+    res.status(500).json({ error: 'Les infolettres n’ont pas pu être lues.' });
+  }
+});
+
+router.get('/admin/infolettres/:id', requireAdmin, (req, res) => {
+  const lettre = infolettre.parId(req.params.id);
+  if (!lettre) return res.status(404).json({ error: 'Infolettre introuvable.' });
+  res.json(lettre);
+});
+
+router.post('/admin/infolettres', requireAdmin, (req, res) => {
+  const { sujet, html } = req.body || {};
+  res.status(201).json(infolettre.creer({ sujet, html }));
+});
+
+router.put('/admin/infolettres/:id', requireAdmin, (req, res) => {
+  const r = infolettre.modifier(req.params.id, req.body || {});
+  if (!r) return res.status(404).json({ error: 'Infolettre introuvable.' });
+  if (r.verrouillee) {
+    return res.status(409).json({
+      error: 'Cette infolettre est déjà partie : son texte ne peut plus être modifié. Dupliquez-la pour en écrire une nouvelle.',
+    });
+  }
+  res.json(r.lettre);
+});
+
+router.delete('/admin/infolettres/:id', requireAdmin, (req, res) => {
+  if (!infolettre.supprimer(req.params.id)) {
+    return res.status(409).json({ error: 'Impossible de supprimer une infolettre en cours d’envoi.' });
+  }
+  res.json({ message: 'Infolettre supprimée.' });
+});
+
+// Un essai. Une seule adresse, rien n'est verrouillé : on relit son message
+// dans une vraie boîte avant de l'envoyer à trois cents personnes.
+router.post('/admin/infolettres/:id/essai', requireAdmin, async (req, res) => {
+  const { adresse } = req.body || {};
+  if (!/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(String(adresse || '').trim())) {
+    return res.status(400).json({ error: 'Indiquez une adresse valide pour l’essai.' });
+  }
+  const r = await infolettre.envoyer(req.params.id, { base: publicBaseUrl(), essaiVers: adresse.trim() });
+  if (r.erreur) return res.status(400).json({ error: r.erreur });
+  res.json({ message: 'Essai envoyé à ' + r.vers + '.' });
+});
+
+router.post('/admin/infolettres/:id/envoyer', requireAdmin, async (req, res) => {
+  const r = await infolettre.envoyer(req.params.id, { base: publicBaseUrl() });
+  if (r.erreur) return res.status(400).json({ error: r.erreur });
+  // On répond tout de suite : l'envoi continue en arrière-plan, et
+  // l'administration suit la progression en relisant la lettre.
+  res.status(202).json({
+    message: r.dejaFaits > 0
+      ? `Reprise de l’envoi : ${r.total - r.dejaFaits} adresse(s) restante(s).`
+      : `Envoi lancé vers ${r.total} adresse(s).`,
+    total: r.total,
+  });
+});
+
+router.post('/admin/infolettres/:id/arreter', requireAdmin, (req, res) => {
+  if (!infolettre.arreter(req.params.id)) {
+    return res.status(409).json({ error: 'Cette infolettre n’est pas en cours d’envoi.' });
+  }
+  res.json({ message: 'Envoi interrompu. Il pourra être repris là où il s’est arrêté.' });
 });
 
 // ─────────────────────────────────────────────────────────────────────────
