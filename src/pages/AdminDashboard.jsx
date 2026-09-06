@@ -4,6 +4,7 @@ import ShopSettings from './admin/ShopSettings';
 import RichTextEditor from './admin/RichTextEditor';
 import JournalEditor from './admin/JournalEditor';
 import InfolettreEditor from './admin/InfolettreEditor';
+import PaniersAbandonnes from './admin/PaniersAbandonnes';
 import ApercuFiche from './ApercuFiche';
 import { imageUrl } from '../services/products';
 import { SHOP_CATEGORIES } from '../data/categories';
@@ -795,6 +796,7 @@ const AdminDashboard = ({ onLogout }) => {
           <nav className="space-y-2">
             {[
               { id: 'orders', label: 'Commandes', icon: '🛒' },
+              { id: 'paniers', label: 'Paniers abandonnés', icon: '🛒' },
               { id: 'products', label: 'Gestion des produits', icon: '🧴' },
               { id: 'workshops', label: 'Gestion des ateliers', icon: '🎨' },
               { id: 'clients', label: 'Fichier clients', icon: '👤' },
@@ -2204,6 +2206,7 @@ const AdminDashboard = ({ onLogout }) => {
 
         {activeTab === 'journal' && <JournalEditor fetchHeaders={fetchHeaders} />}
         {activeTab === 'infolettre' && <InfolettreEditor fetchHeaders={fetchHeaders} />}
+        {activeTab === 'paniers' && <PaniersAbandonnes fetchHeaders={fetchHeaders} onRelancer={setEmailModal} />}
 
         {activeTab === 'shop' && <ShopSettings fetchHeaders={fetchHeaders} />}
 

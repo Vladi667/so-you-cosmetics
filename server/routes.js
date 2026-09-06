@@ -2174,6 +2174,54 @@ router.post('/admin/products/upload-image', requireAdmin, async (req, res) => {
   }
 });
 
+// Les paniers abandonnés.
+//
+// « Est-ce qu'on peut avoir un suivi des paniers abandonnés ? Même simplement
+// pouvoir les voir serait déjà utile. »
+//
+// Rien de nouveau n'est collecté pour cela, et c'est le point important. Suivre
+// ce que des visiteuses anonymes mettent dans leur panier aurait demandé de
+// l'enregistrer côté serveur avant qu'elles n'aient rien validé — donc de
+// changer la nature des données recueillies, et la politique de
+// confidentialité avec.
+//
+// Ce n'est pas nécessaire : la donnée existe déjà. Une commande naît en
+// « Pending » et ne passe en « Paid » qu'au paiement confirmé. Une commande
+// restée en attente est donc exactement cela — quelqu'un qui a rempli le
+// formulaire, accepté les conditions, été envoyé vers le paiement, et n'est
+// jamais revenu. Avec son nom, son adresse et son panier, qu'elle a donnés
+// elle-même.
+//
+// Le délai écarte celles qui sont peut-être en train de payer : une commande
+// d'il y a trois minutes n'est pas abandonnée, elle est en cours.
+const DELAI_PANIER_ABANDONNE_MS = 60 * 60 * 1000;
+
+router.get('/admin/paniers-abandonnes', requireAdmin, async (req, res) => {
+  try {
+    const limite = Date.now() - DELAI_PANIER_ABANDONNE_MS;
+    const commandes = await db.getOrders();
+    const paniers = (commandes || [])
+      .filter((c) => db.canonicalOrderStatus(c.status) === 'Pending')
+      .filter((c) => new Date(c.created_at).getTime() < limite)
+      .map((c) => ({
+        id: c.id,
+        date: c.created_at,
+        nom: c.customer_name,
+        email: c.customer_email,
+        telephone: c.customer_phone || '',
+        total: c.total,
+        expedition: c.shipping || null,
+        articles: (c.items || []).map((a) => ({ nom: a.name, qty: a.qty, prix: a.price })),
+      }))
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+    res.json({ paniers, delaiHeures: DELAI_PANIER_ABANDONNE_MS / 3600000 });
+  } catch (err) {
+    console.error('Lecture des paniers abandonnés impossible :', err);
+    res.status(500).json({ error: 'Les paniers abandonnés n’ont pas pu être lus.' });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────
 // L'infolettre : rédiger, essayer, envoyer.
 //
