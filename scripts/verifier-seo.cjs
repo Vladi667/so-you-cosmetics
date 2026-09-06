@@ -139,14 +139,17 @@ const shop = {
   console.log('\n== plan du site ==');
   const xml = await seo.construireSitemap(BASE, db);
   const n = (xml.match(/<loc>/g) || []).length;
-  // (178 fiches + 12 rubriques + /category/All + 8 pages fixes + 6 familles
+  // (178 fiches + 12 rubriques + /category/All + 9 pages fixes + 6 familles
   //  + 1 atelier + 1 article) × 3 langues
+  //
+  // Les neuf pages fixes : accueil, boutique, à propos, contact, journal,
+  // ateliers, mentions légales, CGV, confidentialité.
   //
   // Le compte des familles est lu depuis le module plutôt qu'écrit ici : ce
   // test doit échouer si une famille disparaît du plan, pas si quelqu'un en
   // ajoute une septième et oublie de venir corriger un nombre.
   const rubriques = new Set(catalogue.flatMap((p) => p.collections || [])).size;
-  const parLangue = catalogue.length + rubriques + 1 + 8 + seo.SLUGS_FAMILLES.length +
+  const parLangue = catalogue.length + rubriques + 1 + 9 + seo.SLUGS_FAMILLES.length +
                     ateliers.length + articles.filter((a) => a.published).length;
   const attendu = parLangue * 3;
   ok(n === attendu, 'nombre d’URL attendu ' + attendu + ' (' + parLangue + ' × 3), obtenu ' + n);
