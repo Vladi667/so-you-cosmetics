@@ -33,24 +33,31 @@ const PORT = process.env.PORT || 5000;
 // Les défis ACME sont exclus : l'hébergeur doit pouvoir prouver la possession
 // de `www` pour lui délivrer un certificat, et cette preuve se fait justement
 // sur ce nom-là.
-const CANONIQUE = (() => {
-  try {
-    const u = new URL(process.env.PUBLIC_BASE_URL || 'https://soyoucosmetics.com');
-    return { hote: u.hostname, origine: u.origin };
-  } catch {
-    return { hote: 'soyoucosmetics.com', origine: 'https://soyoucosmetics.com' };
-  }
-})();
-
+// La règle ne consulte aucune configuration, et c'est délibéré.
+//
+// Une première version comparait l'hôte reçu à celui de PUBLIC_BASE_URL. Elle
+// marchait ici et restait muette en production : les journaux de l'hébergeur
+// montraient la requête arriver jusqu'à l'application, traversée sans être
+// redirigée — donc la variable ne valait pas ce qu'on croyait. Elle est lue
+// depuis un .env posé sur le serveur, que le déploiement ne transfère pas et
+// qu'on ne lit pas d'ici.
+//
+// Retirer un préfixe « www. » ne demande de toute façon pas de savoir quel est
+// le domaine : c'est vrai de n'importe lequel. Une règle qui ne dépend de rien
+// ne peut pas être désaccordée d'avec sa configuration.
 app.use((req, res, next) => {
   if (req.path.startsWith('/.well-known/')) return next();
   // Le port est retiré : en développement l'hôte porte « :5199 ».
   const hote = String(req.headers.host || '').split(':')[0].toLowerCase();
-  if (hote !== `www.${CANONIQUE.hote}`) return next();
-  // Vers l'origine canonique entière, schéma compris, plutôt que vers le
-  // schéma d'arrivée : sans cela une visite en clair sur www ferait deux sauts
-  // — vers le domaine nu en clair, puis vers le même en chiffré. Un seul suffit.
-  return res.redirect(301, CANONIQUE.origine + req.originalUrl);
+  if (!hote.startsWith('www.')) return next();
+  const nu = hote.slice(4);
+  // « www. » seul, ou suivi d'un nom sans point : on ne fabrique pas un hôte
+  // qui n'existe pas, on laisse passer.
+  if (!nu.includes('.')) return next();
+  // Le schéma annoncé par le proxy, à défaut celui de la connexion : sans
+  // « trust proxy », req.protocol dit « http » derrière le terminateur TLS.
+  const schema = req.get('x-forwarded-proto') || req.protocol || 'https';
+  return res.redirect(301, `${schema}://${nu}${req.originalUrl}`);
 });
 
 // Les en-têtes de sécurité, posés avant tout le reste pour couvrir aussi bien
