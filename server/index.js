@@ -36,15 +36,19 @@ const PORT = process.env.PORT || 5000;
 // La règle ne consulte aucune configuration, et c'est délibéré.
 //
 // Une première version comparait l'hôte reçu à celui de PUBLIC_BASE_URL. Elle
-// marchait ici et restait muette en production : les journaux de l'hébergeur
-// montraient la requête arriver jusqu'à l'application, traversée sans être
-// redirigée — donc la variable ne valait pas ce qu'on croyait. Elle est lue
-// depuis un .env posé sur le serveur, que le déploiement ne transfère pas et
-// qu'on ne lit pas d'ici.
+// est restée muette en production, et j'en ai conclu que la variable ne valait
+// pas ce qu'on croyait. C'était faux : elle n'est pas définie du tout, le
+// défaut s'appliquait, et cette version aurait marché. Ce qui ne marchait pas,
+// c'est le redémarrage — le bouton du Manager ouvre une fenêtre de
+// confirmation, et sans la case cochée le processus continue de servir
+// l'ancien code. Les requêtes que je voyais traverser l'application sans être
+// redirigées l'étaient par une version qui n'avait pas d'intercepteur.
 //
-// Retirer un préfixe « www. » ne demande de toute façon pas de savoir quel est
-// le domaine : c'est vrai de n'importe lequel. Une règle qui ne dépend de rien
-// ne peut pas être désaccordée d'avec sa configuration.
+// La version sans configuration reste, parce qu'elle est meilleure et non
+// parce que l'autre était fautive : retirer un préfixe « www. » ne demande pas
+// de savoir quel est le domaine, c'est vrai de n'importe lequel. Une règle qui
+// ne dépend de rien ne peut pas se désaccorder d'avec sa configuration, ni
+// faire soupçonner une configuration innocente.
 app.use((req, res, next) => {
   if (req.path.startsWith('/.well-known/')) return next();
   // Le port est retiré : en développement l'hôte porte « :5199 ».
