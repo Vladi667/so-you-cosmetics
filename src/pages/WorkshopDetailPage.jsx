@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Lien from '../components/Lien';
 import useLienLangue from '../i18n/useLienLangue';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -17,11 +17,34 @@ const WorkshopDetailPage = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const lien = useLienLangue();
-  const [workshop, setWorkshop] = useState(null);
-  const [state, setState] = useState('loading');
+  // Les ateliers déjà servis avec la page, quand le serveur les y a posés.
+  //
+  // Sans eux, l'état de départ est « chargement » et le rendu serveur ne
+  // produit qu'un cadre vide : ni titre, ni date, ni description, ni prix.
+  // « Atelier cosmétique Genève » est pourtant une des rares requêtes où cette
+  // boutique part avec une longueur d'avance, et c'est la page qui devrait y
+  // répondre.
+  //
+  // Même source que le serveur, donc même premier rendu et pas de divergence à
+  // l'hydratation. Sans données posées, on repart de « chargement ».
+  const depart = useMemo(() => {
+    const poses = globalThis.__ATELIERS__;
+    if (!Array.isArray(poses)) return null;
+    const trouve = poses.find((w) => String(w.id) === String(id));
+    return { workshop: trouve || null, state: trouve ? 'ready' : 'missing' };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [workshop, setWorkshop] = useState((depart && depart.workshop) || null);
+  const [state, setState] = useState((depart && depart.state) || 'loading');
+  // Le premier passage de l'effet ne doit pas effacer ce que le serveur a
+  // rendu ; les changements d'adresse, eux, repassent par « chargement ».
+  const dejaServi = useRef(Boolean(depart));
 
   useEffect(() => {
     let active = true;
+    if (dejaServi.current) dejaServi.current = false;
+    else setState('loading');
     fetch('/api/workshops')
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((list) => {

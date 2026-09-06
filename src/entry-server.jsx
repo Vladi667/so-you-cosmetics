@@ -29,12 +29,13 @@ import App from './App.jsx';
 // dans un navigateur), donc le premier rendu client reproduit exactement le
 // rendu serveur. Passer par des props obligerait à dupliquer le chemin de
 // données, et deux chemins finissent toujours par diverger.
-export function rendre({ url, contenu, reglages, catalogue, seo, journal }) {
+export function rendre({ url, contenu, reglages, catalogue, seo, journal, ateliers }) {
   globalThis.__CONTENT__ = contenu || {};
   globalThis.__SHOP__ = reglages || {};
   globalThis.__CATALOGUE__ = Array.isArray(catalogue) ? catalogue : [];
   globalThis.__SEO__ = seo || null;
   globalThis.__JOURNAL__ = journal || null;
+  globalThis.__ATELIERS__ = ateliers || null;
 
   try {
     return renderToString(
@@ -53,5 +54,6 @@ export function rendre({ url, contenu, reglages, catalogue, seo, journal }) {
     globalThis.__CATALOGUE__ = undefined;
     globalThis.__SEO__ = undefined;
     globalThis.__JOURNAL__ = undefined;
+    globalThis.__ATELIERS__ = undefined;
   }
 }

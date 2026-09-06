@@ -383,10 +383,10 @@ function allegerCatalogue(produits, cheminNu) {
 // Jamais d'exception vers l'appelant : une page servie sans son corps rendu
 // reste une page qui marche, tandis qu'une erreur ici priverait la boutique de
 // tout affichage. Le filet est le point entier de la mise en place.
-function rendreCorps(url, contenu, reglages, catalogue, seoClient, journal) {
+function rendreCorps(url, contenu, reglages, catalogue, seoClient, journal, ateliers) {
   if (!moteur || typeof moteur.rendre !== 'function') return '';
   try {
-    return moteur.rendre({ url, contenu, reglages, catalogue, seo: seoClient, journal }) || '';
+    return moteur.rendre({ url, contenu, reglages, catalogue, seo: seoClient, journal, ateliers }) || '';
   } catch (err) {
     console.error('Rendu serveur échoué pour', url, ':', err.message);
     return '';
@@ -597,6 +597,19 @@ app.get('*', async (req, res, next) => {
     //
     // Chargé seulement pour les routes du journal : injecter les articles dans
     // chaque fiche produit alourdirait cent soixante-dix-sept pages pour rien.
+    // Les ateliers, même histoire : la fiche d'un atelier partait de
+    // « chargement » et le serveur n'en rendait qu'un cadre vide. « Atelier
+    // cosmétique Genève » est pourtant une des rares requêtes où cette
+    // boutique part avec une longueur d'avance.
+    let ateliers = null;
+    if (rendable && /^\/workshops(\/|$)/.test(cheminNu)) {
+      try {
+        ateliers = await db.getWorkshops();
+      } catch {
+        ateliers = null;
+      }
+    }
+
     let journal = null;
     if (rendable && /^\/journal(\/|$)/.test(cheminNu)) {
       try {
@@ -618,12 +631,13 @@ app.get('*', async (req, res, next) => {
            `window.__SHOP__=${serialiseContent(reglagesPublics(shop))};` +
            `window.__CATALOGUE__=${serialiseContent(catalogue)};` +
            `window.__JOURNAL__=${serialiseContent(journal)};` +
+           `window.__ATELIERS__=${serialiseContent(ateliers)};` +
            `window.__SEO__=${serialiseContent(seoClient)}</script>`;
 
     let page = html.replace('</head>', `${tag}</head>`);
 
     if (rendable) {
-      const corps = rendreCorps(req.path, content, reglagesPublics(shop), catalogue, seoClient, journal);
+      const corps = rendreCorps(req.path, content, reglagesPublics(shop), catalogue, seoClient, journal, ateliers);
       // Une chaîne vide veut dire que le rendu a échoué ou n'est pas
       // disponible : on sert alors la coquille, exactement comme avant cette
       // étape. Le site ne doit jamais tomber pour une optimisation.
