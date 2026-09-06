@@ -686,7 +686,19 @@ app.get('*', async (req, res, next) => {
     let page = html.replace('</head>', `${tag}</head>`);
 
     if (rendable) {
-      const corps = rendreCorps(req.path, content, reglagesPublics(shop), catalogue, seoClient, journal, ateliers);
+      // L'adresse complète, chaîne de requête comprise — et non « req.path ».
+      //
+      // La grille lit sa page, son tri et ses fourchettes de prix dans les
+      // paramètres, par le routeur. Privé d'eux, le rendu serveur répondait
+      // toujours la première page : « ?page=2 » à « ?page=7 » servaient les
+      // vingt-quatre mêmes fiches que « ?page=1 ». Six pages identiques pour un
+      // robot qui les explore une à une, et cent cinquante-quatre fiches
+      // qu'aucun lien n'atteignait — le plan du site restait leur seul chemin.
+      //
+      // C'était aussi une divergence d'hydratation à chaque visite paginée : le
+      // navigateur, lui, voyait bien le paramètre, et rendait autre chose que
+      // ce que le serveur venait d'envoyer.
+      const corps = rendreCorps(req.originalUrl, content, reglagesPublics(shop), catalogue, seoClient, journal, ateliers);
       // Une chaîne vide veut dire que le rendu a échoué ou n'est pas
       // disponible : on sert alors la coquille, exactement comme avant cette
       // étape. Le site ne doit jamais tomber pour une optimisation.
