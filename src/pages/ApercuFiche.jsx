@@ -155,7 +155,7 @@ function ApercuFiche({ productForm }) {
                 >
                   {v.libelle}
                   <span className={`ml-1.5 ${k === i ? 'text-white/60' : 'text-stone-gray/60'}`}>
-                    {Number(v.prix).toFixed(2)}
+                    CHF {Number(v.prix).toFixed(2)}
                   </span>
                 </button>
               ))}

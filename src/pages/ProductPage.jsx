@@ -461,7 +461,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                         >
                           {v.libelle}
                           <span className={`ml-2 tabular-nums ${actif ? 'text-white/70' : 'text-stone-gray/60'}`}>
-                            {Number(v.prix).toFixed(2)}
+                            CHF {Number(v.prix).toFixed(2)}
                           </span>
                         </button>
                       );
@@ -495,7 +495,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                       >
                         {mode ? t('product.refillMine') : t('product.refillNew')}
                         <span className={`ml-2 tabular-nums ${enRecharge === mode ? 'text-white/70' : 'text-stone-gray/60'}`}>
-                          {(mode ? Number(product.rechargePrix) : Number(product.price)).toFixed(2)}
+                          CHF {(mode ? Number(product.rechargePrix) : Number(product.price)).toFixed(2)}
                         </span>
                       </button>
                     ))}
@@ -535,7 +535,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                         >
                           {v.senteur}
                           <span className={`ml-2 tabular-nums ${active ? 'text-white/70' : 'text-stone-gray/60'}`}>
-                            {Number(v.price).toFixed(2)}
+                            CHF {Number(v.price).toFixed(2)}
                           </span>
                         </Lien>
                       );
