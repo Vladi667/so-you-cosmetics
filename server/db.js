@@ -1837,7 +1837,7 @@ const SHOP_DEFAULTS = {
   invoice: {
     enabled: true,
     company: 'So You Cosmetics — Boutique Soap Opera',
-    address: '3 av. Pictet-De-Rochemont, 1207 Genève',
+    address: '3 av. Pictet-de-Rochemont, 1207 Genève',
     email: 'contact@soyoucosmetics.com',
     vatNumber: '',
     vatRate: 0,

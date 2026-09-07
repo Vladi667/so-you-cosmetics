@@ -299,7 +299,7 @@ function buildPickupReadyEmail({ name, orderId }) {
         <p>Bonne nouvelle : votre commande <strong>${orderId}</strong> est prête à être retirée en boutique.</p>
         <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
           <p style="margin: 0 0 6px 0;"><strong>Adresse de retrait :</strong></p>
-          <p style="margin: 0 0 6px 0;">Boutique Soap Opera by So You Cosmetics<br />3 av. Pictet-De-Rochemont, 1207 Genève</p>
+          <p style="margin: 0 0 6px 0;">Boutique Soap Opera by So You Cosmetics<br />3 av. Pictet-de-Rochemont, 1207 Genève</p>
           <p style="margin: 6px 0 0 0;"><strong>Téléphone :</strong> 022 556 69 92</p>
         </div>
         <p>Nous nous réjouissons de vous accueillir prochainement.</p>
@@ -1553,7 +1553,7 @@ router.post('/workshops/book', async (req, res) => {
         <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
           <p style="margin: 0 0 10px 0;"><strong>Date de l'atelier :</strong> ${date}</p>
           <p style="margin: 0 0 10px 0;"><strong>Places réservées :</strong> ${seats || 1}</p>
-          <p style="margin: 0;"><strong>Lieu :</strong> Boutique Soap Opera, 3 av. Pictet-De-Rochemont, 1207 Genève</p>
+          <p style="margin: 0;"><strong>Lieu :</strong> Boutique Soap Opera, 3 av. Pictet-de-Rochemont, 1207 Genève</p>
         </div>
         <p>Vous repartirez avec votre propre création cosmétique naturelle faite main !</p>
         <p>À très bientôt,</p>
@@ -1839,7 +1839,7 @@ router.post('/admin/send-email', requireAdmin, async (req, res) => {
         </div>
         <div style="border-top: 1px solid #eee; padding-top: 15px; margin-top: 30px; font-size: 12px; color: #888;">
           <p style="margin: 0 0 5px 0;"><strong>Boutique Soap Opera by So You Cosmetics</strong></p>
-          <p style="margin: 0 0 5px 0;">3 av. Pictet-De-Rochemont, 1207 Genève</p>
+          <p style="margin: 0 0 5px 0;">3 av. Pictet-de-Rochemont, 1207 Genève</p>
           <p style="margin: 0;">Téléphone : <a href="tel:+41225566992" style="color: #888; text-decoration: none;">022 556 69 92</a> | Email : <a href="mailto:contact@soyoucosmetics.com" style="color: #888; text-decoration: none;">contact@soyoucosmetics.com</a></p>
         </div>
       </div>

@@ -225,7 +225,7 @@ export const FAMILLES = [
       ],
       question: 'Où recharger ses cosmétiques à Genève ?',
       reponse:
-        'À la boutique, 3 avenue Pictet-De-Rochemont, aux Eaux-Vives. Apportez le flacon propre et sec ; le remplissage se fait sur place, sans rendez-vous, pendant les heures d’ouverture.',
+        'À la boutique, 3 avenue Pictet-de-Rochemont, aux Eaux-Vives. Apportez le flacon propre et sec ; le remplissage se fait sur place, sans rendez-vous, pendant les heures d’ouverture.',
     },
     en: {
       titre: 'Zero-waste cosmetics in Geneva',
@@ -251,7 +251,7 @@ export const FAMILLES = [
       ],
       question: 'Where can I refill cosmetics in Geneva?',
       reponse:
-        'At the boutique, 3 avenue Pictet-De-Rochemont, in Eaux-Vives. Bring the bottle clean and dry; refilling is done on the spot, no appointment, during opening hours.',
+        'At the boutique, 3 avenue Pictet-de-Rochemont, in Eaux-Vives. Bring the bottle clean and dry; refilling is done on the spot, no appointment, during opening hours.',
     },
     de: {
       titre: 'Zero-Waste-Kosmetik in Genf',
@@ -277,7 +277,7 @@ export const FAMILLES = [
       ],
       question: 'Wo kann man in Genf Kosmetik nachfüllen?',
       reponse:
-        'In der Boutique, 3 avenue Pictet-De-Rochemont, Eaux-Vives. Bringen Sie die Flasche sauber und trocken mit; nachgefüllt wird vor Ort, ohne Termin.',
+        'In der Boutique, 3 avenue Pictet-de-Rochemont, Eaux-Vives. Bringen Sie die Flasche sauber und trocken mit; nachgefüllt wird vor Ort, ohne Termin.',
     },
   },
 

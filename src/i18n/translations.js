@@ -220,7 +220,7 @@ const translations = {
       tagline: 'Cosmétiques naturels faits main à Genève',
       explore: 'Explorer',
       familles: 'Nos savoir-faire',
-      address: '3 av. Pictet-De-Rochemont, 1207 Genève',
+      address: '3 av. Pictet-de-Rochemont, 1207 Genève',
       links: { home: 'So You', products: 'Boutique', about: 'Notre histoire', workshops: 'Ateliers', journal: 'Journal', contact: 'Contact', personnalisation: 'Sur mesure' },
       newsletter: 'Newsletter',
       newsletterText: 'Rejoignez notre communauté pour des conseils bien-être botanique et des offres exclusives.',
@@ -304,7 +304,7 @@ const translations = {
       // déjà par ailleurs — aucune promesse nouvelle.
       trustPayment: 'Paiement sécurisé par SumUp. Vos données de carte ne sont jamais conservées par So You.',
       trustMade: 'Expédition sous 2 à 4 jours ouvrés.',
-      trustContact: 'Une question ? 022 556 69 92 — 3 av. Pictet-De-Rochemont, 1207 Genève.',
+      trustContact: 'Une question ? 022 556 69 92 — 3 av. Pictet-de-Rochemont, 1207 Genève.',
     },
     product: {
       home: 'Accueil',
@@ -356,7 +356,7 @@ const translations = {
       voirAussi: 'À voir aussi',
       // Le paragraphe qui rattache la page au lieu. Volontairement sans
       // accord ni détail de produit : il vaut pour les quatorze rubriques.
-      intro: 'Fabriqué à la main dans notre atelier genevois, au 3 av. Pictet-De-Rochemont. Retrait gratuit en boutique aux Eaux-Vives, livraison partout en Suisse.',
+      intro: 'Fabriqué à la main dans notre atelier genevois, au 3 av. Pictet-de-Rochemont. Retrait gratuit en boutique aux Eaux-Vives, livraison partout en Suisse.',
     },
     search: { home: 'Accueil', label: 'Recherche :' },
     // La page servie quand l'adresse ne correspond à rien. Le serveur répond
@@ -519,7 +519,7 @@ const translations = {
     intro: "Les présentes Conditions Générales de Vente (ci-après les « CGV ») régissent les ventes de produits et les prestations proposées par So You SARL aux Clients consommateurs ou professionnels, tant sur le site internet www.soyoucosmetics.com que pour les commandes passées directement auprès de So You SARL, notamment au sein de la boutique Soap Opera by So You Cosmetics.",
     sections: [
       { heading: '1. Généralités', body: [
-        "Le vendeur est So You SARL, société de droit suisse, dont le siège est situé avenue Pictet-De-Rochemont 3, 1207 Genève, Suisse, inscrite au Registre du commerce du canton de Genève sous le numéro IDE CHE-131.511.202 (ci-après « So You SARL »).",
+        "Le vendeur est So You SARL, société de droit suisse, dont le siège est situé avenue Pictet-de-Rochemont 3, 1207 Genève, Suisse, inscrite au Registre du commerce du canton de Genève sous le numéro IDE CHE-131.511.202 (ci-après « So You SARL »).",
         'So You Cosmetics est la marque commerciale exploitée par So You SARL. Soap Opera by So You Cosmetics est le nom commercial de la boutique exploitée par So You SARL.',
         "Pour les achats effectués sur le site internet, le Client reconnaît avoir pris connaissance des présentes CGV et les accepter sans réserve au moment de la validation de sa commande.",
         "So You SARL se réserve le droit de modifier les présentes CGV afin de tenir compte des évolutions légales, réglementaires ou de son activité. Les CGV applicables sont celles en vigueur au moment de la validation de la commande pour les achats effectués en ligne, ou au moment de l’achat pour les ventes réalisées en boutique.",
@@ -660,14 +660,14 @@ const translations = {
         { heading: '1. Éditeur du site', body: [
           'So You SARL',
           'Société à responsabilité limitée de droit suisse',
-          'Siège : avenue Pictet-De-Rochemont 3, 1207 Genève, Suisse',
+          'Siège : avenue Pictet-de-Rochemont 3, 1207 Genève, Suisse',
           'Inscrite au Registre du commerce du canton de Genève sous le numéro IDE CHE-131.511.202',
           'So You Cosmetics est la marque commerciale exploitée par So You SARL. Soap Opera by So You Cosmetics est le nom commercial de la boutique.',
         ]},
         { heading: '2. Contact', body: [
           'E-mail : contact@soyoucosmetics.com',
           'Téléphone : 022 556 69 92',
-          'Adresse de la boutique : 3 avenue Pictet-De-Rochemont, 1207 Genève, Suisse',
+          'Adresse de la boutique : 3 avenue Pictet-de-Rochemont, 1207 Genève, Suisse',
         ]},
         { heading: '3. Responsable de la publication', body: [
           'La responsabilité éditoriale du site est assumée par So You SARL.',
@@ -996,7 +996,7 @@ const translations = {
       tagline: 'Natural cosmetics handmade in Geneva',
       explore: 'Explore',
       familles: 'What we know',
-      address: '3 av. Pictet-De-Rochemont, 1207 Geneva',
+      address: '3 av. Pictet-de-Rochemont, 1207 Geneva',
       links: { home: 'So You', products: 'Shop', about: 'Our Story', workshops: 'Atelier', journal: 'Journal', contact: 'Contact', personnalisation: 'Made to order' },
       newsletter: 'Newsletter',
       newsletterText: 'Join our community for botanical wellness tips and exclusive offers.',
@@ -1075,7 +1075,7 @@ const translations = {
       termsRequired: 'Please accept the terms and conditions of sale to continue.',
       trustPayment: 'Secure payment by SumUp. Your card details are never kept by So You.',
       trustMade: 'Shipped within 2 to 4 business days.',
-      trustContact: 'A question? 022 556 69 92 — 3 av. Pictet-De-Rochemont, 1207 Geneva.',
+      trustContact: 'A question? 022 556 69 92 — 3 av. Pictet-de-Rochemont, 1207 Geneva.',
     },
     product: {
       home: 'Home',
@@ -1114,7 +1114,7 @@ const translations = {
       heading: '{nom} in Geneva',
       headingAll: 'The shop — natural cosmetics handmade in Geneva',
       voirAussi: 'See also',
-      intro: 'Handmade in our Geneva workshop at 3 av. Pictet-De-Rochemont. Free in-store pickup in the Eaux-Vives, delivery across Switzerland.',
+      intro: 'Handmade in our Geneva workshop at 3 av. Pictet-de-Rochemont. Free in-store pickup in the Eaux-Vives, delivery across Switzerland.',
     },
     search: { home: 'Home', label: 'Search:' },
     notFound: {
@@ -1275,7 +1275,7 @@ const translations = {
     intro: "These Terms and Conditions of Sale (the “Terms”) govern the sale of products and services offered by So You SARL to consumer and business Customers, both on the website www.soyoucosmetics.com and for orders placed directly with So You SARL, in particular at the Soap Opera by So You Cosmetics shop. This is a translation: in the event of any discrepancy between language versions, the French version prevails.",
     sections: [
       { heading: '1. General', body: [
-        'The seller is So You SARL, a company incorporated under Swiss law, with registered office at avenue Pictet-De-Rochemont 3, 1207 Geneva, Switzerland, entered in the Commercial Register of the Canton of Geneva under UID number CHE-131.511.202 (“So You SARL”).',
+        'The seller is So You SARL, a company incorporated under Swiss law, with registered office at avenue Pictet-de-Rochemont 3, 1207 Geneva, Switzerland, entered in the Commercial Register of the Canton of Geneva under UID number CHE-131.511.202 (“So You SARL”).',
         'So You Cosmetics is the trade mark operated by So You SARL. Soap Opera by So You Cosmetics is the trade name of the shop operated by So You SARL.',
         'For purchases made on the website, the Customer acknowledges having read these Terms and accepts them without reservation when confirming the order.',
         'So You SARL reserves the right to amend these Terms to reflect legal or regulatory developments or changes in its business. The applicable Terms are those in force when the order is confirmed online, or at the time of purchase for sales made in the shop.',
@@ -1416,14 +1416,14 @@ const translations = {
         { heading: '1. Site publisher', body: [
           'So You SARL',
           'Limited liability company incorporated under Swiss law',
-          'Registered office: avenue Pictet-De-Rochemont 3, 1207 Geneva, Switzerland',
+          'Registered office: avenue Pictet-de-Rochemont 3, 1207 Geneva, Switzerland',
           'Entered in the Commercial Register of the Canton of Geneva under UID number CHE-131.511.202',
           'So You Cosmetics is the trade mark operated by So You SARL. Soap Opera by So You Cosmetics is the trade name of the shop.',
         ]},
         { heading: '2. Contact', body: [
           'Email: contact@soyoucosmetics.com',
           'Telephone: +41 22 556 69 92',
-          'Shop address: 3 avenue Pictet-De-Rochemont, 1207 Geneva, Switzerland',
+          'Shop address: 3 avenue Pictet-de-Rochemont, 1207 Geneva, Switzerland',
         ]},
         { heading: '3. Editorial responsibility', body: [
           'Editorial responsibility for this site rests with So You SARL.',
@@ -1752,7 +1752,7 @@ const translations = {
       tagline: 'Natürliche Kosmetik, handgemacht in Genf',
       explore: 'Entdecken',
       familles: 'Unser Handwerk',
-      address: '3 av. Pictet-De-Rochemont, 1207 Genf',
+      address: '3 av. Pictet-de-Rochemont, 1207 Genf',
       links: { home: 'So You', products: 'Shop', about: 'Unsere Geschichte', workshops: 'Workshops', journal: 'Journal', contact: 'Kontakt', personnalisation: 'Massanfertigung' },
       newsletter: 'Newsletter',
       newsletterText: 'Treten Sie unserer Community bei für botanische Wellness-Tipps und exklusive Angebote.',
@@ -1831,7 +1831,7 @@ const translations = {
       termsRequired: 'Bitte akzeptieren Sie die Allgemeinen Geschäftsbedingungen, um fortzufahren.',
       trustPayment: 'Sichere Zahlung über SumUp. Ihre Kartendaten werden von So You nie gespeichert.',
       trustMade: 'Versand innerhalb von 2 bis 4 Werktagen.',
-      trustContact: 'Eine Frage? 022 556 69 92 — 3 av. Pictet-De-Rochemont, 1207 Genf.',
+      trustContact: 'Eine Frage? 022 556 69 92 — 3 av. Pictet-de-Rochemont, 1207 Genf.',
     },
     product: {
       home: 'Startseite',
@@ -1870,7 +1870,7 @@ const translations = {
       heading: '{nom} in Genf',
       headingAll: 'Der Laden — handgemachte Naturkosmetik aus Genf',
       voirAussi: 'Siehe auch',
-      intro: 'Handgefertigt in unserem Genfer Atelier an der 3 av. Pictet-De-Rochemont. Kostenlose Abholung in den Eaux-Vives, Versand in die ganze Schweiz.',
+      intro: 'Handgefertigt in unserem Genfer Atelier an der 3 av. Pictet-de-Rochemont. Kostenlose Abholung in den Eaux-Vives, Versand in die ganze Schweiz.',
     },
     search: { home: 'Startseite', label: 'Suche:' },
     notFound: {
@@ -2031,7 +2031,7 @@ const translations = {
     intro: 'Diese Allgemeinen Geschäftsbedingungen (nachfolgend «AGB») regeln den Verkauf von Produkten und Leistungen der So You SARL an Kundinnen und Kunden, sowohl über die Website www.soyoucosmetics.com als auch für Bestellungen, die direkt bei So You SARL aufgegeben werden, insbesondere in der Boutique Soap Opera by So You Cosmetics. Dies ist eine Übersetzung: Bei Abweichungen zwischen den Sprachfassungen ist die französische Fassung massgebend.',
     sections: [
       { heading: '1. Allgemeines', body: [
-        'Verkäuferin ist die So You SARL, eine Gesellschaft schweizerischen Rechts mit Sitz an der avenue Pictet-De-Rochemont 3, 1207 Genf, Schweiz, eingetragen im Handelsregister des Kantons Genf unter der UID-Nummer CHE-131.511.202 (nachfolgend «So You SARL»).',
+        'Verkäuferin ist die So You SARL, eine Gesellschaft schweizerischen Rechts mit Sitz an der avenue Pictet-de-Rochemont 3, 1207 Genf, Schweiz, eingetragen im Handelsregister des Kantons Genf unter der UID-Nummer CHE-131.511.202 (nachfolgend «So You SARL»).',
         'So You Cosmetics ist die von der So You SARL geführte Marke. Soap Opera by So You Cosmetics ist der Geschäftsname der von der So You SARL betriebenen Boutique.',
         'Bei Käufen über die Website bestätigt die Kundin oder der Kunde, diese AGB zur Kenntnis genommen zu haben, und akzeptiert sie mit der Bestätigung der Bestellung vorbehaltlos.',
         'So You SARL behält sich vor, diese AGB an rechtliche oder regulatorische Entwicklungen sowie an Veränderungen ihrer Tätigkeit anzupassen. Massgebend sind die im Zeitpunkt der Bestellbestätigung geltenden AGB, bei Käufen in der Boutique jene im Zeitpunkt des Kaufs.',
@@ -2172,14 +2172,14 @@ const translations = {
         { heading: '1. Betreiberin der Website', body: [
           'So You SARL',
           'Gesellschaft mit beschränkter Haftung schweizerischen Rechts',
-          'Sitz: avenue Pictet-De-Rochemont 3, 1207 Genf, Schweiz',
+          'Sitz: avenue Pictet-de-Rochemont 3, 1207 Genf, Schweiz',
           'Eingetragen im Handelsregister des Kantons Genf unter der UID-Nummer CHE-131.511.202',
           'So You Cosmetics ist die von der So You SARL geführte Marke. Soap Opera by So You Cosmetics ist der Geschäftsname der Boutique.',
         ]},
         { heading: '2. Kontakt', body: [
           'E-Mail: contact@soyoucosmetics.com',
           'Telefon: +41 22 556 69 92',
-          'Adresse der Boutique: 3 avenue Pictet-De-Rochemont, 1207 Genf, Schweiz',
+          'Adresse der Boutique: 3 avenue Pictet-de-Rochemont, 1207 Genf, Schweiz',
         ]},
         { heading: '3. Verantwortung für den Inhalt', body: [
           'Die redaktionelle Verantwortung für diese Website trägt die So You SARL.',

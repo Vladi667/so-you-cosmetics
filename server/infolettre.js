@@ -109,7 +109,7 @@ function habiller({ sujet, html, lienDesabo, base }) {
       <h1 style="font-family:Georgia,serif;font-weight:400;font-size:26px;color:#3A332B;margin:0 0 20px;">${sujet}</h1>
       <div style="font-size:15px;line-height:1.7;color:#3A332B;">${html}</div>
       <div style="border-top:1px solid #DED3C4;margin-top:36px;padding-top:16px;font-size:12px;color:#6A6157;line-height:1.6;">
-        <p style="margin:0 0 6px;">Boutique Soap Opera by So You Cosmetics — 3 av. Pictet-De-Rochemont, 1207 Genève</p>
+        <p style="margin:0 0 6px;">Boutique Soap Opera by So You Cosmetics — 3 av. Pictet-de-Rochemont, 1207 Genève</p>
         <p style="margin:0 0 10px;"><a href="${base}" style="color:#6A6157;">soyoucosmetics.com</a> · <a href="mailto:contact@soyoucosmetics.com" style="color:#6A6157;">contact@soyoucosmetics.com</a></p>
         <p style="margin:0;">Vous recevez ce message parce que vous vous êtes inscrite à notre infolettre.
           <a href="${lienDesabo}" style="color:#6A6157;">Me désinscrire</a>.</p>

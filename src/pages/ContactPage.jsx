@@ -7,7 +7,7 @@ import useMetadonnees from '../hooks/useMetadonnees';
 // L'adresse et le téléphone de la boutique, écrits une fois. Ils apparaissaient
 // en clair dans le rendu, et la description de la page les répétait : deux
 // endroits à corriger le jour d'un déménagement, dont un qu'on oublierait.
-const ADRESSE_RUE = '3 av. Pictet-De-Rochemont';
+const ADRESSE_RUE = '3 av. Pictet-de-Rochemont';
 const ADRESSE_VILLE = '1207 Genève';
 const TELEPHONE = '022 556 69 92';
 const TELEPHONE_LIEN = '+41225566992';

@@ -105,7 +105,12 @@ const BOUTIQUE = {
   // nom principal : « soap opera » désigne un genre télévisuel et ne ramènera
   // jamais personne. alternateName le dit sans en faire l'enseigne.
   autreNom: 'Boutique Soap Opera',
-  rue: '3 av. Pictet-De-Rochemont',
+  // Écrite exactement comme la fiche Google l'écrit — « Av. Pictet-de-Rochemont
+  // 3 », rue puis numéro, à la suisse. C'est ce champ-là que Google compare
+  // pour décider si ce site et cette fiche sont le même établissement ; la
+  // prose du site peut rester plus naturelle, elle n'entre pas dans la
+  // comparaison.
+  rue: 'Avenue Pictet-de-Rochemont 3',
   codePostal: '1207',
   ville: 'Genève',
   region: 'GE',
@@ -117,11 +122,19 @@ const BOUTIQUE = {
   // porte les paramètres de suivi d'un partage (?igsh=…), qui ne désignent rien
   // de durable. On la nettoie ici.
   //
-  // La page Facebook manque volontairement : le pied de page n'en connaît qu'un
-  // lien « /share/… », qui est une redirection, pas l'adresse de la page. Mieux
-  // vaut aucune entrée qu'une adresse qui changera.
+  // La page Facebook manquait faute d'adresse canonique : le pied de page n'en
+  // connaît qu'un lien « /share/… », qui est une redirection. L'adresse stable
+  // a été vérifiée depuis (200, sans redirection), elle peut donc entrer.
+  //
+  // La fiche Google elle-même y figure aussi, sous sa forme durable : l'adresse
+  // « /maps/place/… » porte le nom, la position et l'horodatage de la session,
+  // et change donc à chaque visite ; « ?cid= » désigne l'établissement et rien
+  // d'autre. C'est le lien qui dit à Google, explicitement, que ce site est
+  // celui de cette fiche — au lieu de le lui faire deviner.
   reseaux: [
     'https://www.instagram.com/soyoucosmetics.ch',
+    'https://www.facebook.com/soyoucosmeticsgeneve',
+    'https://maps.google.com/?cid=13498749115805098484',
   ],
 };
 
@@ -240,10 +253,15 @@ function schemaEtablissement(base, shop) {
       addressRegion: BOUTIQUE.region,
       addressCountry: BOUTIQUE.pays,
     },
-    // « geo » manque volontairement. Les coordonnées doivent être reprises du
-    // point posé sur la fiche Google, pas devinées depuis l'adresse : deux
-    // positions qui se contredisent valent moins qu'une seule bien placée.
-    // À renseigner le jour où la fiche est créée.
+    // Les coordonnées du point posé sur la fiche Google, relevées sur la fiche
+    // elle-même et non déduites de l'adresse : deux positions qui se
+    // contredisent valent moins qu'une seule bien placée. C'est la condition
+    // que cette ligne attendait.
+    geo: {
+      '@type': 'GeoCoordinates',
+      latitude: 46.2026459,
+      longitude: 6.1572322,
+    },
     areaServed: [
       { '@type': 'City', name: 'Genève' },
       { '@type': 'AdministrativeArea', name: 'Canton de Genève' },
@@ -534,7 +552,7 @@ const PAGES_EN = {
   },
   '/contact': {
     titre: 'Our natural cosmetics boutique in Geneva',
-    description: 'So You Cosmetics — 3 av. Pictet-De-Rochemont, 1207 Geneva, Eaux-Vives. Opening hours, directions, phone, and free in-store pickup.',
+    description: 'So You Cosmetics — 3 av. Pictet-de-Rochemont, 1207 Geneva, Eaux-Vives. Opening hours, directions, phone, and free in-store pickup.',
     image: '/boutique_exterior.png',
   },
   '/personnalisation': {
@@ -617,7 +635,7 @@ const PAGES_DE = {
   },
   '/contact': {
     titre: 'Unsere Naturkosmetik-Boutique in Genf',
-    description: 'So You Cosmetics — 3 av. Pictet-De-Rochemont, 1207 Genf, Eaux-Vives. Öffnungszeiten, Anfahrt, Telefon und kostenlose Abholung.',
+    description: 'So You Cosmetics — 3 av. Pictet-de-Rochemont, 1207 Genf, Eaux-Vives. Öffnungszeiten, Anfahrt, Telefon und kostenlose Abholung.',
     image: '/boutique_exterior.png',
   },
   '/personnalisation': {
@@ -695,7 +713,7 @@ const PAGES = {
   },
   '/contact': {
     titre: 'Notre boutique de cosmétiques naturels à Genève',
-    description: 'So You Cosmetics — 3 av. Pictet-De-Rochemont, 1207 Genève, quartier des Eaux-Vives. Horaires, plan d’accès, téléphone et retrait gratuit en boutique.',
+    description: 'So You Cosmetics — 3 av. Pictet-de-Rochemont, 1207 Genève, quartier des Eaux-Vives. Horaires, plan d’accès, téléphone et retrait gratuit en boutique.',
     image: '/boutique_exterior.png',
   },
   '/personnalisation': {
@@ -828,7 +846,7 @@ const RUBRIQUES = {
   },
   'Soin des cheveux': {
     titre: 'Soins capillaires naturels et coloration végétale — Genève',
-    description: 'Henné, cassia, indigo, rhassoul et soins capillaires naturels, disponibles à Genève. Conseils en boutique au 3 av. Pictet-De-Rochemont.',
+    description: 'Henné, cassia, indigo, rhassoul et soins capillaires naturels, disponibles à Genève. Conseils en boutique au 3 av. Pictet-de-Rochemont.',
   },
   'Shampoings': {
     titre: 'Shampoings solides et naturels — Genève',
