@@ -1804,7 +1804,12 @@ function deleteArticle(id) {
 //
 // The defaults reproduce what the site showed when these were hard-coded, so
 // turning the feature on changes nothing until she edits something.
+// Les saisons que la boutique sait porter. « aucune » est le défaut, et il le
+// reste : personne ne doit se réveiller avec de la neige sur son site.
+const SAISONS = ['aucune', 'hiver', 'printemps', 'ete', 'automne'];
+
 const SHOP_DEFAULTS = {
+  saison: 'aucune',
   hours: [
     { day: 'lundi',    closed: true,  hours: '' },
     { day: 'mardi',    closed: false, hours: '11:00–13:00 / 14:00–18:30' },
@@ -1883,6 +1888,9 @@ function getShopSettings() {
   const saved = readSettings().shop;
   if (!saved || typeof saved !== 'object') return SHOP_DEFAULTS;
   return {
+    // Une valeur inconnue retombe sur « aucune » plutôt que d'être servie telle
+    // quelle : le pire serait un attribut inventé posé sur le bandeau public.
+    saison: SAISONS.includes(saved.saison) ? saved.saison : SHOP_DEFAULTS.saison,
     hours: Array.isArray(saved.hours) && saved.hours.length ? saved.hours : SHOP_DEFAULTS.hours,
     absence: { ...SHOP_DEFAULTS.absence, ...(saved.absence || {}) },
     maintenance: { ...SHOP_DEFAULTS.maintenance, ...(saved.maintenance || {}) },
@@ -1901,6 +1909,7 @@ function getShopSettings() {
 function updateShopSettings(patch) {
   const current = getShopSettings();
   const next = {
+    saison: SAISONS.includes(patch.saison) ? patch.saison : current.saison,
     hours: Array.isArray(patch.hours) ? patch.hours : current.hours,
     absence: { ...current.absence, ...(patch.absence || {}) },
     maintenance: { ...current.maintenance, ...(patch.maintenance || {}) },

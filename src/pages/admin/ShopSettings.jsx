@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
 
+// Les cinq choix offerts à Catherine. Le détail sous chaque nom dit ce qui
+// tombe : c'est la seule chose qu'on ne devine pas d'après le mot « Automne ».
+const SAISONS = [
+  { cle: 'aucune',    nom: 'Aucune',    detail: 'Le site normal',      couleur: '#DED3C4' },
+  { cle: 'hiver',     nom: 'Hiver',     detail: 'Flocons de neige',    couleur: '#8C9AA0' },
+  { cle: 'printemps', nom: 'Printemps', detail: 'Fleurs de cerisier',  couleur: '#9FAE86' },
+  { cle: 'ete',       nom: 'Été',       detail: 'Lavande',             couleur: '#7A64A0' },
+  { cle: 'automne',   nom: 'Automne',   detail: 'Feuilles mortes',     couleur: '#A8825C' },
+];
+
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 const LANGUES = [
   { code: 'fr', label: 'Français' },
@@ -71,6 +81,59 @@ const ShopSettings = ({ fetchHeaders }) => {
       {status.error && (
         <div className="mb-6 p-4 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm">{status.error}</div>
       )}
+
+      {/* Habillage saisonnier */}
+      <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 sm:p-8 shadow-sm mb-6">
+        <h2 className="font-serif text-xl text-slate-stone mb-1">Habillage saisonnier</h2>
+        <p className="text-xs text-stone-gray mb-5">
+          Ajoute quelques flocons, pétales ou feuilles sur la page d'accueil, et un petit
+          dessin dans un angle. Le reste du site ne change pas : ni la mise en page, ni les
+          textes, ni les photos, ni les prix. Vous pouvez revenir à « Aucune » quand vous voulez.
+        </p>
+
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {SAISONS.map((s) => {
+            const choisie = (settings.saison || 'aucune') === s.cle;
+            return (
+              <button
+                key={s.cle}
+                type="button"
+                onClick={() => maj({ saison: s.cle })}
+                aria-pressed={choisie}
+                className={`rounded-2xl border p-3 text-left transition-colors ${
+                  choisie
+                    ? 'border-slate-stone bg-slate-stone text-ivory'
+                    : 'border-slate-stone/15 bg-white text-slate-stone hover:border-slate-stone/40'
+                }`}
+              >
+                <span
+                  className="block w-3 h-3 rounded-full mb-2"
+                  style={{ background: s.couleur }}
+                />
+                <span className="block font-sans text-sm">{s.nom}</span>
+                <span className={`block text-[11px] leading-snug mt-0.5 ${choisie ? 'text-ivory/70' : 'text-stone-gray'}`}>
+                  {s.detail}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <a
+            href={`/?saison=${settings.saison || 'aucune'}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs uppercase tracking-widest text-slate-stone underline underline-offset-4"
+          >
+            Voir l'accueil avec cet habillage
+          </a>
+          <span className="text-[11px] text-stone-gray">
+            S'ouvre dans un onglet. Rien n'est visible par vos clientes tant que vous n'avez pas
+            enregistré.
+          </span>
+        </div>
+      </div>
 
       {/* Horaires */}
       <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 sm:p-8 shadow-sm mb-6">

@@ -1266,6 +1266,12 @@ router.put('/admin/settings/shop', requireAdmin, (req, res) => {
   if (patch.hours !== undefined && !Array.isArray(patch.hours)) {
     return res.status(400).json({ error: 'Les horaires doivent être une liste' });
   }
+  // La saison se pose sur le bandeau public : on refuse une valeur inconnue au
+  // lieu de la laisser retomber en silence sur « aucune ». Un réglage qu'on
+  // croit enregistré et qui ne l'est pas se cherche longtemps.
+  if (patch.saison !== undefined && !['aucune', 'hiver', 'printemps', 'ete', 'automne'].includes(patch.saison)) {
+    return res.status(400).json({ error: 'Saison inconnue' });
+  }
 
   // Les tarifs postaux sont sur le chemin de l'argent : un prix illisible
   // enregistré, et toute commande part au mauvais montant. On refuse plutôt que
