@@ -355,7 +355,9 @@ function escapeHtml(str) {
 //
 // Liste blanche plutôt que liste noire : le prochain réglage ajouté sera privé
 // par défaut, ce qui est le bon sens de l'erreur.
-function reglagesPublics(shop) {
+const SAISONS = ['aucune', 'hiver', 'printemps', 'ete', 'automne'];
+
+function reglagesPublics(shop, apercu) {
   return {
     hours: shop.hours,
     absence: shop.absence,
@@ -364,6 +366,14 @@ function reglagesPublics(shop) {
     // qui reste prive, c'est tout le reste — l'adresse d'alerte, le compteur de
     // factures, le numero de TVA. La liste est blanche, jamais noire.
     giftWrap: shop.giftWrap,
+    // L'habillage saisonnier. Il part d'ici plutôt que du navigateur pour deux
+    // raisons : le site s'afficherait sinon nu puis se couvrirait de neige une
+    // fraction de seconde plus tard, et le rendu serveur différerait du premier
+    // rendu client — ce que React signale comme une divergence d'hydratation.
+    //
+    // « ?saison= » ne sert qu'à prévisualiser, sans rien enregistrer : c'est ce
+    // que l'aperçu de l'administration utilisera.
+    saison: SAISONS.includes(apercu) ? apercu : (SAISONS.includes(shop.saison) ? shop.saison : 'aucune'),
   };
 }
 
@@ -677,7 +687,7 @@ app.get('*', async (req, res, next) => {
     }
 
     tag += `<script nonce="${res.locals.cspNonce}">window.__CONTENT__=${serialiseContent(content)};` +
-           `window.__SHOP__=${serialiseContent(reglagesPublics(shop))};` +
+           `window.__SHOP__=${serialiseContent(reglagesPublics(shop, req.query.saison))};` +
            `window.__CATALOGUE__=${serialiseContent(catalogue)};` +
            `window.__JOURNAL__=${serialiseContent(journal)};` +
            `window.__ATELIERS__=${serialiseContent(ateliers)};` +
@@ -698,7 +708,7 @@ app.get('*', async (req, res, next) => {
       // C'était aussi une divergence d'hydratation à chaque visite paginée : le
       // navigateur, lui, voyait bien le paramètre, et rendait autre chose que
       // ce que le serveur venait d'envoyer.
-      const corps = rendreCorps(req.originalUrl, content, reglagesPublics(shop), catalogue, seoClient, journal, ateliers);
+      const corps = rendreCorps(req.originalUrl, content, reglagesPublics(shop, req.query.saison), catalogue, seoClient, journal, ateliers);
       // Une chaîne vide veut dire que le rendu a échoué ou n'est pas
       // disponible : on sert alors la coquille, exactement comme avant cette
       // étape. Le site ne doit jamais tomber pour une optimisation.

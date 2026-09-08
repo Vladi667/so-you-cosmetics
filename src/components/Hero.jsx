@@ -1,6 +1,8 @@
 import React from 'react';
 import AutoPlayVideo from './AutoPlayVideo';
+import Saison from './Saison';
 import { useLanguage } from '../i18n/LanguageContext';
+import { saisonCourante } from '../services/saison';
 
 // The client asked for a button linking to her Marie Claire article but has not
 // sent the URL yet. Fill this in and the button appears; left empty it stays
@@ -34,6 +36,12 @@ const Hero = () => {
       <div className="absolute inset-0 z-10" style={{ background: 'radial-gradient(ellipse at center, rgba(58,51,43,0.08) 0%, rgba(58,51,43,0.06) 45%, rgba(58,51,43,0.42) 100%)' }} />
       <div className="absolute inset-0 z-10 bg-[#B9A891]/[0.10] mix-blend-soft-light" />
       <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/35 via-transparent to-black/25" />
+
+      {/* L'habillage saisonnier, s'il est activé. Posé après le dégradé et
+          avant le texte : la neige passe devant l'image et derrière le titre,
+          ce qui donne la profondeur. Rend null hors saison — le bandeau
+          d'origine est alors intact, au pixel près. */}
+      <Saison saison={saisonCourante()} />
 
       <div className="relative z-20 text-center px-5 max-w-3xl mx-auto flex flex-col items-center mt-14 sm:mt-16">
         {/* Wordmark */}
