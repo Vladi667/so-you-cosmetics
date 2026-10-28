@@ -44,6 +44,28 @@ const basculerCategorie = (texte, nom) => {
   return liste.join(', ');
 };
 
+// Les produits proposables en « Vous aimerez aussi », filtrés et rangés.
+// Renvoie des groupes [titre, produits] : un seul sans titre en ordre
+// alphabétique, un par rubrique sinon. La rubrique est la première de la fiche
+// qui n'est pas le marqueur « Coup de cœur ».
+const groupesLies = (products, form, recherche, classement) => {
+  const cle = plier(recherche);
+  const deja = new Set([form.id, ...(form.related || [])]);
+  const alpha = (a, b) => String(a).localeCompare(String(b), 'fr', { sensitivity: 'base' });
+  const liste = products
+    .filter((p) => !deja.has(p.id))
+    .filter((p) => !cle || plier(`${p.name} ${p.contenance || ''}`).includes(cle))
+    .sort((a, b) => alpha(a.name, b.name));
+  if (classement !== 'categorie') return liste.length ? [['', liste]] : [];
+  const groupes = new Map();
+  for (const p of liste) {
+    const rubrique = (p.collections || []).find((c) => plier(c) !== plier(COUP_DE_COEUR)) || 'Sans catégorie';
+    if (!groupes.has(rubrique)) groupes.set(rubrique, []);
+    groupes.get(rubrique).push(p);
+  }
+  return [...groupes].sort(([a], [b]) => alpha(a, b));
+};
+
 // Les sections de la fiche, et ce qui compte comme rempli dans chacune.
 //
 // Le compteur n'est pas une note : il dit ce qui reste, pour qu'une section
@@ -96,6 +118,9 @@ const AdminDashboard = ({ onLogout }) => {
   const [products, setProducts] = useState([]);
   const [productForm, setProductForm] = useState({ id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [] });
   const [productSearch, setProductSearch] = useState('');
+  // Le choix des « Vous aimerez aussi » : sa propre recherche et son classement.
+  const [rechercheLies, setRechercheLies] = useState('');
+  const [classementLies, setClassementLies] = useState('alpha');
   const [productsPage, setProductsPage] = useState(1);
   // La cliente dont on regarde l'historique. Une seule à la fois : déplier tout
   // le fichier donnerait un mur qu'on ne lit pas.
@@ -1328,6 +1353,15 @@ const AdminDashboard = ({ onLogout }) => {
                       <div>
                         <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Stock (interne, non affiché)</label>
                         <input type="number" min="0" step="1" placeholder="ex: 12" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                        {/* Elle demandait à quel format ce nombre correspond. À
+                            aucun en particulier : server/db.js décrémente ce
+                            compteur unique pour toute vente, quel qu'en soit le
+                            format. Autant le dire là où on le saisit. */}
+                        {(productForm.variantes || []).length > 1 && (
+                          <p className="text-[11px] text-stone-gray mt-1">
+                            Un seul stock pour tous les formats : saisissez le total. Chaque vente, quel que soit le format, le diminue.
+                          </p>
+                        )}
                       </div>
                       <div className="md:col-span-2">
                         <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Catégories</label>
@@ -1764,21 +1798,57 @@ const AdminDashboard = ({ onLogout }) => {
                             <span className="text-xs text-stone-gray/70">Sélection automatique</span>
                           )}
                         </div>
-                        <select
-                          value=""
-                          disabled={(productForm.related || []).length >= 4}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (!v || (productForm.related || []).includes(v)) return;
-                            setProductForm({ ...productForm, related: [...(productForm.related || []), v] });
-                          }}
-                          className="px-4 py-2 border rounded w-full text-sm disabled:opacity-40"
-                        >
-                          <option value="">{(productForm.related || []).length >= 4 ? 'Maximum atteint (4)' : 'Ajouter un produit…'}</option>
-                          {products.filter((p) => p.id !== productForm.id).map((p) => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
-                        </select>
+                        {/* Une liste déroulante de 170 noms, dans l'ordre de la
+                            base : elle demandait « une boîte de recherche » et
+                            « l'ordre alphabétique ou par catégorie ». Les deux,
+                            avec la contenance pour distinguer les formats. */}
+                        {(productForm.related || []).length >= 4 ? (
+                          <p className="text-xs text-stone-gray/70">Maximum atteint (4). Retirez-en un pour en choisir un autre.</p>
+                        ) : (
+                          <div className="border rounded">
+                            <div className="flex flex-wrap items-center gap-2 p-2 border-b bg-mist-white/60">
+                              <input type="search" value={rechercheLies}
+                                onChange={(e) => setRechercheLies(e.target.value)}
+                                placeholder="Rechercher un produit…"
+                                className="flex-1 min-w-[12rem] px-3 py-1.5 border rounded text-sm bg-white" />
+                              <div className="flex rounded border overflow-hidden text-xs">
+                                {[['alpha', 'A → Z'], ['categorie', 'Par catégorie']].map(([v, libelle]) => (
+                                  <button key={v} type="button" onClick={() => setClassementLies(v)}
+                                    aria-pressed={classementLies === v}
+                                    className={`px-3 py-1.5 ${classementLies === v ? 'bg-slate-stone text-white' : 'bg-white text-stone-gray hover:bg-mist-white'}`}>
+                                    {libelle}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="max-h-72 overflow-y-auto">
+                              {(() => {
+                                const groupes = groupesLies(products, productForm, rechercheLies, classementLies);
+                                if (groupes.length === 0) return <p className="p-3 text-xs text-stone-gray/70">Aucun produit ne correspond.</p>;
+                                return groupes.map(([groupe, liste]) => (
+                                  <div key={groupe || '-'}>
+                                    {groupe && (
+                                      <p className="sticky top-0 bg-white/95 px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest text-mist-blue font-medium border-b border-slate-stone/5">
+                                        {groupe}
+                                      </p>
+                                    )}
+                                    {liste.map((p) => (
+                                      <button key={p.id} type="button"
+                                        onClick={() => {
+                                          setProductForm({ ...productForm, related: [...(productForm.related || []), p.id] });
+                                          setRechercheLies('');
+                                        }}
+                                        className="w-full text-left px-3 py-1.5 text-sm text-slate-stone hover:bg-mist-white flex justify-between gap-3">
+                                        <span>{p.name}</span>
+                                        {p.contenance && <span className="text-xs text-stone-gray/70 shrink-0">{p.contenance}</span>}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ));
+                              })()}
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div className="md:col-span-2">
                         <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Rituel</label>

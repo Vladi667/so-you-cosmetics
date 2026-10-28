@@ -742,7 +742,8 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                              prose-headings:font-serif prose-headings:text-slate-stone prose-headings:font-normal
                              prose-h2:text-xl prose-h3:text-lg prose-h4:text-base
                              prose-strong:text-slate-stone prose-strong:font-medium
-                             prose-p:mb-4 prose-ul:my-4 prose-li:marker:text-stone-gray/50"
+                             prose-p:mb-4 prose-ul:my-4 prose-li:marker:text-stone-gray/50
+                             prose-a:text-slate-stone prose-a:font-normal prose-a:underline-offset-2 hover:prose-a:text-mist-blue"
                   dangerouslySetInnerHTML={{ __html: descriptionToHtml(product.description) }}
                 />
               ) : (

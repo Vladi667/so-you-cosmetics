@@ -236,7 +236,11 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
 
         <div
           ref={trackRef}
-          className="flex overflow-x-auto hide-scrollbar cursor-grab active:cursor-grabbing select-none px-4"
+          // Centrée quand tout tient : sur un grand écran (un iMac), quatre
+          // fiches calées à gauche laissaient la moitié droite de la bande vide.
+          // Seulement dans ce cas — une piste qui déborde, centrée, rognerait sa
+          // gauche hors de portée du défilement.
+          className={`flex overflow-x-auto hide-scrollbar cursor-grab active:cursor-grabbing select-none px-4${doitBoucler ? '' : ' justify-center'}`}
           // « pan-y » seul interdisait le geste horizontal — sur un carrousel
           // horizontal. Le doigt ne pouvait pas faire défiler la bande : le
           // navigateur réservait tout mouvement à la page. Les deux axes sont
