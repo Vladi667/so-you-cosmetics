@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { chargerMoyens } from '../services/paiement';
 
 // Les moyens de paiement acceptés, montrés avant de payer.
 //
@@ -34,17 +35,6 @@ const PORTEFEUILLES = [
   { id: 'google_pay', nom: 'Google Pay' },
 ];
 
-let enCours = null;
-const chargerMoyens = () => {
-  if (!enCours) {
-    enCours = fetch('/api/paiement/moyens')
-      .then((r) => (r.ok ? r.json() : { methodes: [] }))
-      .then((d) => (Array.isArray(d.methodes) ? d.methodes : []))
-      .catch(() => []);
-  }
-  return enCours;
-};
-
 const Pastille = ({ moyen }) => (
   <li title={moyen.nom}
     className="h-7 min-w-[44px] px-2 flex items-center justify-center rounded-md border border-slate-stone/15 bg-white text-slate-stone">
@@ -59,14 +49,19 @@ const Pastille = ({ moyen }) => (
 );
 
 const MoyensPaiement = ({ className = '', libelle }) => {
-  const [methodes, setMethodes] = useState([]);
+  const [moyens, setMoyens] = useState({ methodes: [], twint: false });
   useEffect(() => {
     let actif = true;
-    chargerMoyens().then((m) => { if (actif) setMethodes(m); });
+    chargerMoyens().then((m) => { if (actif) setMoyens(m); });
     return () => { actif = false; };
   }, []);
 
-  const liste = [...CARTES, ...PORTEFEUILLES.filter((m) => methodes.includes(m.id))];
+  // TWINT par Payrexx, quand il est réglé dans l'administration.
+  const liste = [
+    ...CARTES,
+    ...PORTEFEUILLES.filter((m) => moyens.methodes.includes(m.id)),
+    ...(moyens.twint ? [{ id: 'twint', nom: 'TWINT', texte: 'TWINT' }] : []),
+  ];
   return (
     <ul className={`flex flex-wrap items-center justify-center gap-1.5 ${className}`} aria-label={libelle}>
       {liste.map((m) => <Pastille key={m.id} moyen={m} />)}

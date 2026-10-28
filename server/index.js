@@ -145,7 +145,8 @@ app.use((req, res, next) => {
       // redirige vers www.google.com, il faut donc les deux. Trouve par la
       // mise en observation — imposee, la politique aurait fait disparaitre
       // la carte de la page dont c'est toute la raison d'etre.
-      "frame-src https://gateway.sumup.com https://*.sumup.com https://maps.google.com https://www.google.com",
+      // *.payrexx.com : la fenetre de paiement TWINT, ouverte dans le panier.
+      "frame-src https://gateway.sumup.com https://*.sumup.com https://*.payrexx.com https://maps.google.com https://www.google.com",
       "form-action 'self'",
       "base-uri 'self'",
       "object-src 'none'",

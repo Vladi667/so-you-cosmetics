@@ -228,6 +228,7 @@ async function initProductionDatabase() {
 
     // Migrate orders tables created before pickup/shipping tracking existed.
     await ensureColumn(conn, 'orders', 'fulfillment', 'TEXT NULL');
+    await ensureColumn(conn, 'orders', 'paiement', 'TEXT NULL');
     // Le téléphone et la société, facultatifs, ajoutés après coup. NULL permis :
     // les commandes déjà passées n'en ont pas, et rien ne doit les invalider.
     await ensureColumn(conn, 'orders', 'customer_phone', 'VARCHAR(40) NULL');
@@ -420,6 +421,7 @@ function mapOrderRow(r) {
     shipping: colonneJson(r.shipping),
     cadeau: colonneJson(r.cadeau),
     cgv: colonneJson(r.cgv),
+    paiement: colonneJson(r.paiement),
   };
 }
 
@@ -1997,6 +1999,31 @@ function getSumupConfig() {
   };
 }
 
+// Payrexx, pour TWINT seulement (server/payrexx.js). L'instance est le
+// sous-domaine du compte : « soyou » pour soyou.payrexx.com.
+function getPayrexxConfig() {
+  const s = readSettings();
+  return {
+    instance: String(s.PAYREXX_INSTANCE || process.env.PAYREXX_INSTANCE || '').trim(),
+    apiKey: s.PAYREXX_API_KEY || process.env.PAYREXX_API_KEY || '',
+  };
+}
+
+// Qui encaisse cette commande. Absent : SumUp, comme toutes les commandes
+// passées avant l'arrivée de TWINT — c'est ce qui les garde intactes.
+async function setOrderPaiement(orderId, paiement) {
+  if (pool) {
+    await pool.query('UPDATE orders SET paiement = ? WHERE id = ?', [JSON.stringify(paiement), orderId]);
+    return true;
+  }
+  const data = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
+  const order = data.find((o) => o.id === orderId);
+  if (!order) return false;
+  order.paiement = paiement;
+  ecrireJson(ORDERS_FILE, data);
+  return true;
+}
+
 // Read IMAP (inbox-read) config from admin-saved settings, fall back to env vars.
 function getInboxConfig() {
   const s = readSettings();
@@ -2061,6 +2088,8 @@ module.exports = {
   writeContent,
   updateContent,
   getSumupConfig,
+  getPayrexxConfig,
+  setOrderPaiement,
   getInboxConfig,
   updateOrderFulfillment,
   createOrder,

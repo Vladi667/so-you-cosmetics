@@ -7,6 +7,7 @@ import { getShipping, shippingCostFor, exigeAdresse, getGiftWrap, modeAutorise }
 import { totalPanier, nombreArticles } from '../services/panier';
 import { lireCaisse, ecrireCaisse, oublierCaisse } from '../services/caisse';
 import MoyensPaiement from './MoyensPaiement';
+import { chargerMoyens } from '../services/paiement';
 import useVerrouDefilement from '../hooks/useVerrouDefilement';
 
 const CHAMP_CAISSE = 'w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40';
@@ -42,6 +43,12 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [sumupCheckoutId, setSumupCheckoutId] = useState(null);
   const [googlePayId, setGooglePayId] = useState(null);
+  // TWINT, par Payrexx : proposé seulement quand il est réglé, et payé dans le
+  // panier même, sans quitter la page.
+  const [twintDispo, setTwintDispo] = useState(false);
+  const [moyen, setMoyen] = useState('carte');
+  const [twintLien, setTwintLien] = useState(null);
+  const twintRef = useRef(null);
   const [orderId, setOrderId] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
   const shipping = getShipping();
@@ -124,6 +131,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
       setCheckoutSuccess(false);
       setCheckoutError(null);
       setSumupCheckoutId(null);
+      setTwintLien(null);
       setOrderId(null);
       // Le nom, l'e-mail et l'adresse ne sont PLUS effaces ici. C'est cette
       // remise a zero qui faisait perdre la saisie quand on retournait a la
@@ -191,6 +199,60 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
     }
   }, [sumupCheckoutId, orderId, googlePayId]);
 
+  useEffect(() => {
+    let actif = true;
+    chargerMoyens().then((m) => { if (actif) setTwintDispo(m.twint); });
+    return () => { actif = false; };
+  }, []);
+
+  // Le paiement TWINT ouvert : on attend que Payrexx le dise payé.
+  //
+  // Deux signaux, comme pour SumUp. La fenêtre Payrexx annonce la transaction
+  // par postMessage ; et, parce qu'un téléphone qui bascule vers l'app TWINT
+  // peut revenir sans que ce message parte, le serveur est interrogé toutes
+  // les quatre secondes. Ni l'un ni l'autre ne décide : /confirm demande à
+  // Payrexx, et le webhook confirme de toute façon si l'onglet est fermé.
+  useEffect(() => {
+    if (!twintLien || !orderId) return;
+    let fini = false;
+    const terminer = () => {
+      if (fini) return;
+      fini = true;
+      setTwintLien(null);
+      setCheckoutSuccess(true);
+      oublierCaisse();
+    };
+    const verifier = () =>
+      fetch(`/api/orders/${orderId}/confirm`, { method: 'POST' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d && d.paid) terminer(); })
+        .catch(() => {});
+    const surMessage = (e) => {
+      if (!/\.payrexx\.com$/.test(new URL(e.origin, window.location.href).hostname)) return;
+      let msg = e.data;
+      try { if (typeof msg === 'string') msg = JSON.parse(msg); } catch { return; }
+      const p = msg && msg.payrexx;
+      if (!p) return;
+      if (p.height && twintRef.current) twintRef.current.style.height = `${Math.max(420, Number(p.height))}px`;
+      if (p.transaction && p.transaction.status === 'confirmed') verifier();
+    };
+    window.addEventListener('message', surMessage);
+    const minuterie = setInterval(verifier, 4000);
+    const limite = setTimeout(() => clearInterval(minuterie), 15 * 60 * 1000);
+    return () => {
+      fini = true;
+      window.removeEventListener('message', surMessage);
+      clearInterval(minuterie);
+      clearTimeout(limite);
+    };
+  }, [twintLien, orderId]);
+
+  // Payrexx n'envoie ses messages qu'à une page qui s'est présentée.
+  const presenterOrigine = () => {
+    const f = twintRef.current;
+    if (f && f.contentWindow) f.contentWindow.postMessage(JSON.stringify({ origin: window.location.origin }), twintLien);
+  };
+
   const getPrice = (product) => {
     return product.price || product['Variant Price'] || 0;
   };
@@ -256,6 +318,8 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
       // Le serveur refait le contrôle et date l'acceptation dans la commande :
       // la case ci-dessus bloque le bouton, elle ne prouve rien à elle seule.
       cgvAcceptees: true,
+      moyen: twintDispo && moyen === 'twint' ? 'twint' : 'carte',
+      langue: language,
       items: items.map(item => ({
         id: item.id,
         name: getName(item),
@@ -290,7 +354,9 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
       .then(data => {
         setIsSubmitting(false);
         setOrderId(data.orderId);
-        if (data.checkoutId && !data.checkoutId.startsWith('mock_')) {
+        if (data.twint && data.twint.lien) {
+          setTwintLien(data.twint.lien);
+        } else if (data.checkoutId && !data.checkoutId.startsWith('mock_')) {
           setGooglePayId(data.googlePayMerchantId || null);
           setSumupCheckoutId(data.checkoutId);
         } else {
@@ -383,6 +449,32 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                 className="mt-8 px-8 py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-slate-stone/90 press"
               >
                 {t('drawer.close')}
+              </button>
+            </div>
+          ) : twintLien ? (
+            /* Payrexx, restreint à TWINT */
+            <div className="pt-4">
+              <h3 className="font-serif text-xl text-slate-stone mb-2 text-center">{t('drawer.twintTitle')}</h3>
+              <p className="font-sans text-xs text-stone-gray text-center mb-4">{t('drawer.twintHint')}</p>
+              <iframe
+                ref={twintRef}
+                src={twintLien}
+                title={t('drawer.twintTitle')}
+                allow="payment *"
+                onLoad={presenterOrigine}
+                className="w-full rounded-2xl border border-slate-stone/10 bg-white"
+                style={{ height: 620 }}
+              />
+              <a href={twintLien} target="_blank" rel="noopener"
+                className="block mt-3 text-center font-sans text-[11px] text-stone-gray underline underline-offset-2 hover:text-slate-stone">
+                {t('drawer.twintNewTab')}
+              </a>
+              <button
+                type="button"
+                onClick={() => setTwintLien(null)}
+                className="mt-4 w-full py-3 bg-transparent text-stone-gray/60 font-sans uppercase tracking-[0.2em] text-[10px] rounded-full hover:text-slate-stone transition-all"
+              >
+                {t('drawer.cancel')}
               </button>
             </div>
           ) : sumupCheckoutId ? (
@@ -693,6 +785,20 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                 <p role="alert" className="font-sans text-xs text-red-600">{t('drawer.termsRequired')}</p>
               )}
 
+              {twintDispo && (
+                <fieldset className="pt-2">
+                  <legend className="font-sans text-[10px] uppercase tracking-[0.2em] text-stone-gray mb-2">{t('drawer.payWith')}</legend>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {[['carte', t('drawer.payByCard')], ['twint', t('drawer.payByTwint')]].map(([v, libelle]) => (
+                      <label key={v}
+                        className={`flex items-center gap-2 px-4 py-3 rounded-2xl border cursor-pointer font-sans text-xs ${moyen === v ? 'border-slate-stone bg-mist-white text-slate-stone' : 'border-slate-stone/15 text-stone-gray'}`}>
+                        <input type="radio" name="moyen" value={v} checked={moyen === v} onChange={() => setMoyen(v)} className="accent-slate-stone" />
+                        {libelle}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
               <div className="pt-4 flex flex-col gap-3">
                 <button 
                   type="submit"

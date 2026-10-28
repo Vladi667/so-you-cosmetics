@@ -12,6 +12,7 @@ const { UPLOADS_DIR, ensureUploadsDir, empreinteContenu, fichierExistant } = req
 const comptes = require('./comptes');
 const infolettre = require('./infolettre');
 const rebonds = require('./rebonds');
+const payrexx = require('./payrexx');
 
 // Compare two strings in constant time; tolerates length mismatch
 function timingSafeEqualStr(a, b) {
@@ -263,7 +264,7 @@ function buildInvoiceHtml({ invoiceNumber, order, settings }) {
       </table>
       <p style="text-align:right;font-size:18px;margin:18px 0 0;"><strong>Total : CHF ${Number(order.total).toFixed(2)}</strong></p>
       ${tva}
-      <p style="color:#888;font-size:12px;margin-top:18px;">Payé par carte via SumUp. Ce document tient lieu de facture acquittée.</p>
+      <p style="color:#888;font-size:12px;margin-top:18px;">${order.paiement && order.paiement.moyen === 'twint' ? 'Payé par TWINT via Payrexx' : 'Payé via SumUp'}. Ce document tient lieu de facture acquittée.</p>
     </div>`;
 }
 
@@ -521,7 +522,9 @@ router.get('/refill-count', async (req, res) => {
 });
 
 router.post('/orders', async (req, res) => {
-  const { name, email, phone, company, items, shippingId, address, cadeau, cgvAcceptees } = req.body;
+  const { name, email, phone, company, items, shippingId, address, cadeau, cgvAcceptees, moyen } = req.body;
+  // « twint » passe par Payrexx ; tout le reste, comme avant, par SumUp.
+  const parTwint = moyen === 'twint';
   if (!name || !email || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Missing required order details' });
   }
@@ -585,6 +588,11 @@ router.post('/orders', async (req, res) => {
         });
       }
     }
+    // TWINT demandé mais Payrexx pas réglé : refuser AVANT d'enregistrer une
+    // commande qu'aucun paiement ne pourrait solder.
+    if (parTwint && !payrexx.actif()) {
+      return res.status(400).json({ error: "TWINT n'est pas disponible pour le moment. Merci de choisir un autre moyen de paiement." });
+    }
     const total = calcul.total;
     const newOrder = await db.createOrder({
       // Les lignes du CATALOGUE, pas celles du navigateur : mêmes noms, mêmes
@@ -603,6 +611,24 @@ router.post('/orders', async (req, res) => {
       // et la commande ne doit pas pretendre le contraire.
       cadeau: cadeau ? { ...cadeau, emballage: calcul.giftWrapCost > 0 } : null,
     });
+
+    // TWINT : une passerelle Payrexx restreinte à TWINT, ouverte dans le
+    // panier même. Rien de ce qui suit — SumUp, ni le paiement simulé quand
+    // SumUp n'est pas réglé — ne concerne cette commande.
+    if (parTwint) {
+      try {
+        const passerelle = await payrexx.creerPasserelleTwint(newOrder, { langue: ['fr', 'en', 'de'].includes(req.body.langue) ? req.body.langue : 'fr' });
+        await db.setOrderPaiement(newOrder.id, { fournisseur: 'payrexx', moyen: 'twint', passerelle: passerelle.id });
+        return res.status(201).json({
+          message: 'Order created (Pending TWINT payment)',
+          orderId: newOrder.id,
+          twint: { lien: passerelle.lien },
+        });
+      } catch (err) {
+        console.error('Payrexx gateway creation failed:', err.response ? err.response.data : err.message);
+        return res.status(500).json({ error: 'Erreur lors de la création du paiement TWINT.' });
+      }
+    }
 
     let checkoutId = `mock_session_${newOrder.id}`;
     let sumupActive = false;
@@ -693,13 +719,24 @@ async function confirmOrderPaid(orderId, source) {
     return { confirmed: true, status: 'Paid' };
   }
 
-  const checkout = await fetchCheckoutFromSumup(order.id);
+  // Chaque commande est vérifiée auprès de celui qui l'a encaissée. Sans
+  // mention, c'est SumUp : toutes les commandes d'avant TWINT, et toutes celles
+  // payées par carte, PayPal, Apple Pay ou Google Pay.
+  const parPayrexx = order.paiement && order.paiement.fournisseur === 'payrexx';
+  const qui = parPayrexx ? 'Payrexx' : 'SumUp';
+  const checkout = parPayrexx
+    ? await payrexx.lirePasserelle(order.paiement.passerelle)
+    : await fetchCheckoutFromSumup(order.id);
+  if (parPayrexx && checkout && checkout.referenceId && checkout.referenceId !== order.id) {
+    console.error(`Payrexx confirmation (${source}): gateway ${order.paiement.passerelle} belongs to ${checkout.referenceId}, not ${order.id} — ignored.`);
+    return { confirmed: false, status: order.status };
+  }
   if (!checkout) {
-    console.error(`SumUp confirmation (${source}): could not reach SumUp for order ${order.id} — left unconfirmed rather than assumed paid.`);
+    console.error(`${qui} confirmation (${source}): could not reach ${qui} for order ${order.id} — left unconfirmed rather than assumed paid.`);
     return { confirmed: false, status: order.status };
   }
   if (!checkout.paid) {
-    console.warn(`SumUp confirmation (${source}): order ${order.id} announced but SumUp does not report it paid — ignored.`);
+    console.warn(`${qui} confirmation (${source}): order ${order.id} announced but ${qui} does not report it paid — ignored.`);
     return { confirmed: false, status: order.status };
   }
   // Guard the amount too: confirming an order for less than it is worth is as
@@ -707,14 +744,14 @@ async function confirmOrderPaid(orderId, source) {
   // two sides are floating-point currency values.
   const expected = Number(order.total);
   if (Number.isFinite(expected) && Math.abs(checkout.amount - expected) > 0.01) {
-    console.error(`SumUp confirmation (${source}): order ${order.id} paid ${checkout.amount} ${checkout.currency} but is worth ${expected} — not confirmed, needs review.`);
+    console.error(`${qui} confirmation (${source}): order ${order.id} paid ${checkout.amount} ${checkout.currency} but is worth ${expected} — not confirmed, needs review.`);
     return { confirmed: false, status: order.status };
   }
 
   await db.updateOrderStatus(order.id, 'Paid');
   const { name, email } = orderContact(order);
   if (!email) {
-    console.error(`SumUp confirmation (${source}): order ${order.id} is marked paid but has no customer email — confirmation not sent.`);
+    console.error(`${qui} confirmation (${source}): order ${order.id} is marked paid but has no customer email — confirmation not sent.`);
     return { confirmed: true, status: 'Paid' };
   }
   try {
@@ -723,7 +760,7 @@ async function confirmOrderPaid(orderId, source) {
     await appliquerStockEtAlerter(order);
   } catch (mailErr) {
     // The payment is real either way — never fail the confirmation over email.
-    console.error(`SumUp confirmation (${source}): order ${order.id} confirmed but the email failed:`, mailErr);
+    console.error(`${qui} confirmation (${source}): order ${order.id} confirmed but the email failed:`, mailErr);
   }
   return { confirmed: true, status: 'Paid' };
 }
@@ -996,6 +1033,27 @@ router.post('/sumup/webhook', async (req, res) => {
     await confirmOrderPaid(checkoutRef, 'webhook');
   } catch (err) {
     console.error('SumUp webhook handler error:', err);
+  }
+});
+
+// 3b-bis. Payrexx Webhook — TWINT.
+//
+// Payrexx envoie la transaction, en JSON ou en formulaire selon le réglage du
+// compte. On n'en retient que la commande qu'elle désigne (referenceId) ; le
+// paiement lui-même est revérifié auprès de Payrexx par confirmOrderPaid, comme
+// pour SumUp. Réponse immédiate : Payrexx abandonne après 20 secondes.
+router.post('/payrexx/webhook', express.urlencoded({ extended: true }), async (req, res) => {
+  res.status(200).json({ received: true });
+  const t = (req.body && req.body.transaction) || {};
+  const ref = t.referenceId || (t.invoice && t.invoice.referenceId);
+  if (!ref) {
+    console.warn('Payrexx webhook without referenceId');
+    return;
+  }
+  try {
+    await confirmOrderPaid(String(ref), 'payrexx-webhook');
+  } catch (err) {
+    console.error('Payrexx webhook handler error:', err);
   }
 });
 
@@ -1927,6 +1985,7 @@ async function moyensSumup() {
   if (moyensEnCache.resultat && Date.now() - moyensEnCache.quand < 3600 * 1000) return moyensEnCache.resultat;
   const { apiKey } = db.getSumupConfig();
   if (!apiKey) return { configure: false, methodes: [] };
+  const axios = require('axios');
   const headers = { Authorization: `Bearer ${apiKey}` };
   const { data: moi } = await axios.get(`${sumupApiBase()}/v0.1/me`, { headers, timeout: 10000 });
   const merchantCode = moi && moi.merchant_profile && moi.merchant_profile.merchant_code;
@@ -1944,10 +2003,10 @@ router.get('/paiement/moyens', async (req, res) => {
   try {
     const { methodes } = await moyensSumup();
     res.set('Cache-Control', 'public, max-age=600');
-    res.json({ methodes });
+    res.json({ methodes, twint: payrexx.actif() });
   } catch (err) {
     console.error('SumUp payment methods lookup failed:', err.response ? err.response.data : err.message);
-    res.json({ methodes: [] });
+    res.json({ methodes: [], twint: payrexx.actif() });
   }
 });
 
@@ -1965,6 +2024,29 @@ router.get('/admin/sumup/moyens', requireAdmin, async (req, res) => {
   } catch (err) {
     const detail = err.response ? JSON.stringify(err.response.data) : err.message;
     res.status(502).json({ error: `SumUp n'a pas répondu : ${detail}`, googlePayConfigure: !!cfg.googlePayMerchantId, fichierApple });
+  }
+});
+
+// 13c-ter. Réglages Payrexx (TWINT). La clé n'est jamais renvoyée en clair.
+router.get('/admin/settings/payrexx', requireAdmin, (req, res) => {
+  const cfg = db.getPayrexxConfig();
+  res.json({ instance: cfg.instance, apiKeyConfigured: !!cfg.apiKey, apiKeyLast4: cfg.apiKey ? cfg.apiKey.slice(-4) : null });
+});
+
+router.put('/admin/settings/payrexx', requireAdmin, (req, res) => {
+  try {
+    const patch = {};
+    if (Object.prototype.hasOwnProperty.call(req.body, 'instance')) {
+      // « soyou », « soyou.payrexx.com » ou l'adresse entière : on garde le sous-domaine.
+      patch.PAYREXX_INSTANCE = String(req.body.instance || '').trim().replace(/^https?:\/\//, '').replace(/\.payrexx\.com.*$/, '');
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'apiKey')) patch.PAYREXX_API_KEY = String(req.body.apiKey || '').trim();
+    db.updateSettings(patch);
+    const cfg = db.getPayrexxConfig();
+    res.json({ instance: cfg.instance, apiKeyConfigured: !!cfg.apiKey, apiKeyLast4: cfg.apiKey ? cfg.apiKey.slice(-4) : null });
+  } catch (err) {
+    console.error('Payrexx settings update failed:', err);
+    res.status(500).json({ error: 'Enregistrement des réglages Payrexx impossible' });
   }
 });
 

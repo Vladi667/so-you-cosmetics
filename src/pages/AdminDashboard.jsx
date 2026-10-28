@@ -477,6 +477,7 @@ const AdminDashboard = ({ onLogout }) => {
   useEffect(() => {
     if (activeTab === 'sumup') {
       loadSumupSettings();
+      chargerPayrexx();
       return;
     }
     if (activeTab === 'inbox') {
@@ -682,6 +683,35 @@ const AdminDashboard = ({ onLogout }) => {
       .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
       .then(({ ok, data }) => setDiagMoyens(ok ? data : { ...data, erreur: data.error || 'Erreur' }))
       .catch((err) => setDiagMoyens({ erreur: err.message }));
+  };
+
+  // Payrexx, pour TWINT.
+  const [payrexx, setPayrexx] = useState({ instance: '', apiKeyConfigured: false, apiKeyLast4: null });
+  const [payrexxForm, setPayrexxForm] = useState({ instance: '', apiKey: '' });
+  const [payrexxStatut, setPayrexxStatut] = useState(null);
+  const chargerPayrexx = () => {
+    fetch('/api/admin/settings/payrexx', { headers: fetchHeaders })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Lecture des réglages Payrexx impossible'))))
+      .then((data) => { setPayrexx(data); setPayrexxForm({ instance: data.instance || '', apiKey: '' }); })
+      .catch((err) => setPayrexxStatut({ erreur: err.message }));
+  };
+  const envoyerPayrexx = (patch, message) => {
+    setPayrexxStatut(null);
+    fetch('/api/admin/settings/payrexx', { method: 'PUT', headers: fetchHeaders, body: JSON.stringify(patch) })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) throw new Error(data.error || 'Erreur lors de la sauvegarde');
+        setPayrexx(data);
+        setPayrexxForm({ instance: data.instance || '', apiKey: '' });
+        setPayrexxStatut({ ok: message });
+      })
+      .catch((err) => setPayrexxStatut({ erreur: err.message }));
+  };
+  const enregistrerPayrexx = (e) => {
+    e.preventDefault();
+    const patch = { instance: payrexxForm.instance };
+    if (payrexxForm.apiKey) patch.apiKey = payrexxForm.apiKey;
+    envoyerPayrexx(patch, 'Réglages Payrexx enregistrés.');
   };
 
   const clearSumupField = (field) => {
@@ -2423,6 +2453,45 @@ const AdminDashboard = ({ onLogout }) => {
                   </div>
                 )}
               </div>
+
+              {/* TWINT passe par Payrexx, à côté de SumUp. Tant que ces deux
+                  champs sont vides, le panier ne propose pas TWINT et rien ne
+                  change pour les autres moyens de paiement. */}
+              <form onSubmit={enregistrerPayrexx} className="mt-10 pt-8 border-t border-slate-stone/10 space-y-5">
+                <div>
+                  <h3 className="font-serif text-xl text-slate-stone mb-1">TWINT (Payrexx)</h3>
+                  <p className="text-[12px] text-stone-gray">
+                    {payrexx.instance && payrexx.apiKeyConfigured
+                      ? <span className="text-green-600">Actif — TWINT est proposé au paiement.</span>
+                      : <span className="text-amber-600">Inactif — renseignez l'instance et la clé API pour proposer TWINT.</span>}
+                  </p>
+                </div>
+                {payrexxStatut && <p className={`text-sm ${payrexxStatut.erreur ? 'text-red-600' : 'text-green-700'}`}>{payrexxStatut.erreur || payrexxStatut.ok}</p>}
+                <div>
+                  <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">Instance Payrexx</label>
+                  <input type="text" value={payrexxForm.instance}
+                    onChange={(e) => setPayrexxForm({ ...payrexxForm, instance: e.target.value })}
+                    className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40"
+                    placeholder="soyou (pour soyou.payrexx.com)" />
+                </div>
+                <div>
+                  <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">Clé API Payrexx</label>
+                  <input type="password" autoComplete="off" value={payrexxForm.apiKey}
+                    onChange={(e) => setPayrexxForm({ ...payrexxForm, apiKey: e.target.value })}
+                    className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40"
+                    placeholder={payrexx.apiKeyConfigured ? `Laisser vide pour conserver •••• ${payrexx.apiKeyLast4}` : 'Payrexx → API & Plugins'} />
+                  <p className="text-[11px] text-stone-gray/70 mt-2">
+                    Dans Payrexx → Webhooks, ajoutez l'adresse <code className="text-xs">https://soyoucosmetics.com/api/payrexx/webhook</code> (format JSON).
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button type="submit" className="px-8 py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-slate-stone/90 shadow-md">Enregistrer</button>
+                  {(payrexx.instance || payrexx.apiKeyConfigured) && (
+                    <button type="button" onClick={() => envoyerPayrexx({ instance: '', apiKey: '' }, 'TWINT désactivé.')}
+                      className="px-6 py-3 text-xs uppercase tracking-widest font-bold text-red-600 hover:bg-red-50 rounded-full border border-red-100">Désactiver TWINT</button>
+                  )}
+                </div>
+              </form>
             </div>
           </div>
         )}
