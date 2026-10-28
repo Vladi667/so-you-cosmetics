@@ -1990,7 +1990,10 @@ function getSumupConfig() {
   return {
     apiKey: s.SUMUP_API_KEY || process.env.SUMUP_API_KEY || '',
     merchantEmail: s.SUMUP_MERCHANT_EMAIL || process.env.SUMUP_MERCHANT_EMAIL || '',
-    webhookSecret: s.SUMUP_WEBHOOK_SECRET || process.env.SUMUP_WEBHOOK_SECRET || ''
+    webhookSecret: s.SUMUP_WEBHOOK_SECRET || process.env.SUMUP_WEBHOOK_SECRET || '',
+    // L'identifiant marchand Google Pay (console Google Pay & Wallet), distinct
+    // du code marchand SumUp. Sans lui, le module SumUp n'affiche pas Google Pay.
+    googlePayMerchantId: s.GOOGLE_PAY_MERCHANT_ID || process.env.GOOGLE_PAY_MERCHANT_ID || ''
   };
 }
 

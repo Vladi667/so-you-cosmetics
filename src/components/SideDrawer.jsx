@@ -6,6 +6,7 @@ import { getAbsenceNotice } from '../services/shop';
 import { getShipping, shippingCostFor, exigeAdresse, getGiftWrap, modeAutorise } from '../services/shop';
 import { totalPanier, nombreArticles } from '../services/panier';
 import { lireCaisse, ecrireCaisse, oublierCaisse } from '../services/caisse';
+import MoyensPaiement from './MoyensPaiement';
 import useVerrouDefilement from '../hooks/useVerrouDefilement';
 
 const CHAMP_CAISSE = 'w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40';
@@ -40,6 +41,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [sumupCheckoutId, setSumupCheckoutId] = useState(null);
+  const [googlePayId, setGooglePayId] = useState(null);
   const [orderId, setOrderId] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
   const shipping = getShipping();
@@ -163,6 +165,9 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
       window.SumUpCard.mount({
         id: 'sumup-card',
         checkoutId: sumupCheckoutId,
+        // Sans cet objet, le module n'affiche jamais Google Pay, même activé
+        // chez SumUp. L'identifiant se règle dans l'administration.
+        ...(googlePayId ? { googlePay: { merchantId: googlePayId, merchantName: 'So You Cosmetics' } } : {}),
         onResponse: function (type, body) {
           console.log('SumUp Response:', type, body);
           if (type === 'success') {
@@ -184,7 +189,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
         },
       });
     }
-  }, [sumupCheckoutId, orderId]);
+  }, [sumupCheckoutId, orderId, googlePayId]);
 
   const getPrice = (product) => {
     return product.price || product['Variant Price'] || 0;
@@ -286,6 +291,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
         setIsSubmitting(false);
         setOrderId(data.orderId);
         if (data.checkoutId && !data.checkoutId.startsWith('mock_')) {
+          setGooglePayId(data.googlePayMerchantId || null);
           setSumupCheckoutId(data.checkoutId);
         } else {
           setCheckoutSuccess(true);
@@ -707,6 +713,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                     avant de payer : qui prend ma carte, quand j'aurai le colis,
                     a qui je m'adresse si ca tourne mal. Elles ne disent que ce
                     que le site affirme deja ailleurs. */}
+                <MoyensPaiement className="mt-2" libelle={t('drawer.paymentMethods')} />
                 <ul className="mt-2 space-y-1.5 font-sans text-[11px] leading-relaxed text-stone-gray/80">
                   <li>{t('drawer.trustPayment')}</li>
                   <li>{t('drawer.trustMade')}</li>

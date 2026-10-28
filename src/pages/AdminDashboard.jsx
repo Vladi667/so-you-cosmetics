@@ -637,7 +637,7 @@ const AdminDashboard = ({ onLogout }) => {
       })
       .then(data => {
         setSumupSettings(data);
-        setSumupForm({ apiKey: '', merchantEmail: data.merchantEmail || '', webhookSecret: '' });
+        setSumupForm({ apiKey: '', merchantEmail: data.merchantEmail || '', webhookSecret: '', googlePayMerchantId: data.googlePayMerchantId || '' });
       })
       .catch(err => setSumupStatus({ success: '', error: err.message }));
   };
@@ -650,7 +650,7 @@ const AdminDashboard = ({ onLogout }) => {
     // Only send fields the user actually filled in. Empty apiKey/webhookSecret
     // means "leave as is" rather than "clear" — clearing is done via the
     // dedicated Effacer buttons.
-    const patch = { merchantEmail: sumupForm.merchantEmail };
+    const patch = { merchantEmail: sumupForm.merchantEmail, googlePayMerchantId: sumupForm.googlePayMerchantId || '' };
     if (sumupForm.apiKey) patch.apiKey = sumupForm.apiKey;
     if (sumupForm.webhookSecret) patch.webhookSecret = sumupForm.webhookSecret;
 
@@ -664,13 +664,24 @@ const AdminDashboard = ({ onLogout }) => {
         setSumupSaving(false);
         if (!ok) throw new Error(data.error || 'Erreur lors de la sauvegarde');
         setSumupSettings(data);
-        setSumupForm({ apiKey: '', merchantEmail: data.merchantEmail || '', webhookSecret: '' });
+        setSumupForm({ apiKey: '', merchantEmail: data.merchantEmail || '', webhookSecret: '', googlePayMerchantId: data.googlePayMerchantId || '' });
         setSumupStatus({ success: 'Paramètres SumUp mis à jour. Redémarrage du serveur non nécessaire.', error: '' });
       })
       .catch(err => {
         setSumupSaving(false);
         setSumupStatus({ success: '', error: err.message });
       });
+  };
+
+  // Ce que SumUp propose réellement pour un paiement en CHF — voir
+  // /api/admin/sumup/moyens dans server/routes.js.
+  const [diagMoyens, setDiagMoyens] = useState(null);
+  const verifierMoyens = () => {
+    setDiagMoyens({ chargement: true });
+    fetch('/api/admin/sumup/moyens', { headers: fetchHeaders })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => setDiagMoyens(ok ? data : { ...data, erreur: data.error || 'Erreur' }))
+      .catch((err) => setDiagMoyens({ erreur: err.message }));
   };
 
   const clearSumupField = (field) => {
@@ -684,7 +695,7 @@ const AdminDashboard = ({ onLogout }) => {
       .then(res => res.json())
       .then(data => {
         setSumupSettings(data);
-        setSumupForm({ apiKey: '', merchantEmail: data.merchantEmail || '', webhookSecret: '' });
+        setSumupForm({ apiKey: '', merchantEmail: data.merchantEmail || '', webhookSecret: '', googlePayMerchantId: data.googlePayMerchantId || '' });
         setSumupStatus({ success: 'Champ effacé.', error: '' });
       })
       .catch(err => setSumupStatus({ success: '', error: err.message }));
@@ -2351,6 +2362,18 @@ const AdminDashboard = ({ onLogout }) => {
                   <p className="text-[11px] text-stone-gray/70 mt-2">À configurer si SumUp signe ses webhooks. URL webhook : <code className="text-xs">https://soyoucosmetics.com/api/sumup/webhook</code></p>
                 </div>
 
+                <div>
+                  <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">Identifiant marchand Google Pay (facultatif)</label>
+                  <input
+                    type="text"
+                    value={sumupForm.googlePayMerchantId || ''}
+                    onChange={(e) => setSumupForm({ ...sumupForm, googlePayMerchantId: e.target.value })}
+                    className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40"
+                    placeholder="BCR2DN…"
+                  />
+                  <p className="text-[11px] text-stone-gray/70 mt-2">Fourni par la console Google Pay &amp; Wallet (pay.google.com/business/console) — ce n'est pas le code marchand SumUp. Sans lui, Google Pay n'apparaît pas au paiement.</p>
+                </div>
+
                 <button
                   type="submit"
                   disabled={sumupSaving}
@@ -2359,6 +2382,47 @@ const AdminDashboard = ({ onLogout }) => {
                   {sumupSaving ? 'Sauvegarde…' : 'Enregistrer'}
                 </button>
               </form>
+
+              {/* Elle demandait de vérifier que PayPal, V PAY, Google Pay et
+                  Apple Pay sont activés. La réponse est chez SumUp : ce bloc la
+                  lui demande, plutôt que de la deviner. */}
+              <div className="mt-10 pt-8 border-t border-slate-stone/10">
+                <h3 className="font-serif text-xl text-slate-stone mb-2">Moyens de paiement actifs</h3>
+                <p className="text-[12px] text-stone-gray mb-4">Demande à SumUp ce qu'il propose réellement pour un paiement en CHF sur ce compte.</p>
+                <button type="button" onClick={verifierMoyens} disabled={diagMoyens?.chargement}
+                  className="px-6 py-2.5 border border-slate-stone/20 text-slate-stone font-sans uppercase tracking-[0.2em] text-[10px] rounded-full hover:bg-mist-white disabled:opacity-50">
+                  {diagMoyens?.chargement ? 'Vérification…' : 'Vérifier auprès de SumUp'}
+                </button>
+                {diagMoyens && !diagMoyens.chargement && (
+                  <div className="mt-5 text-sm text-stone-gray space-y-2">
+                    {diagMoyens.erreur && <p className="text-red-600">{diagMoyens.erreur}</p>}
+                    {diagMoyens.configure === false && <p className="text-amber-600">Clé API SumUp non configurée.</p>}
+                    {Array.isArray(diagMoyens.methodes) && (
+                      <>
+                        <p>Compte <code className="text-xs">{diagMoyens.merchantCode}</code> — SumUp renvoie : <strong className="text-slate-stone">{diagMoyens.methodes.join(', ') || 'rien'}</strong></p>
+                        <ul className="space-y-1">
+                          {[
+                            ['Cartes (Visa, Mastercard, Maestro, V PAY, Amex)', diagMoyens.methodes.includes('card'), 'Le module SumUp reconnaît la marque de chaque carte.'],
+                            ['PayPal', diagMoyens.methodes.includes('paypal'), "À demander à SumUp (formulaire de contact développeurs) s'il manque."],
+                            ['Apple Pay', diagMoyens.methodes.includes('apple_pay') && diagMoyens.fichierApple,
+                              !diagMoyens.methodes.includes('apple_pay') ? 'Non activé chez SumUp.'
+                                : !diagMoyens.fichierApple ? "Activé chez SumUp, mais le domaine n'est pas encore vérifié : SumUp → Paramètres → Pour les développeurs → Portefeuilles de paiement." : ''],
+                            ['Google Pay', diagMoyens.methodes.includes('google_pay') && diagMoyens.googlePayConfigure,
+                              !diagMoyens.methodes.includes('google_pay') ? 'Non activé chez SumUp.'
+                                : !diagMoyens.googlePayConfigure ? "Activé chez SumUp, mais l'identifiant marchand Google Pay ci-dessus manque." : ''],
+                          ].map(([nom, ok, note]) => (
+                            <li key={nom}>
+                              <span className={ok ? 'text-green-600' : 'text-amber-600'}>{ok ? '✓' : '✗'}</span>{' '}
+                              <span className="text-slate-stone">{nom}</span>
+                              {note && <span className="text-[12px] text-stone-gray/80"> — {note}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

@@ -663,7 +663,8 @@ router.post('/orders', async (req, res) => {
     res.status(201).json({
       message: sumupActive ? 'Order created (Pending Payment)' : 'Order created (Mocked Payment)',
       orderId: newOrder.id,
-      checkoutId: checkoutId
+      checkoutId: checkoutId,
+      googlePayMerchantId: sumup.googlePayMerchantId || null
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to process order' });
@@ -1872,7 +1873,8 @@ router.get('/admin/settings/sumup', requireAdmin, (req, res) => {
       apiKeyConfigured: !!apiKey,
       apiKeyLast4: apiKey ? apiKey.slice(-4) : null,
       merchantEmail: cfg.merchantEmail || '',
-      webhookSecretConfigured: !!cfg.webhookSecret
+      webhookSecretConfigured: !!cfg.webhookSecret,
+      googlePayMerchantId: cfg.googlePayMerchantId || ''
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to read SumUp settings' });
@@ -1894,6 +1896,9 @@ router.put('/admin/settings/sumup', requireAdmin, (req, res) => {
     if (Object.prototype.hasOwnProperty.call(req.body, 'webhookSecret')) {
       patch.SUMUP_WEBHOOK_SECRET = req.body.webhookSecret;
     }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'googlePayMerchantId')) {
+      patch.GOOGLE_PAY_MERCHANT_ID = String(req.body.googlePayMerchantId || '').trim();
+    }
     db.updateSettings(patch);
     const cfg = db.getSumupConfig();
     res.json({
@@ -1901,11 +1906,65 @@ router.put('/admin/settings/sumup', requireAdmin, (req, res) => {
       apiKeyConfigured: !!cfg.apiKey,
       apiKeyLast4: cfg.apiKey ? cfg.apiKey.slice(-4) : null,
       merchantEmail: cfg.merchantEmail || '',
-      webhookSecretConfigured: !!cfg.webhookSecret
+      webhookSecretConfigured: !!cfg.webhookSecret,
+      googlePayMerchantId: cfg.googlePayMerchantId || ''
     });
   } catch (err) {
     console.error('SumUp settings update failed:', err);
     res.status(500).json({ error: 'Failed to update SumUp settings' });
+  }
+});
+
+// 13c-bis. Les moyens de paiement que SumUp propose réellement.
+//
+// Elle demandait de « vérifier que PayPal, V PAY, Google Pay et Apple Pay sont
+// bien activés ». Ce n'est pas une case du site : c'est SumUp qui décide, selon
+// le pays du compte, la devise et ce qui a été activé chez eux. Leur
+// documentation le dit — la liste renvoyée pour un paiement fait foi. On la
+// demande donc, pour 50 CHF, et on la garde une heure.
+let moyensEnCache = { quand: 0, resultat: null };
+async function moyensSumup() {
+  if (moyensEnCache.resultat && Date.now() - moyensEnCache.quand < 3600 * 1000) return moyensEnCache.resultat;
+  const { apiKey } = db.getSumupConfig();
+  if (!apiKey) return { configure: false, methodes: [] };
+  const headers = { Authorization: `Bearer ${apiKey}` };
+  const { data: moi } = await axios.get(`${sumupApiBase()}/v0.1/me`, { headers, timeout: 10000 });
+  const merchantCode = moi && moi.merchant_profile && moi.merchant_profile.merchant_code;
+  if (!merchantCode) throw new Error('code marchand introuvable dans /v0.1/me');
+  const { data } = await axios.get(`${sumupApiBase()}/v0.1/merchants/${encodeURIComponent(merchantCode)}/payment-methods`, {
+    headers, params: { amount: 50, currency: 'CHF' }, timeout: 10000,
+  });
+  const methodes = ((data && data.available_payment_methods) || []).map((m) => String(m.id));
+  moyensEnCache = { quand: Date.now(), resultat: { configure: true, merchantCode, methodes } };
+  return moyensEnCache.resultat;
+}
+
+// Public : les identifiants seulement, pour les logos du panier.
+router.get('/paiement/moyens', async (req, res) => {
+  try {
+    const { methodes } = await moyensSumup();
+    res.set('Cache-Control', 'public, max-age=600');
+    res.json({ methodes });
+  } catch (err) {
+    console.error('SumUp payment methods lookup failed:', err.response ? err.response.data : err.message);
+    res.json({ methodes: [] });
+  }
+});
+
+// Admin : le diagnostic complet, à la demande, sans cache.
+router.get('/admin/sumup/moyens', requireAdmin, async (req, res) => {
+  moyensEnCache = { quand: 0, resultat: null };
+  const cfg = db.getSumupConfig();
+  // Apple Pay sur un site exige que le domaine soit déclaré chez SumUp
+  // (Tableau de bord → Paramètres → Pour les développeurs → Portefeuilles de
+  // paiement), qui fournit un fichier à poser sous /.well-known/.
+  const fichierApple = fs.existsSync(path.join(__dirname, '..', '.well-known', 'apple-developer-merchantid-domain-association'));
+  try {
+    const r = await moyensSumup();
+    res.json({ ...r, googlePayConfigure: !!cfg.googlePayMerchantId, fichierApple });
+  } catch (err) {
+    const detail = err.response ? JSON.stringify(err.response.data) : err.message;
+    res.status(502).json({ error: `SumUp n'a pas répondu : ${detail}`, googlePayConfigure: !!cfg.googlePayMerchantId, fichierApple });
   }
 });
 

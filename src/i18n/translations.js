@@ -302,6 +302,7 @@ const translations = {
       termsRequired: "Merci d’accepter les conditions générales de vente pour continuer.",
       // Les trois lignes de réassurance, composées de ce que le site affirme
       // déjà par ailleurs — aucune promesse nouvelle.
+      paymentMethods: 'Moyens de paiement acceptés',
       trustPayment: 'Paiement sécurisé par SumUp. Vos données de carte ne sont jamais conservées par So You.',
       trustMade: 'Expédition sous 2 à 4 jours ouvrés.',
       trustContact: 'Une question ? 022 556 69 92 — 3 av. Pictet-de-Rochemont, 1207 Genève.',
@@ -1073,6 +1074,7 @@ const translations = {
       acceptTerms: 'I have read and accept the',
       acceptTermsLink: 'terms and conditions of sale',
       termsRequired: 'Please accept the terms and conditions of sale to continue.',
+      paymentMethods: 'Accepted payment methods',
       trustPayment: 'Secure payment by SumUp. Your card details are never kept by So You.',
       trustMade: 'Shipped within 2 to 4 business days.',
       trustContact: 'A question? 022 556 69 92 — 3 av. Pictet-de-Rochemont, 1207 Geneva.',
@@ -1829,6 +1831,7 @@ const translations = {
       acceptTerms: 'Ich akzeptiere die',
       acceptTermsLink: 'Allgemeinen Geschäftsbedingungen',
       termsRequired: 'Bitte akzeptieren Sie die Allgemeinen Geschäftsbedingungen, um fortzufahren.',
+      paymentMethods: 'Akzeptierte Zahlungsmittel',
       trustPayment: 'Sichere Zahlung über SumUp. Ihre Kartendaten werden von So You nie gespeichert.',
       trustMade: 'Versand innerhalb von 2 bis 4 Werktagen.',
       trustContact: 'Eine Frage? 022 556 69 92 — 3 av. Pictet-de-Rochemont, 1207 Genf.',
