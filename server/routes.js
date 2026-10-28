@@ -1998,12 +1998,24 @@ async function moyensSumup() {
   return moyensEnCache.resultat;
 }
 
+// Le fichier qu'Apple vérifie avant d'autoriser Apple Pay sur ce domaine.
+const fichierApplePay = () =>
+  fs.existsSync(path.join(__dirname, '..', '.well-known', 'apple-developer-merchantid-domain-association'));
+
 // Public : les identifiants seulement, pour les logos du panier.
+//
+// SumUp peut annoncer Apple Pay et Google Pay sans que le module de paiement
+// puisse les montrer : Google Pay exige l'identifiant marchand Google, Apple
+// Pay le domaine vérifié. Un logo sans bouton au moment de payer serait une
+// promesse non tenue — on ne les annonce donc qu'une fois réglés.
 router.get('/paiement/moyens', async (req, res) => {
   try {
     const { methodes } = await moyensSumup();
+    const { googlePayMerchantId } = db.getSumupConfig();
+    const utilisables = methodes.filter((m) =>
+      (m !== 'google_pay' || !!googlePayMerchantId) && (m !== 'apple_pay' || fichierApplePay()));
     res.set('Cache-Control', 'public, max-age=600');
-    res.json({ methodes, twint: payrexx.actif() });
+    res.json({ methodes: utilisables, twint: payrexx.actif() });
   } catch (err) {
     console.error('SumUp payment methods lookup failed:', err.response ? err.response.data : err.message);
     res.json({ methodes: [], twint: payrexx.actif() });
@@ -2017,7 +2029,7 @@ router.get('/admin/sumup/moyens', requireAdmin, async (req, res) => {
   // Apple Pay sur un site exige que le domaine soit déclaré chez SumUp
   // (Tableau de bord → Paramètres → Pour les développeurs → Portefeuilles de
   // paiement), qui fournit un fichier à poser sous /.well-known/.
-  const fichierApple = fs.existsSync(path.join(__dirname, '..', '.well-known', 'apple-developer-merchantid-domain-association'));
+  const fichierApple = fichierApplePay();
   try {
     const r = await moyensSumup();
     res.json({ ...r, googlePayConfigure: !!cfg.googlePayMerchantId, fichierApple });
