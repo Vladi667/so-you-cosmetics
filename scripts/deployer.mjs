@@ -92,6 +92,8 @@ const FICHIERS_SERVEUR = [
   'infolettre.js',
   // Le traitement des rebonds. Requis par infolettre.js et routes.js.
   'rebonds.js',
+  // TWINT par Payrexx. Requis par routes.js.
+  'payrexx.js',
   'package.json',
 ];
 
