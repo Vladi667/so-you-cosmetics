@@ -6,6 +6,9 @@ import JournalEditor from './admin/JournalEditor';
 import InfolettreEditor from './admin/InfolettreEditor';
 import PaniersAbandonnes from './admin/PaniersAbandonnes';
 import Marketing from './admin/Marketing';
+import Accueil from './admin/Accueil';
+import FichierClients from './admin/FichierClients';
+import Caisse from './admin/Caisse';
 import ApercuFiche from './ApercuFiche';
 import { imageUrl } from '../services/products';
 import { SHOP_CATEGORIES } from '../data/categories';
@@ -107,13 +110,13 @@ function EnteteSection({ section, form, chapeau }) {
 }
 
 const AdminDashboard = ({ onLogout }) => {
-  const [activeTab, setActiveTab] = useState('orders');
+  const [activeTab, setActiveTab] = useState('accueil');
   // Les inscrites a l'infolettre. Elles etaient collectees depuis le debut sans
   // qu'aucun ecran ne permette de les relire.
   const [abonnees, setAbonnees] = useState([]);
   const [orders, setOrders] = useState([]);
   const [bookings, setBookings] = useState([]);
-  const [clients, setClients] = useState([]);
+  const [, setClients] = useState([]);
   const [workshops, setWorkshops] = useState([]);
   const [workshopForm, setWorkshopForm] = useState({ id: null, title: '', description: '', price: '', duration: '', image_url: '', starts_at: '' });
   const [products, setProducts] = useState([]);
@@ -125,17 +128,20 @@ const AdminDashboard = ({ onLogout }) => {
   const [productsPage, setProductsPage] = useState(1);
   // La cliente dont on regarde l'historique. Une seule à la fois : déplier tout
   // le fichier donnerait un mur qu'on ne lit pas.
-  const [clienteOuverte, setClienteOuverte] = useState(null);
   // Cent soixante-dix-huit fiches dans l'ordre de l'export Wix : pour retrouver
   // un savon, il fallait le chercher au nom ou tourner sept pages.
   const [triProduits, setTriProduits] = useState('alpha');
+  // « Stock bas » : seulement les produits à leur seuil d'alerte ou dessous.
+  // Le seuil général vient des réglages de la boutique.
+  const [stockBasSeul, setStockBasSeul] = useState(false);
+  const [seuilGeneral, setSeuilGeneral] = useState(3);
   const [imageUploading, setImageUploading] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState('');
   // true when the badge is free text rather than one of the two presets
   const [customBadge, setCustomBadge] = useState(false);
   const [workshopImageUploading, setWorkshopImageUploading] = useState(false);
   const PRODUCTS_PER_PAGE = 25;
-  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], ordre: '', poids: '', contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '', rechargePrix: '', variantes: [], enLigne: true };
+  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', seuilAlerte: '', sumupNom: '', inStock: true, related: [], ordre: '', poids: '', contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '', rechargePrix: '', variantes: [], enLigne: true };
   // Charger un produit dans le formulaire.
   //
   // Les deux entrées — « Modifier » et « Dupliquer » — construisaient chacune
@@ -159,6 +165,8 @@ const AdminDashboard = ({ onLogout }) => {
     images: Array.isArray(p.images) ? [...p.images] : [],
     description: p.description || '',
     stock: p.stock == null ? '' : String(p.stock),
+    seuilAlerte: p.seuilAlerte == null ? '' : String(p.seuilAlerte),
+    sumupNom: p.sumupNom || '',
     inStock: p.inStock !== false,
     enLigne: p.enLigne !== false,
     related: Array.isArray(p.related) ? [...p.related] : [],
@@ -219,7 +227,8 @@ const AdminDashboard = ({ onLogout }) => {
   // que les trois disent la même chose.
   const produitsListes = React.useMemo(() => {
     const q = productSearch.trim().toLowerCase();
-    const filtres = products.filter((p) => !q || (p.name || '').toLowerCase().includes(q));
+    const filtres = products.filter((p) => (!q || (p.name || '').toLowerCase().includes(q))
+      && (!stockBasSeul || (p.stock != null && Number(p.stock) <= (p.seuilAlerte ?? seuilGeneral))));
     const parNom = (a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'fr', { sensitivity: 'base' });
     if (triProduits === 'alpha') return [...filtres].sort(parNom);
     if (triProduits === 'rubrique') {
@@ -232,7 +241,7 @@ const AdminDashboard = ({ onLogout }) => {
       });
     }
     return filtres;
-  }, [products, productSearch, triProduits]);
+  }, [products, productSearch, triProduits, stockBasSeul, seuilGeneral]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -299,6 +308,15 @@ const AdminDashboard = ({ onLogout }) => {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'
   };
+
+  // Le seuil d'alerte général, pour colorer et filtrer le stock des produits
+  // qui n'ont pas de seuil propre.
+  useEffect(() => {
+    fetch('/api/admin/settings/shop', { headers: fetchHeaders })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => { const n = Number(s && s.alerts && s.alerts.lowStockThreshold); if (Number.isFinite(n)) setSeuilGeneral(n); })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Invalidate the session server-side, then clear local state.
   const handleLogout = () => {
@@ -862,7 +880,9 @@ const AdminDashboard = ({ onLogout }) => {
           
           <nav className="space-y-2">
             {[
+              { id: 'accueil', label: 'Accueil', icon: '🏠' },
               { id: 'orders', label: 'Commandes', icon: '🛒' },
+              { id: 'caisse', label: 'Ventes en boutique', icon: '🧾' },
               { id: 'paniers', label: 'Paniers abandonnés', icon: '🛒' },
               { id: 'marketing', label: 'Marketing', icon: '📈' },
               { id: 'products', label: 'Gestion des produits', icon: '🧴' },
@@ -1066,113 +1086,13 @@ const AdminDashboard = ({ onLogout }) => {
               <button onClick={loadData} className="px-4 py-2 bg-white rounded-lg border border-slate-stone/10 text-xs text-stone-gray hover:bg-slate-stone/5 transition-all">Rafraîchir 🔄</button>
             </div>
 
-            {loading ? (
-              <div className="py-24 text-center text-stone-gray/60">Chargement...</div>
-            ) : clients.length === 0 ? (
-              <div className="py-24 text-center bg-white rounded-3xl border border-slate-stone/5 text-stone-gray">Aucun client répertorié.</div>
-            ) : (
-              <div className="bg-white rounded-3xl border border-slate-stone/5 overflow-x-auto shadow-sm">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-stone/5 text-xs text-stone-gray tracking-wider uppercase font-bold bg-mist-white/30">
-                      <th className="p-6">Nom</th>
-                      <th className="p-6">Email</th>
-                      <th className="p-6 text-center">Commandes</th>
-                      <th className="p-6 text-center">Ateliers</th>
-                      <th className="p-6 text-right">Total dépensé</th>
-                      <th className="p-6 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {clients.map((client, idx) => {
-                      const ouverte = clienteOuverte === client.email;
-                      // Ses commandes, retrouvées par l'adresse — la même clé
-                      // que le fichier clients emploie pour les regrouper.
-                      const siennes = ouverte
-                        ? orders
-                            .filter((o) => String(o.customer_email || '').trim().toLowerCase() === String(client.email || '').trim().toLowerCase())
-                            .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
-                        : [];
-                      return (
-                      <React.Fragment key={idx}>
-                      <tr className="border-b border-slate-stone/5 hover:bg-mist-white/20 transition-colors text-sm text-slate-stone font-light">
-                        <td className="p-6 font-medium">{client.name || 'Client Anonyme'}</td>
-                        <td className="p-6 font-mono text-xs text-stone-gray">{client.email}</td>
-                        <td className="p-6 text-center">
-                          {client.order_count > 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => setClienteOuverte(ouverte ? null : client.email)}
-                              aria-expanded={ouverte}
-                              className="press font-bold text-slate-stone underline underline-offset-4 decoration-slate-stone/30 hover:decoration-slate-stone"
-                            >
-                              {client.order_count}
-                            </button>
-                          ) : (
-                            <span className="font-bold text-slate-stone/60">0</span>
-                          )}
-                        </td>
-                        <td className="p-6 text-center font-bold text-slate-stone/60">{client.booking_count}</td>
-                        <td className="p-6 text-right font-medium text-slate-stone">CHF {client.total_spent.toFixed(2)}</td>
-                        <td className="p-6 text-center">
-                          <button 
-                            onClick={() => setEmailModal({ isOpen: true, to: client.email, subject: 'So You Cosmetics - Message client', message: `Bonjour ${client.name || ''},\n\n` })}
-                            className="px-3 py-1.5 bg-mist-white hover:bg-slate-stone hover:text-white rounded-lg text-xs tracking-wider uppercase transition-all"
-                          >
-                            ✉️ Écrire
-                          </button>
-                        </td>
-                      </tr>
-                      {ouverte && (
-                        <tr className="border-b border-slate-stone/5 bg-mist-white/40">
-                          <td colSpan={6} className="px-6 py-5">
-                            {siennes.length === 0 ? (
-                              <p className="text-xs text-stone-gray">
-                                Ses commandes n'ont pas pu être chargées. Ouvrez l'onglet Commandes, puis revenez.
-                              </p>
-                            ) : (
-                              <div className="flex flex-col gap-3">
-                                {siennes.map((o) => (
-                                  <div key={o.id} className="rounded-xl border border-slate-stone/10 bg-white p-4">
-                                    <div className="flex items-baseline justify-between flex-wrap gap-2">
-                                      <span className="font-medium text-sm text-slate-stone">
-                                        {new Date(o.created_at).toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                        <span className="ml-2 font-mono text-[11px] text-stone-gray">{o.id}</span>
-                                      </span>
-                                      <span className="text-sm text-slate-stone tabular-nums">
-                                        CHF {Number(o.total).toFixed(2)}
-                                        <span className="ml-2 text-[11px] uppercase tracking-widest text-stone-gray">{o.status}</span>
-                                      </span>
-                                    </div>
-                                    <ul className="mt-2 flex flex-col gap-0.5">
-                                      {(o.items || []).map((a, k) => (
-                                        <li key={k} className="text-xs text-stone-gray">
-                                          {a.qty > 1 && <span className="text-stone-gray/60">{a.qty} × </span>}
-                                          {a.name}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                    <button
-                                      type="button"
-                                      onClick={() => setSelectedOrder(o)}
-                                      className="press mt-3 text-[11px] uppercase tracking-widest text-slate-stone underline underline-offset-4"
-                                    >
-                                      Ouvrir le détail
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      )}
-                      </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            {/* Les fiches : historique, notes et tags, recherche, filtres,
+                export — voir admin/FichierClients.jsx. */}
+            <FichierClients
+              fetchHeaders={fetchHeaders}
+              onEcrire={(email, nom) => setEmailModal({ isOpen: true, to: email, subject: 'So You Cosmetics - Message client', message: `Bonjour ${nom || ''},\n\n` })}
+              onOuvrirCommande={(id) => { const o = orders.find((x) => x.id === id); if (o) setSelectedOrder(o); }}
+            />
 
             {/* Les inscriptions a l'infolettre.
                 Le formulaire du pied de page les enregistrait depuis le debut,
@@ -1259,6 +1179,8 @@ const AdminDashboard = ({ onLogout }) => {
                   // product's images; the server ignores an empty list otherwise.
                   clearImages: productForm.images.length === 0,
                   stock: productForm.stock === '' ? null : productForm.stock,
+                  seuilAlerte: productForm.seuilAlerte === '' ? null : productForm.seuilAlerte,
+                  sumupNom: productForm.sumupNom || '',
                   related: productForm.related || [],
                   inStock: !!productForm.inStock,
                   enLigne: productForm.enLigne !== false,
@@ -1405,6 +1327,16 @@ const AdminDashboard = ({ onLogout }) => {
                             Un seul stock pour tous les formats : saisissez le total. Chaque vente, quel que soit le format, le diminue.
                           </p>
                         )}
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Seuil d’alerte</label>
+                        <input type="number" min="0" step="1" placeholder={`général : ${seuilGeneral}`} value={productForm.seuilAlerte} onChange={e => setProductForm({...productForm, seuilAlerte: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                        <p className="text-[11px] text-stone-gray mt-1">Alerte quand le stock descend à ce nombre. Vide : le seuil général de « Horaires & absences ».</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Nom dans la caisse SumUp</label>
+                        <input type="text" placeholder="si différent du nom de la fiche" value={productForm.sumupNom} onChange={e => setProductForm({...productForm, sumupNom: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                        <p className="text-[11px] text-stone-gray mt-1">Sert à reconnaître les ventes faites au comptoir (onglet « Ventes en boutique »).</p>
                       </div>
                       <div className="md:col-span-2">
                         <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Catégories</label>
@@ -1976,6 +1908,14 @@ const AdminDashboard = ({ onLogout }) => {
                   </button>
                 )}
               </div>
+              <button
+                type="button"
+                aria-pressed={stockBasSeul}
+                onClick={() => { setStockBasSeul(!stockBasSeul); setProductsPage(1); }}
+                className={`px-3.5 py-2 rounded-full text-xs border transition-colors ${stockBasSeul ? 'bg-amber-700 text-white border-amber-700' : 'bg-white text-stone-gray border-slate-stone/15 hover:border-slate-stone/40'}`}
+              >
+                Stock bas{products.length > 0 && ` (${products.filter((p) => p.stock != null && Number(p.stock) <= (p.seuilAlerte ?? seuilGeneral)).length})`}
+              </button>
               <div className="inline-flex rounded-full border border-slate-stone/15 bg-white p-1">
                 {[
                   { cle: 'alpha', nom: 'A → Z' },
@@ -2066,7 +2006,7 @@ const AdminDashboard = ({ onLogout }) => {
                         ) : (
                           <span className={
                             p.stock === 0 ? 'text-red-700 font-semibold'
-                              : p.stock <= 3 ? 'text-amber-700 font-medium'
+                              : p.stock <= (p.seuilAlerte ?? seuilGeneral) ? 'text-amber-700 font-medium'
                               : 'text-slate-stone'
                           }>
                             {p.stock}
@@ -2321,6 +2261,8 @@ const AdminDashboard = ({ onLogout }) => {
         {activeTab === 'infolettre' && <InfolettreEditor fetchHeaders={fetchHeaders} />}
         {activeTab === 'paniers' && <PaniersAbandonnes fetchHeaders={fetchHeaders} onRelancer={setEmailModal} />}
         {activeTab === 'marketing' && <Marketing fetchHeaders={fetchHeaders} />}
+        {activeTab === 'accueil' && <Accueil fetchHeaders={fetchHeaders} allerA={setActiveTab} />}
+        {activeTab === 'caisse' && <Caisse fetchHeaders={fetchHeaders} />}
 
         {activeTab === 'shop' && <ShopSettings fetchHeaders={fetchHeaders} />}
 

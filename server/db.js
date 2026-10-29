@@ -678,6 +678,17 @@ function normalizeProductInput(input, base = {}) {
   if (input.inStock !== undefined) {
     out.inStock = !!input.inStock;
   }
+  // Le seuil d'alerte propre à ce produit. Vide : le seuil général de
+  // « Horaires & absences » s'applique. Trois savons, c'est beaucoup ; trois
+  // coffrets de Noël en décembre, c'est déjà trop peu.
+  if (input.seuilAlerte !== undefined) {
+    const n = Number(input.seuilAlerte);
+    out.seuilAlerte = input.seuilAlerte === '' || input.seuilAlerte === null || !Number.isFinite(n) || n < 0 ? null : Math.round(n);
+  }
+  // Le nom de l'article dans la caisse SumUp, quand il diffère de celui de la
+  // fiche. C'est la clé du rapprochement des ventes en boutique (server/caisse.js) :
+  // l'API de SumUp donne le nom des articles vendus, pas de référence.
+  if (input.sumupNom !== undefined) out.sumupNom = String(input.sumupNom || '').trim();
   // « En attente » : la fiche existe dans l'administration, mais la boutique
   // ne la connaît pas. À distinguer d'« épuisé », qui s'affiche et se voit —
   // ici, la cliente ne saura jamais que le produit existe.
@@ -912,12 +923,31 @@ function decrementStock(items, seuilBas = 3) {
     produit.stock = apres;
     if (apres === 0) produit.inStock = false;
 
+    // Le seuil du produit s'il en a un, sinon le seuil général.
+    const seuil = produit.seuilAlerte == null ? seuilBas : Number(produit.seuilAlerte);
     if (apres === 0) evenements.push({ nom: produit.name, restant: 0, type: 'rupture' });
-    else if (apres <= seuilBas) evenements.push({ nom: produit.name, restant: apres, type: 'bas' });
+    else if (apres <= seuil) evenements.push({ nom: produit.name, restant: apres, type: 'bas', seuil });
   }
 
   writeProductsFile(data);
   return evenements;
+}
+
+// L'inverse, pour un remboursement en boutique : l'article revient en rayon.
+// Un produit épuisé par la vente redevient disponible ; un produit non suivi
+// (stock null) reste non suivi.
+function incrementStock(items) {
+  const data = readProductsFile();
+  const parId = new Map(data.products.map((p) => [String(p.id), p]));
+  for (const ligne of items || []) {
+    const produit = parId.get(String(ligne.id));
+    if (!produit || produit.stock === null || produit.stock === undefined) continue;
+    const qte = Math.max(1, parseInt(ligne.qty, 10) || 1);
+    const avant = Number(produit.stock) || 0;
+    produit.stock = avant + qte;
+    if (avant === 0 && produit.inStock === false) produit.inStock = true;
+  }
+  writeProductsFile(data);
 }
 
 async function updateProduct(id, input) {
@@ -2089,6 +2119,7 @@ module.exports = {
   getProductById,
   createProduct,
   decrementStock,
+  incrementStock,
   updateProduct,
   deleteProduct,
   getSetting,

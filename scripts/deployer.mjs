@@ -96,6 +96,9 @@ const FICHIERS_SERVEUR = [
   'payrexx.js',
   // La mesure d'audience sans cookie. Requis par routes.js.
   'audience.js',
+  // Le fichier clients et les ventes de la caisse SumUp. Requis par routes.js.
+  'crm.js',
+  'caisse.js',
   'package.json',
 ];
 

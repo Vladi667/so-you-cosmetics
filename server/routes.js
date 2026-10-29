@@ -14,6 +14,8 @@ const infolettre = require('./infolettre');
 const rebonds = require('./rebonds');
 const payrexx = require('./payrexx');
 const audience = require('./audience');
+const crm = require('./crm');
+const caisse = require('./caisse');
 
 // Compare two strings in constant time; tolerates length mismatch
 function timingSafeEqualStr(a, b) {
@@ -941,13 +943,20 @@ async function appliquerStockEtAlerter(order) {
     return;
   }
 
-  if (evenements.length === 0) return;
+  await alerterStock(evenements, `Après la commande ${order.id}`);
+}
+
+// Le courriel d'alerte, quelle que soit l'origine de la vente : une commande
+// en ligne, ou des ventes relevées dans la caisse SumUp.
+async function alerterStock(evenements, contexte) {
+  const { alerts } = db.getShopSettings();
+  if (!evenements || evenements.length === 0) return;
   const destinataire = db.adresseAlerte();
   if (!alerts.onLowStock || !destinataire) return;
 
   const ruptures = evenements.filter((e) => e.type === 'rupture');
   const bas = evenements.filter((e) => e.type === 'bas');
-  const ligne = (e) => `<li><strong>${escapeForEmail(e.nom)}</strong> — ${e.restant === 0 ? 'épuisé' : `${e.restant} restant(s)`}</li>`;
+  const ligne = (e) => `<li><strong>${escapeForEmail(e.nom)}</strong> — ${e.restant === 0 ? 'épuisé' : `${e.restant} restant(s), seuil ${e.seuil}`}</li>`;
 
   try {
     await emailService.sendMail({
@@ -957,15 +966,15 @@ async function appliquerStockEtAlerter(order) {
         : `Stock bas — ${bas.length} produit(s)`,
       html: `
         <div style="font-family:sans-serif;color:#3A332B;max-width:600px;margin:0 auto;padding:24px;">
-          <h2 style="font-family:serif;font-weight:400;">Après la commande ${escapeForEmail(order.id)}</h2>
+          <h2 style="font-family:serif;font-weight:400;">${escapeForEmail(contexte)}</h2>
           ${ruptures.length ? `<p><strong>Épuisé :</strong></p><ul>${ruptures.map(ligne).join('')}</ul>` : ''}
-          ${bas.length ? `<p><strong>Il en reste peu (seuil : ${seuil}) :</strong></p><ul>${bas.map(ligne).join('')}</ul>` : ''}
+          ${bas.length ? `<p><strong>Il en reste peu :</strong></p><ul>${bas.map(ligne).join('')}</ul>` : ''}
           <p style="color:#6A6157;font-size:13px;">Les quantités ont déjà été mises à jour dans votre administration.
           Un produit épuisé est automatiquement retiré de la vente.</p>
         </div>`,
     });
   } catch (err) {
-    console.error(`Stock alert for order ${order.id} could not be sent:`, err.message);
+    console.error(`Stock alert (${contexte}) could not be sent:`, err.message);
   }
 }
 
@@ -2513,6 +2522,172 @@ router.get('/google-ads/conversions.csv', async (req, res) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
   res.send(audience.csvConversionsGoogle(await db.getOrders()));
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Le tableau de bord d'accueil : ce qu'elle doit savoir en ouvrant l'admin.
+// ─────────────────────────────────────────────────────────────────────────
+
+router.get('/admin/tableau-de-bord', requireAdmin, async (req, res) => {
+  try {
+    const [commandes, produits, ateliers, reservations] = await Promise.all([
+      db.getOrders(), db.getProduitsTous(), db.getWorkshops(), db.getBookings(),
+    ]);
+    const aujourdhui = audience.jourLocal();
+    const mois = aujourdhui.slice(0, 7);
+    const jourDe = (o) => (o.created_at ? audience.jourLocal(new Date(o.created_at)) : '');
+    const payees = commandes.filter((o) => STATUTS_PAYES.includes(String(o.status || '').toLowerCase()));
+    const somme = (l) => Math.round(l.reduce((t, o) => t + (Number(o.total) || 0), 0) * 100) / 100;
+    const duJour = payees.filter((o) => jourDe(o) === aujourdhui);
+    const duMois = payees.filter((o) => jourDe(o).startsWith(mois));
+
+    // Les plus vendus du mois, en quantité, toutes ventes en ligne payées.
+    const parProduit = new Map();
+    for (const o of duMois) {
+      for (const a of o.items || []) {
+        const k = String(a.id || a.name);
+        const v = parProduit.get(k) || { nom: a.name, qte: 0, montant: 0 };
+        v.qte += Number(a.qty) || 1;
+        v.montant += (Number(a.price) || 0) * (Number(a.qty) || 1);
+        parProduit.set(k, v);
+      }
+    }
+    const meilleurs = [...parProduit.values()].sort((a, b) => b.qte - a.qte || b.montant - a.montant).slice(0, 5);
+
+    // À traiter : payées, ni prêtes ni expédiées.
+    const aTraiter = commandes
+      .filter((o) => String(o.status || '').toLowerCase() === 'paid')
+      .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+      .map((o) => ({
+        id: o.id, nom: o.customer_name, date: o.created_at, total: Number(o.total) || 0,
+        livraison: (o.shipping && o.shipping.label) || '', retrait: !db.exigeAdresse(o.shipping && o.shipping.id),
+      }));
+
+    const seuilGeneral = Number((db.getShopSettings().alerts || {}).lowStockThreshold) || 3;
+    const stockBas = produits
+      .filter((p) => p.stock != null && Number(p.stock) <= (p.seuilAlerte == null ? seuilGeneral : Number(p.seuilAlerte)))
+      .map((p) => ({ id: p.id, nom: p.name, stock: Number(p.stock), seuil: p.seuilAlerte == null ? seuilGeneral : Number(p.seuilAlerte), enLigne: p.enLigne !== false }))
+      .sort((a, b) => a.stock - b.stock);
+
+    const maintenant = Date.now();
+    const prochains = (ateliers || [])
+      .filter((w) => w.starts_at && new Date(w.starts_at).getTime() >= maintenant - 3600000)
+      .sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)))
+      .slice(0, 5)
+      .map((w) => ({
+        id: w.id, titre: w.title, date: w.starts_at,
+        places: (reservations || []).filter((b) => String(b.workshop_id) === String(w.id) && String(b.status || '').toLowerCase() !== 'cancelled')
+          .reduce((t, b) => t + (Number(b.seats) || 1), 0),
+      }));
+    // Les dernières réservations, pour les ateliers sans date fixe.
+    const reservationsRecentes = (reservations || [])
+      .slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 5)
+      .map((b) => ({ nom: b.customer_name, atelier: ((ateliers || []).find((w) => String(w.id) === String(b.workshop_id)) || {}).title || 'Atelier', creneau: b.slot_date, places: b.seats, le: b.created_at }));
+
+    const visites = audience.periode(aujourdhui, aujourdhui);
+    res.json({
+      aujourdhui,
+      jour: { ventes: duJour.length, montant: somme(duJour) },
+      mois: { ventes: duMois.length, montant: somme(duMois) },
+      visitesDuJour: visites.visites,
+      versBoutiqueDuJour: Object.values(visites.actions || {}).reduce((t, n) => t + n, 0),
+      meilleurs, aTraiter, stockBas, seuilGeneral, prochains, reservationsRecentes,
+      caisse: caisse.journal().dernierReleve,
+    });
+  } catch (err) {
+    console.error('Tableau de bord illisible :', err);
+    res.status(500).json({ error: 'Le tableau de bord n’a pas pu être composé.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Le fichier clients : voir server/crm.js.
+// ─────────────────────────────────────────────────────────────────────────
+
+router.get('/admin/crm', requireAdmin, async (req, res) => {
+  try {
+    res.json(await crm.fichier());
+  } catch (err) {
+    console.error('Fichier clients illisible :', err);
+    res.status(500).json({ error: 'Le fichier clients n’a pas pu être lu.' });
+  }
+});
+
+router.put('/admin/crm/:email', requireAdmin, (req, res) => {
+  try {
+    const { notes, tags } = req.body || {};
+    res.json(crm.majFiche(req.params.email, { notes, tags }));
+  } catch (err) {
+    res.status(400).json({ error: 'Fiche non enregistrée : ' + err.message });
+  }
+});
+
+router.get('/admin/crm/export.csv', requireAdmin, async (req, res) => {
+  try {
+    const liste = await crm.fichier();
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="clients-so-you.csv"');
+    res.send(crm.csv(liste));
+  } catch (err) {
+    res.status(500).json({ error: 'L’export n’a pas pu être généré.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Les ventes de la boutique, relevées dans la caisse SumUp : voir
+// server/caisse.js. Aperçu d'abord, application ensuite.
+// ─────────────────────────────────────────────────────────────────────────
+
+function dateDepuis(v) {
+  const d = new Date(v || Date.now() - 7 * 86400000);
+  return Number.isNaN(d.getTime()) ? new Date(Date.now() - 7 * 86400000).toISOString() : d.toISOString();
+}
+
+router.post('/admin/caisse/apercu', requireAdmin, async (req, res) => {
+  try {
+    res.json(await caisse.apercu({ depuis: dateDepuis(req.body && req.body.depuis) }));
+  } catch (err) {
+    console.error('Relevé SumUp impossible :', err.response ? err.response.data : err.message);
+    res.status(502).json({ error: 'SumUp n’a pas répondu : ' + (err.response ? `erreur ${err.response.status}` : err.message) });
+  }
+});
+
+router.post('/admin/caisse/appliquer', requireAdmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const r = await caisse.appliquer({
+      depuis: dateDepuis(b.depuis),
+      codes: Array.isArray(b.codes) ? b.codes.map(String) : [],
+      correspondances: b.correspondances && typeof b.correspondances === 'object' ? b.correspondances : {},
+    });
+    await alerterStock(r.evenements, 'Après les ventes en boutique (caisse SumUp)');
+    res.json(r);
+  } catch (err) {
+    console.error('Application du relevé SumUp impossible :', err.response ? err.response.data : err.message);
+    res.status(502).json({ error: 'Le relevé n’a pas pu être appliqué : ' + err.message });
+  }
+});
+
+router.get('/admin/caisse/journal', requireAdmin, (req, res) => {
+  res.json(caisse.journal());
+});
+
+// Le stock, à reprendre dans la caisse SumUp. Une colonne par information
+// utile ; les noms de colonnes sont à faire correspondre dans l'import de
+// SumUp, qui les demande.
+router.get('/admin/caisse/export-stock.csv', requireAdmin, async (req, res) => {
+  try {
+    const produits = await db.getProduitsTous();
+    const champ = (v) => { const t = String(v == null ? '' : v); return /[";\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+    const lignes = produits
+      .slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'fr'))
+      .map((p) => [p.sumupNom || p.name, Number(p.price || 0).toFixed(2), p.stock == null ? '' : p.stock, (p.collections || [])[0] || '', p.id].map(champ).join(';'));
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="stock-pour-sumup.csv"');
+    res.send('\ufeff' + ['Nom;Prix;Stock;Catégorie;Référence', ...lignes].join('\r\n'));
+  } catch (err) {
+    res.status(500).json({ error: 'L’export n’a pas pu être généré.' });
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────
