@@ -145,7 +145,7 @@ const AdminDashboard = ({ onLogout }) => {
   const [customBadge, setCustomBadge] = useState(false);
   const [workshopImageUploading, setWorkshopImageUploading] = useState(false);
   const PRODUCTS_PER_PAGE = 25;
-  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', seuilAlerte: '', sumupNom: '', inStock: true, related: [], ordre: '', poids: '', contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '', rechargePrix: '', variantes: [], enLigne: true };
+  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', seuilAlerte: '', sumupNom: '', annonces: false, inStock: true, related: [], ordre: '', poids: '', contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '', rechargePrix: '', variantes: [], enLigne: true };
   // Charger un produit dans le formulaire.
   //
   // Les deux entrées — « Modifier » et « Dupliquer » — construisaient chacune
@@ -171,6 +171,7 @@ const AdminDashboard = ({ onLogout }) => {
     stock: p.stock == null ? '' : String(p.stock),
     seuilAlerte: p.seuilAlerte == null ? '' : String(p.seuilAlerte),
     sumupNom: p.sumupNom || '',
+    annonces: p.annonces === true,
     inStock: p.inStock !== false,
     enLigne: p.enLigne !== false,
     related: Array.isArray(p.related) ? [...p.related] : [],
@@ -1216,6 +1217,7 @@ const AdminDashboard = ({ onLogout }) => {
                   stock: productForm.stock === '' ? null : productForm.stock,
                   seuilAlerte: productForm.seuilAlerte === '' ? null : productForm.seuilAlerte,
                   sumupNom: productForm.sumupNom || '',
+                  annonces: !!productForm.annonces,
                   related: productForm.related || [],
                   inStock: !!productForm.inStock,
                   enLigne: productForm.enLigne !== false,
@@ -1372,6 +1374,13 @@ const AdminDashboard = ({ onLogout }) => {
                         <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Nom dans la caisse SumUp</label>
                         <input type="text" placeholder="si différent du nom de la fiche" value={productForm.sumupNom} onChange={e => setProductForm({...productForm, sumupNom: e.target.value})} className="px-4 py-2 border rounded w-full" />
                         <p className="text-[11px] text-stone-gray mt-1">Sert à reconnaître les ventes faites au comptoir (onglet « Ventes en boutique »).</p>
+                        <label className="flex items-start gap-2 mt-4 text-sm text-slate-stone cursor-pointer">
+                          <input type="checkbox" className="mt-1" checked={!!productForm.annonces} onChange={e => setProductForm({...productForm, annonces: e.target.checked})} />
+                          <span>
+                            Mis en avant dans Google Ads
+                            <span className="block text-[11px] text-stone-gray">Ces produits reçoivent leur propre budget d’annonces Shopping (étiquette « mise-en-avant » du flux Google). Rien ne change sur le site.</span>
+                          </span>
+                        </label>
                         {productForm.id && (
                           <p className="text-[11px] text-stone-gray mt-1">
                             Référence SumUp (SKU) : <span className="font-mono text-slate-stone">{skuProduit(productForm.id)}</span>

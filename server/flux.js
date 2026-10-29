@@ -84,6 +84,8 @@ function evaluer(produit, base) {
       // enchérir autant sur un savon à 9 francs que sur un coffret à 60.
       coupDeCoeur: Array.isArray(produit.collections) && produit.collections.includes('Coup de cœur'),
       tranche: prix < 15 ? 'moins-de-15' : prix < 35 ? '15-35' : 'plus-de-35',
+      // Choisi par elle, produit par produit, dans l'administration.
+      misEnAvant: produit.annonces === true,
     },
   };
 }
@@ -104,6 +106,7 @@ function article(a) {
     a.rubrique ? `<g:product_type>${escapeXml(a.rubrique)}</g:product_type>` : '',
     `<g:custom_label_0>${a.coupDeCoeur ? 'coup-de-coeur' : 'catalogue'}</g:custom_label_0>`,
     `<g:custom_label_1>${a.tranche}</g:custom_label_1>`,
+    `<g:custom_label_2>${a.misEnAvant ? 'mise-en-avant' : 'standard'}</g:custom_label_2>`,
   ];
   return `<item>${champs.filter(Boolean).join('')}</item>`;
 }

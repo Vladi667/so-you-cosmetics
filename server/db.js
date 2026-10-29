@@ -692,6 +692,10 @@ function normalizeProductInput(input, base = {}) {
   // fiche. C'est la clé du rapprochement des ventes en boutique (server/caisse.js) :
   // l'API de SumUp donne le nom des articles vendus, pas de référence.
   if (input.sumupNom !== undefined) out.sumupNom = String(input.sumupNom || '').trim();
+  // Les produits qu'elle veut pousser dans les annonces Google. Le flux le
+  // dit à Google Ads (custom_label_2), qui peut alors leur réserver une
+  // campagne et un budget, sans toucher à la page d'accueil.
+  if (input.annonces !== undefined) out.annonces = !!input.annonces;
   // « En attente » : la fiche existe dans l'administration, mais la boutique
   // ne la connaît pas. À distinguer d'« épuisé », qui s'affiche et se voit —
   // ici, la cliente ne saura jamais que le produit existe.
