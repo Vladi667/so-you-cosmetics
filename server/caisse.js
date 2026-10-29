@@ -151,8 +151,15 @@ function champCsv(v) {
 // le site, qui le diminue pour les ventes en ligne ET pour celles de la caisse
 // (voir apercu/appliquer). Un second stock tenu par SumUp, que les ventes en
 // ligne ne toucheraient pas, divergerait dès la première commande.
-async function csvSumup() {
-  const produits = (await db.getProduitsTous()).filter((p) => Number(p.price) > 0 || (p.variantes || []).length);
+//
+// Les fiches « en attente » sont écartées par défaut : en octobre 2026, 103 des
+// 190 fiches l'étaient, pour la plupart d'anciennes fiches absorbées par une
+// fiche à formats. Les importer aurait ajouté à la caisse une centaine
+// d'articles qui ne se vendent pas, dont des doublons des formats.
+async function csvSumup({ avecEnAttente = false } = {}) {
+  const produits = (await db.getProduitsTous())
+    .filter((p) => avecEnAttente || p.enLigne !== false)
+    .filter((p) => Number(p.price) > 0 || (p.variantes || []).length);
   const reglages = db.getShopSettings();
   const tva = Number((reglages.invoice || {}).vatRate) || 0;
   const seo = require('./seo');

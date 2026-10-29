@@ -2802,7 +2802,7 @@ router.get('/admin/caisse/export-stock.csv', requireAdmin, async (req, res) => {
   try {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="articles-pour-sumup.csv"');
-    res.send(await caisse.csvSumup());
+    res.send(await caisse.csvSumup({ avecEnAttente: req.query.avecEnAttente === '1' }));
   } catch (err) {
     console.error('Export SumUp impossible :', err);
     res.status(500).json({ error: 'L’export n’a pas pu être généré.' });

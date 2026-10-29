@@ -25,6 +25,9 @@ const Caisse = ({ fetchHeaders }) => {
   const [enCours, setEnCours] = useState(false);
   const [message, setMessage] = useState('');
   const [journal, setJournal] = useState([]);
+  // Les fiches en attente restent hors de l'export, sauf demande : la plupart
+  // sont d'anciennes fiches absorbées par une fiche à formats.
+  const [avecEnAttente, setAvecEnAttente] = useState(false);
 
   const chargerJournal = () => {
     fetch('/api/admin/caisse/journal', { headers: fetchHeaders })
@@ -63,7 +66,7 @@ const Caisse = ({ fetchHeaders }) => {
   };
 
   const exporter = () => {
-    fetch('/api/admin/caisse/export-stock.csv', { headers: fetchHeaders })
+    fetch(`/api/admin/caisse/export-stock.csv${avecEnAttente ? '?avecEnAttente=1' : ''}`, { headers: fetchHeaders })
       .then((r) => { if (!r.ok) throw new Error(); return r.blob(); })
       .then((b) => {
         const a = document.createElement('a');
@@ -99,8 +102,12 @@ const Caisse = ({ fetchHeaders }) => {
           className="press px-5 py-2 bg-slate-stone text-white rounded-full text-xs uppercase tracking-widest disabled:opacity-40">
           {enCours && !vue ? 'Relevé en cours…' : 'Relever les ventes SumUp'}
         </button>
+        <label className="ml-auto flex items-center gap-2 text-xs text-stone-gray">
+          <input type="checkbox" checked={avecEnAttente} onChange={(e) => setAvecEnAttente(e.target.checked)} />
+          Inclure les fiches en attente
+        </label>
         <button type="button" onClick={exporter}
-          className="press ml-auto px-5 py-2 border border-slate-stone/20 text-slate-stone rounded-full text-xs uppercase tracking-widest">
+          className="press px-5 py-2 border border-slate-stone/20 text-slate-stone rounded-full text-xs uppercase tracking-widest">
           Exporter les articles pour SumUp
         </button>
       </div>
