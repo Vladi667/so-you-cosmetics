@@ -14,6 +14,7 @@ const ACTIONS = {
   restocker: { nom: 'Remboursée — stock à remettre', ton: 'text-amber-800' },
   deja: { nom: 'Déjà appliquée', ton: 'text-stone-gray' },
   rien: { nom: 'Vendue puis remboursée — rien à faire', ton: 'text-stone-gray' },
+  libre: { nom: 'Montant libre — aucun article, rien à déduire', ton: 'text-stone-gray' },
 };
 const champ = 'px-3 py-2 border rounded text-sm bg-white';
 
@@ -25,6 +26,8 @@ const Caisse = ({ fetchHeaders }) => {
   const [enCours, setEnCours] = useState(false);
   const [message, setMessage] = useState('');
   const [journal, setJournal] = useState([]);
+  const [auto, setAuto] = useState({ actif: false });
+  const [autoEnCours, setAutoEnCours] = useState(false);
   // Les fiches en attente restent hors de l'export, sauf demande : la plupart
   // sont d'anciennes fiches absorbées par une fiche à formats.
   const [avecEnAttente, setAvecEnAttente] = useState(false);
@@ -32,7 +35,7 @@ const Caisse = ({ fetchHeaders }) => {
   const chargerJournal = () => {
     fetch('/api/admin/caisse/journal', { headers: fetchHeaders })
       .then((r) => (r.ok ? r.json() : { journal: [] }))
-      .then((d) => setJournal(d.journal || []))
+      .then((d) => { setJournal(d.journal || []); setAuto(d.auto || { actif: false }); })
       .catch(() => {});
   };
   useEffect(chargerJournal, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -40,6 +43,23 @@ const Caisse = ({ fetchHeaders }) => {
   const poster = (url, corps) => fetch(url, {
     method: 'POST', headers: { ...fetchHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(corps),
   }).then(async (r) => { const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Erreur'); return d; });
+
+  const basculerAuto = () => {
+    const actif = !auto.actif;
+    if (actif && !window.confirm('Mettre en marche le relevé automatique ?\n\nToutes les heures, les ventes de la caisse dont chaque article est reconnu diminueront le stock du site sans vous. Les ventes d’avant la mise en marche restent au relevé manuel.')) return;
+    fetch('/api/admin/caisse/auto', { method: 'PUT', headers: { ...fetchHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ actif }) })
+      .then((r) => r.json())
+      .then((a) => setAuto((x) => ({ ...x, ...a })))
+      .catch(() => setMessage('Le réglage n’a pas pu être enregistré.'));
+  };
+
+  const releverMaintenant = () => {
+    setAutoEnCours(true); setMessage('');
+    poster('/api/admin/caisse/auto/maintenant', {})
+      .then((a) => { setAuto(a); chargerJournal(); })
+      .catch((e) => setMessage(e.message))
+      .finally(() => setAutoEnCours(false));
+  };
 
   const relever = () => {
     setEnCours(true); setMessage(''); setVue(null);
@@ -112,6 +132,47 @@ const Caisse = ({ fetchHeaders }) => {
         </button>
       </div>
 
+      {/* Le relevé automatique : en marche, il fait seul ce qui ne demande aucun
+          jugement, et laisse ici ce qui en demande un. */}
+      <div className="rounded-2xl border border-slate-stone/10 bg-white p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-serif text-lg text-slate-stone">Relevé automatique</h2>
+            <p className="text-sm text-stone-gray mt-1 max-w-[70ch]">
+              Toutes les heures, les ventes dont chaque article est reconnu diminuent le stock sans vous, et les remboursements le remettent.
+              Les autres — article inconnu, remboursement partiel — attendent ici. Un résumé part chaque soir à l’adresse des alertes.
+            </p>
+          </div>
+          <label className="flex items-center gap-3 text-sm text-slate-stone cursor-pointer">
+            <input type="checkbox" className="w-5 h-5" checked={Boolean(auto.actif)} onChange={basculerAuto} />
+            {auto.actif ? 'En marche' : 'À l’arrêt'}
+          </label>
+        </div>
+        {auto.actif && (
+          <div className="mt-4 pt-4 border-t border-slate-stone/10 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-stone-gray">
+                {auto.dernierPassage ? `Dernier passage : ${quand(auto.dernierPassage)}` : 'Premier passage dans l’heure.'}
+                {auto.dernierResultat && !auto.dernierResultat.erreur && ` — ${auto.dernierResultat.appliquees} vente(s) appliquée(s)${auto.dernierResultat.libres ? `, ${auto.dernierResultat.libres} montant(s) libre(s) noté(s)` : ''}, ${auto.dernierResultat.enAttente} en attente.`}
+                {auto.dernierResultat && auto.dernierResultat.erreur && <span className="text-red-700"> — échec : {auto.dernierResultat.erreur}</span>}
+              </p>
+              <button type="button" disabled={autoEnCours} onClick={releverMaintenant}
+                className="press px-4 py-1.5 border border-slate-stone/20 text-slate-stone rounded-full text-[11px] uppercase tracking-widest disabled:opacity-40">
+                {autoEnCours ? 'Relevé…' : 'Relever maintenant'}
+              </button>
+            </div>
+            {(auto.enAttente || []).length > 0 && (
+              <div className="mt-3">
+                <p className="text-slate-stone mb-1">À vérifier ({auto.enAttente.length}) — relevez-les ci-dessous pour les rattacher :</p>
+                <ul className="text-xs text-stone-gray">
+                  {auto.enAttente.map((v) => <li key={v.code}>{quand(v.date)} · {chf(v.montant)} — {v.raison}</li>)}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Le chemin pour que la caisse connaisse les produits du site. Sans lui,
           une vente tapée en « montant libre » ne dit pas ce qui a été vendu,
           et le stock ne peut pas suivre. */}
@@ -168,7 +229,7 @@ const Caisse = ({ fetchHeaders }) => {
             ) : (
               <ul className="flex flex-col divide-y divide-slate-stone/10">
                 {vue.ventes.map((v) => {
-                  const cochable = v.action === 'deduire' || v.action === 'restocker';
+                  const cochable = v.action === 'deduire' || v.action === 'restocker' || v.action === 'libre';
                   return (
                     <li key={v.code} className="py-3 flex gap-3">
                       <input type="checkbox" className="mt-1" disabled={!cochable} checked={coches.has(v.code)} onChange={() => basculer(v.code)} aria-label={`Appliquer ${v.code}`} />
@@ -210,6 +271,7 @@ const Caisse = ({ fetchHeaders }) => {
             {journal.map((j, i) => (
               <li key={i} className="py-2 text-sm">
                 <span className="text-slate-stone">{j.action}</span>
+                {j.auto && <span className="ml-2 text-[9px] uppercase tracking-widest bg-mist-white px-1.5 py-0.5 rounded text-stone-gray">auto</span>}
                 <span className="text-xs text-stone-gray"> · vente du {quand(j.date)} · {chf(j.montant)} · appliqué le {quand(j.quand)}</span>
                 <span className="block text-xs text-stone-gray">{j.lignes.join(' · ')}{j.ignorees.length ? ` · ignoré : ${j.ignorees.join(', ')}` : ''}</span>
               </li>

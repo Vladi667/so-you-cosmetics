@@ -2796,6 +2796,77 @@ router.get('/admin/caisse/journal', requireAdmin, (req, res) => {
   res.json(caisse.journal());
 });
 
+// Le relevé automatique : en marche ou à l'arrêt. À l'arrêt par défaut.
+router.put('/admin/caisse/auto', requireAdmin, (req, res) => {
+  res.json(caisse.regler({ actif: Boolean(req.body && req.body.actif) }));
+});
+
+// Un passage tout de suite, sans attendre l'heure.
+router.post('/admin/caisse/auto/maintenant', requireAdmin, async (req, res) => {
+  try {
+    const r = await passageCaisse({ resume: false });
+    res.json({ ...caisse.journal().auto, passage: r ? { appliquees: r.appliquees, libres: r.libres, enAttente: r.enAttente.length } : null });
+  } catch (err) {
+    res.status(502).json({ error: 'Le relevé n’a pas pu se faire : ' + err.message });
+  }
+});
+
+// Le passage horaire. Les produits qui passent sous leur seuil déclenchent
+// l'alerte de stock habituelle ; après 19 h, le résumé de la journée part une
+// fois, s'il y a quelque chose à dire.
+async function passageCaisse({ resume = true } = {}) {
+  let r = null;
+  try {
+    r = await caisse.releverAuto();
+    if (r && r.evenements.length) await alerterStock(r.evenements, 'Après les ventes en boutique (relevé automatique)');
+  } catch (err) {
+    console.error('Relevé automatique SumUp impossible :', err.response ? err.response.data : err.message);
+    if (!resume) throw err;
+  }
+  const heure = Number(new Date().toLocaleString('en-GB', { timeZone: 'Europe/Zurich', hour: '2-digit', hourCycle: 'h23' }));
+  if (resume && heure >= 19) await envoyerResumeCaisse();
+  return r;
+}
+
+async function envoyerResumeCaisse() {
+  const destinataire = db.adresseAlerte();
+  if (!destinataire) return;
+  const resume = caisse.resumeDuJour(audience.jourLocal());
+  if (!resume) return;
+  const chf = (n) => `CHF ${Number(n || 0).toFixed(2)}`;
+  const heure = (iso) => new Date(iso).toLocaleTimeString('fr-CH', { timeZone: 'Europe/Zurich', hour: '2-digit', minute: '2-digit' });
+  const faits = resume.duJour.map((j) => `<li>${heure(j.date)} · ${chf(j.montant)} — ${escapeForEmail(j.action)}${j.lignes.length ? ` : ${escapeForEmail(j.lignes.join(', '))}` : ''}${j.auto ? '' : ' <em>(à la main)</em>'}</li>`).join('');
+  const attente = resume.enAttente.map((v) => `<li>${new Date(v.date).toLocaleString('fr-CH', { timeZone: 'Europe/Zurich', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ${chf(v.montant)} — ${escapeForEmail(v.raison)}</li>`).join('');
+  try {
+    await emailService.sendMail({
+      to: destinataire,
+      subject: resume.enAttente.length
+        ? `Ventes en boutique — ${resume.enAttente.length} vente(s) à vérifier`
+        : `Ventes en boutique — ${resume.duJour.length} relevée(s) aujourd'hui`,
+      html: `
+        <div style="font-family:sans-serif;color:#3A332B;max-width:600px;margin:0 auto;padding:24px;">
+          <h2 style="font-family:serif;font-weight:400;">Les ventes de la caisse, aujourd'hui</h2>
+          ${faits ? `<p><strong>Appliqué au stock du site :</strong></p><ul>${faits}</ul>` : '<p>Aucune vente appliquée aujourd’hui.</p>'}
+          ${attente ? `<p><strong>À vérifier dans « Ventes en boutique » :</strong></p><ul>${attente}</ul>` : ''}
+          <p style="color:#6A6157;font-size:13px;">Le relevé se fait seul toutes les heures. Seules les ventes dont chaque article est reconnu
+          sont appliquées sans vous ; les autres attendent dans l'administration.</p>
+        </div>`,
+    });
+  } catch (err) {
+    console.error('Résumé des ventes en boutique non envoyé :', err.message);
+  }
+}
+
+// Toutes les heures, et une première fois deux minutes après le démarrage.
+// Ne fait rien tant que le relevé automatique n'est pas mis en marche.
+{
+  const intervalle = Number(process.env.CAISSE_INTERVALLE_MS) || 3600000;
+  const t1 = setInterval(() => { passageCaisse().catch(() => {}); }, intervalle);
+  const t2 = setTimeout(() => { passageCaisse().catch(() => {}); }, Math.min(intervalle, 120000));
+  if (t1.unref) t1.unref();
+  if (t2.unref) t2.unref();
+}
+
 // Le catalogue du site, au format d'import de SumUp, avec les références
 // (SKU) : voir caisse.csvSumup.
 router.get('/admin/caisse/export-stock.csv', requireAdmin, async (req, res) => {

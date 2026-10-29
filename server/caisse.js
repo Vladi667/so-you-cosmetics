@@ -35,9 +35,9 @@ const base = () => (process.env.SUMUP_API_BASE || 'https://api.sumup.com').repla
 function lire() {
   try {
     const d = JSON.parse(fs.readFileSync(FICHIER, 'utf8'));
-    return { traitees: d.traitees || {}, journal: Array.isArray(d.journal) ? d.journal : [], dernierReleve: d.dernierReleve || null };
+    return { traitees: d.traitees || {}, journal: Array.isArray(d.journal) ? d.journal : [], dernierReleve: d.dernierReleve || null, auto: d.auto || { actif: false } };
   } catch (_) {
-    return { traitees: {}, journal: [], dernierReleve: null };
+    return { traitees: {}, journal: [], dernierReleve: null, auto: { actif: false } };
   }
 }
 
@@ -183,6 +183,8 @@ async function csvSumup({ avecEnAttente = false } = {}) {
   return [entetes, ...lignes].map((l) => l.map(champCsv).join(',')).join('\r\n') + '\r\n';
 }
 
+const MONTANT_LIBRE = /^(custom amount|montant libre|montant personnalis|benutzerdefinierter betrag)/i;
+
 // Ce que le relevé ferait, sans rien toucher.
 async function apercu({ depuis }) {
   const { items, headers, code } = await historique(depuis);
@@ -209,9 +211,14 @@ async function apercu({ depuis }) {
     if (action === 'deduire' || action === 'restocker') {
       const d = await detail(headers, code, t.id);
       lignes = (d.products || []).map((a) => {
+        // « Custom amount » : un montant tapé à la caisse, sans article. Il
+        // ne dit pas ce qui est parti, et il n'y a rien à rapprocher.
+        if (MONTANT_LIBRE.test(String(a.name || '').trim())) return { nom: a.name, qte: 1, libre: true, produitId: null, produitNom: null };
         const p = trouver(parNom, a.name);
         return { nom: a.name, qte: Math.max(1, Math.round(Number(a.quantity) || 1)), produitId: p ? p.id : null, produitNom: p ? p.name : null };
       });
+      // Une vente faite seulement de montants libres : rien à déduire.
+      if (action === 'deduire' && lignes.every((l) => l.libre)) action = 'libre';
     }
     ventes.push({
       code: codeTx, id: t.id, date: t.timestamp, montant: Number(t.amount) || 0,
@@ -220,7 +227,7 @@ async function apercu({ depuis }) {
     });
   }
 
-  const nonReconnus = [...new Set(ventes.flatMap((v) => v.lignes.filter((l) => !l.produitId).map((l) => l.nom)))];
+  const nonReconnus = [...new Set(ventes.flatMap((v) => v.lignes.filter((l) => !l.produitId && !l.libre).map((l) => l.nom)))];
   return {
     depuis, ventes, nonReconnus,
     produits: produits.map((p) => ({ id: p.id, nom: p.name })).sort((a, b) => a.nom.localeCompare(b.nom, 'fr')),
@@ -230,27 +237,42 @@ async function apercu({ depuis }) {
 
 // Applique les ventes cochées. Les correspondances choisies dans l'aperçu
 // (« Savon lav. » → telle fiche) sont d'abord retenues sur les fiches.
-async function appliquer({ depuis, codes, correspondances = {} }) {
+async function appliquer({ depuis, codes, correspondances = {}, vue: vueFaite = null, auto = false }) {
   for (const [nomCaisse, produitId] of Object.entries(correspondances)) {
     if (produitId) await db.updateProduct(produitId, { sumupNom: String(nomCaisse).slice(0, 120) });
   }
 
-  const vue = await apercu({ depuis });
+  // Un aperçu déjà fait sert tel quel, sauf si des correspondances viennent
+  // d'être retenues : il faut alors relire, pour que les articles rattachés
+  // soient reconnus.
+  const vue = vueFaite && !Object.keys(correspondances).length ? vueFaite : await apercu({ depuis });
   const voulues = new Set(codes || []);
   const etat = lire();
   const seuil = Number((db.getShopSettings().alerts || {}).lowStockThreshold) || 3;
   const evenements = [];
   let appliquees = 0;
+  // Les montants libres : notés comme traités, mais rien n'a changé au stock.
+  let libres = 0;
 
   for (const v of vue.ventes) {
-    if (!voulues.has(v.code) || !['deduire', 'restocker'].includes(v.action)) continue;
+    if (!voulues.has(v.code)) continue;
+    if (v.action === 'libre') {
+      etat.traitees[v.code] = { etat: 'libre', date: v.date, quand: new Date().toISOString() };
+      etat.journal.unshift({
+        quand: new Date().toISOString(), code: v.code, date: v.date, montant: v.montant, auto,
+        action: 'Montant libre : aucun article, rien à déduire', lignes: [], ignorees: [],
+      });
+      libres += 1;
+      continue;
+    }
+    if (!['deduire', 'restocker'].includes(v.action)) continue;
     const lignes = v.lignes.filter((l) => l.produitId).map((l) => ({ id: l.produitId, qty: l.qte }));
-    const ignorees = v.lignes.filter((l) => !l.produitId).map((l) => l.nom);
+    const ignorees = v.lignes.filter((l) => !l.produitId && !l.libre).map((l) => l.nom);
     if (v.action === 'deduire') evenements.push(...db.decrementStock(lignes, seuil));
     else db.incrementStock(lignes);
     etat.traitees[v.code] = { etat: v.action === 'deduire' ? 'vendu' : 'rembourse', date: v.date, quand: new Date().toISOString() };
     etat.journal.unshift({
-      quand: new Date().toISOString(), code: v.code, date: v.date, montant: v.montant,
+      quand: new Date().toISOString(), code: v.code, date: v.date, montant: v.montant, auto,
       action: v.action === 'deduire' ? 'Vente : stock diminué' : 'Remboursement : stock remis',
       lignes: v.lignes.filter((l) => l.produitId).map((l) => `${l.qte} × ${l.produitNom}`),
       ignorees,
@@ -259,12 +281,96 @@ async function appliquer({ depuis, codes, correspondances = {} }) {
   }
   etat.dernierReleve = new Date().toISOString();
   ecrire(etat);
-  return { appliquees, evenements, seuil };
+  return { appliquees, libres, evenements, seuil };
 }
 
 function journal() {
   const d = lire();
-  return { journal: d.journal.slice(0, 100), dernierReleve: d.dernierReleve };
+  return { journal: d.journal.slice(0, 100), dernierReleve: d.dernierReleve, auto: d.auto };
 }
 
-module.exports = { apercu, appliquer, journal, normaliser, sku, csvSumup, index, trouver };
+// ─────────────────────────────────────────────────────────────────────────
+// Le relevé automatique.
+//
+// Toutes les heures, le serveur relève les ventes de la caisse et applique
+// seul ce qui ne demande aucun jugement :
+//   · une vente dont CHAQUE article est reconnu ;
+//   · le remboursement d'une vente déjà appliquée ;
+//   · une vente faite seulement de montants libres, notée « rien à déduire ».
+// Tout le reste — un article inconnu, un remboursement partiel — attend qu'elle
+// le regarde dans « Ventes en boutique ». Rien n'est deviné.
+//
+// Les règles du relevé à la main valent ici aussi : jamais deux fois la même
+// vente, les ventes en ligne écartées, tout dans le journal (marqué « auto »).
+// ─────────────────────────────────────────────────────────────────────────
+
+function automatiqueApplicable(v) {
+  if (v.action === 'libre') return true;
+  if (v.action === 'restocker') return v.lignes.length > 0 && v.lignes.every((l) => l.produitId || l.libre);
+  if (v.action !== 'deduire' || v.remboursePartiel) return false;
+  const articles = v.lignes.filter((l) => !l.libre);
+  return articles.length > 0 && articles.every((l) => l.produitId);
+}
+
+function raisonAttente(v) {
+  if (v.remboursePartiel) return 'remboursement partiel';
+  const inconnus = v.lignes.filter((l) => !l.produitId && !l.libre).map((l) => l.nom);
+  return inconnus.length ? `article(s) non reconnu(s) : ${inconnus.join(', ')}` : 'à vérifier';
+}
+
+function regler({ actif }) {
+  const etat = lire();
+  const avant = etat.auto || {};
+  etat.auto = { ...avant, actif: Boolean(actif) };
+  // Les ventes d'AVANT la mise en marche restent au relevé manuel : on
+  // n'applique pas d'un coup des semaines de ventes que personne n'a revues.
+  if (actif && !avant.actif) etat.auto.depuis = new Date().toISOString();
+  ecrire(etat);
+  return etat.auto;
+}
+
+let enCours = false;
+async function releverAuto() {
+  const etat = lire();
+  if (!etat.auto || !etat.auto.actif || enCours) return null;
+  enCours = true;
+  try {
+    // Une heure de recouvrement avec le passage précédent : une vente
+    // enregistrée en retard dans SumUp ne passe pas entre deux relevés. Les
+    // doublons sont impossibles (codes déjà traités).
+    const precedent = etat.auto.dernierPassage ? new Date(new Date(etat.auto.dernierPassage).getTime() - 3600000).toISOString() : null;
+    const depuis = [etat.auto.depuis, precedent].filter(Boolean).sort().pop() || new Date().toISOString();
+    const vue = await apercu({ depuis });
+    const codes = vue.ventes.filter(automatiqueApplicable).map((v) => v.code);
+    const r = codes.length ? await appliquer({ depuis, codes, vue, auto: true }) : { appliquees: 0, libres: 0, evenements: [] };
+    const enAttente = vue.ventes
+      .filter((v) => ['deduire', 'restocker'].includes(v.action) && !codes.includes(v.code))
+      .map((v) => ({ code: v.code, date: v.date, montant: v.montant, raison: raisonAttente(v) }));
+    const apres = lire();
+    apres.auto = { ...apres.auto, dernierPassage: new Date().toISOString(), dernierResultat: { appliquees: r.appliquees, libres: r.libres, enAttente: enAttente.length, erreur: null }, enAttente };
+    ecrire(apres);
+    return { ...r, enAttente };
+  } catch (err) {
+    const apres = lire();
+    apres.auto = { ...apres.auto, dernierPassage: new Date().toISOString(), dernierResultat: { appliquees: 0, enAttente: (apres.auto.enAttente || []).length, erreur: err.response ? `SumUp a répondu ${err.response.status}` : err.message } };
+    ecrire(apres);
+    throw err;
+  } finally {
+    enCours = false;
+  }
+}
+
+// Le résumé du jour : ce qui a été appliqué aujourd'hui (à la main ou seul),
+// et ce qui l'attend. Une fois par jour au plus ; null s'il n'y a rien à dire.
+function resumeDuJour(jourLocal) {
+  const etat = lire();
+  if (!etat.auto || !etat.auto.actif || etat.auto.dernierResume === jourLocal) return null;
+  const duJour = etat.journal.filter((j) => j.quand && new Date(j.quand).toLocaleDateString('sv-SE', { timeZone: 'Europe/Zurich' }) === jourLocal);
+  const enAttente = etat.auto.enAttente || [];
+  etat.auto.dernierResume = jourLocal;
+  ecrire(etat);
+  if (!duJour.length && !enAttente.length) return null;
+  return { duJour, enAttente };
+}
+
+module.exports = { apercu, appliquer, journal, normaliser, sku, csvSumup, index, trouver, regler, releverAuto, resumeDuJour, automatiqueApplicable };
