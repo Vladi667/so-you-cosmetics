@@ -30,6 +30,7 @@ import ComptePage from './pages/ComptePage';
 import MentionsPage from './pages/MentionsPage';
 import ReinitialiserPage from './pages/ReinitialiserPage';
 import DesabonnementPage from './pages/DesabonnementPage';
+import ConfirmationInfolettrePage from './pages/ConfirmationInfolettrePage';
 import SearchPage from './pages/SearchPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
@@ -243,6 +244,7 @@ function App() {
       <Route path="compte/reinitialiser" element={<ReinitialiserPage />} />
       {/* Ce que promet la politique de confidentialité depuis le premier jour. */}
       <Route path="desabonnement" element={<DesabonnementPage />} />
+      <Route path="confirmer-infolettre" element={<ConfirmationInfolettrePage />} />
       <Route path="mentions-legales" element={<MentionsPage />} />
       <Route path="terms" element={<TermsPage />} />
       <Route path="privacy" element={<PrivacyPage />} />

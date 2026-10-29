@@ -1492,6 +1492,19 @@ router.get('/admin/newsletter', requireAdmin, async (req, res) => {
   }
 });
 
+// Retirer d'un coup les inscriptions jamais confirmées, plus vieilles que
+// quelques jours : celles des robots, et celles qui n'ont pas cliqué.
+router.delete('/admin/newsletter/non-confirmees', requireAdmin, async (req, res) => {
+  try {
+    const jours = Math.max(1, Number((req.body && req.body.jours) || 7));
+    const retirees = await db.retirerNonConfirmees(Date.now() - jours * 86400000);
+    res.json({ retirees });
+  } catch (err) {
+    console.error('Nettoyage des inscriptions impossible :', err.message);
+    res.status(500).json({ error: 'Le nettoyage a échoué.' });
+  }
+});
+
 // Retirer une inscription. C'est ce qui rend tenable le droit d'effacement que
 // la politique de confidentialité annonce.
 router.delete('/admin/newsletter', requireAdmin, async (req, res) => {
@@ -1739,18 +1752,129 @@ router.post('/contact', async (req, res) => {
 
 // 6b. Newsletter Signup — stores the email (deduped). Independent of SMTP,
 // so it works even before the mailbox/SMTP credentials are configured.
+// L'inscription à l'infolettre, en deux temps.
+//
+// Le formulaire du pied de page a reçu 472 inscriptions entre août et
+// octobre 2026, presque toutes de robots : des adresses Gmail truffées de
+// points (« or.up.a.h.oh.e.z.og.5.6@gmail.com »), par rafales de cinquante en
+// un jour. Ce sont souvent de VRAIES adresses, que le robot inscrit à des
+// centaines de listes pour noyer leur propriétaire. Leur écrire, c'était
+// récolter des plaintes pour spam et voir le domaine de la boutique bloqué.
+//
+// D'où trois barrières, et une règle :
+//   · un champ caché que seuls les robots remplissent ;
+//   · un délai minimum entre l'affichage du formulaire et l'envoi ;
+//   · un plafond d'inscriptions par connexion et par heure ;
+//   · et la règle : une adresse ne reçoit l'infolettre qu'après avoir cliqué
+//     le lien de confirmation qu'on lui envoie.
+//
+// Un robot écarté reçoit la même réponse qu'une inscription réelle : lui dire
+// qu'il a échoué, c'est lui apprendre à mieux faire.
+const tentativesInfolettre = new Map();
+const PLAFOND_INSCRIPTIONS_HEURE = 5;
+const DELAI_MINIMUM_MS = 2500;
+
+function tropDInscriptions(ip) {
+  const maintenant = Date.now();
+  const recentes = (tentativesInfolettre.get(ip) || []).filter((t) => maintenant - t < 3600000);
+  recentes.push(maintenant);
+  tentativesInfolettre.set(ip, recentes);
+  // L'adresse IP ne sert qu'à ce compte, en mémoire, et disparaît au bout d'une heure.
+  if (tentativesInfolettre.size > 5000) {
+    for (const [k, v] of tentativesInfolettre) if (!v.some((t) => maintenant - t < 3600000)) tentativesInfolettre.delete(k);
+  }
+  return recentes.length > PLAFOND_INSCRIPTIONS_HEURE;
+}
+
+// Le motif des robots observé ici : trois points ou plus avant @gmail.com.
+// Gmail ignore les points, ce qui permet de fabriquer des milliers de
+// variantes d'une même adresse ; une vraie adresse en porte rarement plus d'un.
+function adresseFabriquee(email) {
+  const [local, domaine] = String(email).toLowerCase().split('@');
+  return /^(gmail|googlemail)\.com$/.test(domaine || '') && (local.match(/\./g) || []).length >= 3;
+}
+
+const TEXTES_CONFIRMATION = {
+  fr: {
+    sujet: 'Confirmez votre inscription — So You Cosmetics',
+    titre: 'Une dernière étape',
+    texte: 'Pour recevoir notre newsletter, confirmez que cette adresse est bien la vôtre.',
+    bouton: 'Confirmer mon inscription',
+    apres: 'Vous n’avez rien demandé ? Ignorez ce message : sans clic, vous ne recevrez rien de notre part.',
+  },
+  en: {
+    sujet: 'Confirm your subscription — So You Cosmetics',
+    titre: 'One last step',
+    texte: 'To receive our newsletter, please confirm that this address is yours.',
+    bouton: 'Confirm my subscription',
+    apres: 'Didn’t ask for this? Ignore this message: without a click, you will receive nothing from us.',
+  },
+  de: {
+    sujet: 'Bestätigen Sie Ihre Anmeldung — So You Cosmetics',
+    titre: 'Ein letzter Schritt',
+    texte: 'Um unseren Newsletter zu erhalten, bestätigen Sie bitte, dass diese Adresse Ihnen gehört.',
+    bouton: 'Anmeldung bestätigen',
+    apres: 'Nichts angefordert? Ignorieren Sie diese Nachricht: Ohne Klick erhalten Sie nichts von uns.',
+  },
+};
+
+function lienConfirmation(email, langue) {
+  const e = encodeURIComponent(String(email || '').trim().toLowerCase());
+  const prefixe = langue === 'en' || langue === 'de' ? `/${langue}` : '';
+  return `${publicBaseUrl()}${prefixe}/confirmer-infolettre?e=${e}&s=${db.signerConfirmationNewsletter(email)}`;
+}
+
 router.post('/newsletter', async (req, res) => {
-  const { email } = req.body;
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const { email, site, delai, langue } = req.body || {};
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || String(email).length > 200) {
     return res.status(400).json({ error: 'Adresse e-mail invalide' });
   }
+  const reponse = { message: 'Inscription reçue : confirmez-la depuis l’e-mail que nous venons de vous envoyer.' };
+
+  const robot = Boolean(site) || !(Number(delai) >= DELAI_MINIMUM_MS) || adresseFabriquee(email);
+  // Derrière le proxy de l'hébergeur, req.ip est celle du proxy pour TOUT le
+  // monde : le plafond s'appliquerait au site entier. L'adresse du visiteur
+  // est la première de X-Forwarded-For.
+  const ip = String(req.get('x-forwarded-for') || '').split(',')[0].trim() || req.ip;
+  if (robot || tropDInscriptions(ip)) return res.status(201).json(reponse);
 
   try {
-    await db.createNewsletterSubscriber(email);
-    res.status(201).json({ message: 'Inscription à la newsletter réussie' });
+    const inscription = await db.createNewsletterSubscriber(email);
+    // Déjà confirmée : rien à envoyer. Lien déjà envoyé ces dernières 24 h :
+    // on ne le renvoie pas, pour que personne ne puisse se servir du
+    // formulaire pour bombarder une boîte de messages.
+    const dernier = inscription.confirmation_envoyee_le ? new Date(inscription.confirmation_envoyee_le).getTime() : 0;
+    if (!inscription.confirme_le && Date.now() - dernier > 24 * 3600000) {
+      const l = TEXTES_CONFIRMATION[langue] ? langue : 'fr';
+      const t = TEXTES_CONFIRMATION[l];
+      await emailService.sendMail({
+        to: inscription.email,
+        subject: t.sujet,
+        html: gabaritCompte({ titre: t.titre, bonjour: '', texte: t.texte, lien: lienConfirmation(inscription.email, l), libelleLien: t.bouton, apres: t.apres }),
+      });
+      await db.marquerConfirmationEnvoyee(inscription.email);
+    }
+    res.status(201).json(reponse);
   } catch (err) {
     console.error('Newsletter signup failed:', err);
     res.status(500).json({ error: 'Failed to subscribe to newsletter' });
+  }
+});
+
+// La confirmation, en POST depuis la page /confirmer-infolettre — jamais à
+// l'ouverture du lien : les messageries qui visitent les liens pour les
+// prévisualiser confirmeraient sinon à la place de la personne.
+router.post('/newsletter/confirmer', async (req, res) => {
+  const { email, signature } = req.body || {};
+  if (!email || !db.confirmationNewsletterValide(email, signature)) {
+    return res.status(400).json({ error: 'Ce lien de confirmation n’est pas valable. Réinscrivez-vous depuis le bas de n’importe quelle page.' });
+  }
+  try {
+    await db.confirmerNewsletterSubscriber(email);
+    res.json({ message: 'C’est confirmé : vous recevrez notre prochaine newsletter.' });
+  } catch (err) {
+    console.error('Confirmation newsletter impossible :', err);
+    res.status(500).json({ error: 'La confirmation a échoué. Réessayez dans un instant.' });
   }
 });
 
@@ -2910,11 +3034,15 @@ router.post('/newsletter/desabonnement/demande', async (req, res) => {
   try {
     const inscrites = await db.getNewsletterSubscribers();
     const cible = comptes.normaliserEmail(email);
-    const inscrite = (inscrites || []).some((n) => {
+    const entree = (inscrites || []).find((n) => {
       const e = typeof n === 'string' ? n : (n && n.email);
       return comptes.normaliserEmail(e) === cible;
     });
-    if (inscrite) {
+    // Jamais confirmée : elle ne reçoit déjà rien. On la retire sans écrire,
+    // pour que ce formulaire ne serve pas à envoyer des messages à n'importe
+    // quelle adresse de la liste.
+    if (entree && !entree.confirme_le) await db.removeNewsletterSubscriber(cible);
+    if (entree && entree.confirme_le) {
       await emailService.sendMail({
         to: cible,
         subject: 'Vous désabonner de la newsletter — So You Cosmetics',

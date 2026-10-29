@@ -1106,9 +1106,37 @@ const AdminDashboard = ({ onLogout }) => {
                   <p className="text-xs text-stone-gray mt-1">
                     {abonnees.length === 0
                       ? "Personne ne s'est encore inscrit depuis le pied de page."
-                      : `${abonnees.length} inscription${abonnees.length > 1 ? 's' : ''} depuis le pied de page du site.`}
+                      : `${abonnees.filter((a) => a.confirme_le).length} confirmée(s) — elles seules reçoivent l'infolettre. ${abonnees.filter((a) => !a.confirme_le).length} non confirmée(s).`}
                   </p>
+                  {/* Les non confirmées : en grande partie des robots, qui ont
+                      inscrit des centaines d'adresses en août et septembre 2026.
+                      Elles ne reçoivent rien ; ce bouton les retire de la liste. */}
+                  {abonnees.some((a) => !a.confirme_le) && (
+                    <p className="text-[11px] text-stone-gray mt-1 max-w-[70ch]">
+                      Une inscription non confirmée n'a pas cliqué le lien reçu par e-mail : c'est le plus
+                      souvent un robot qui a inscrit l'adresse de quelqu'un d'autre.
+                    </p>
+                  )}
                 </div>
+                {abonnees.some((a) => !a.confirme_le) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!window.confirm("Retirer de la liste toutes les inscriptions non confirmées de plus de 7 jours ?")) return;
+                      fetch('/api/admin/newsletter/non-confirmees', { method: 'DELETE', headers: fetchHeaders, body: JSON.stringify({ jours: 7 }) })
+                        .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+                        .then((d) => {
+                          const limite = Date.now() - 7 * 86400000;
+                          setAbonnees((prev) => prev.filter((x) => x.confirme_le || (x.created_at && new Date(x.created_at).getTime() >= limite)));
+                          window.alert(`${d.retirees} inscription(s) retirée(s).`);
+                        })
+                        .catch(() => window.alert("Le nettoyage n'a pas pu être effectué."));
+                    }}
+                    className="px-4 py-2 border border-slate-stone/20 text-slate-stone rounded-full text-[11px] uppercase tracking-widest hover:bg-mist-white transition-colors"
+                  >
+                    Retirer les non confirmées
+                  </button>
+                )}
                 {abonnees.length > 0 && (
                   <a
                     href="/api/admin/newsletter/export"
@@ -1122,7 +1150,10 @@ const AdminDashboard = ({ onLogout }) => {
                 <div className="max-h-64 overflow-y-auto divide-y divide-slate-stone/5">
                   {abonnees.map((a, i) => (
                     <div key={i} className="flex items-baseline justify-between gap-4 py-2 text-sm">
-                      <span className="font-mono text-xs text-slate-stone truncate">{a.email}</span>
+                      <span className={`font-mono text-xs truncate ${a.confirme_le ? 'text-slate-stone' : 'text-stone-gray/60'}`}>
+                        {a.email}
+                        {!a.confirme_le && <span className="ml-2 font-sans text-[9px] uppercase tracking-widest">non confirmée</span>}
+                      </span>
                       <span className="flex items-baseline gap-3 whitespace-nowrap">
                         <span className="text-[11px] text-stone-gray">
                           {a.created_at ? new Date(a.created_at).toLocaleDateString('fr-CH') : '—'}

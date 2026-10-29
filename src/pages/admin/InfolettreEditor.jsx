@@ -109,7 +109,7 @@ const InfolettreEditor = ({ fetchHeaders }) => {
     // ne dit pas à combien de personnes, et c'est justement ce qu'on veut
     // savoir avant de cliquer.
     if (!window.confirm(
-      `Envoyer « ${form.sujet} » à ${inscrites} inscrite(s) ?\n\n`
+      `Envoyer « ${form.sujet} » à ${inscrites} inscrite(s) confirmée(s) ?\n\n`
       + 'Un message part par personne, environ un par seconde. '
       + 'Une infolettre envoyée ne peut plus être modifiée ni reprise.'
     )) return;
@@ -128,7 +128,7 @@ const InfolettreEditor = ({ fetchHeaders }) => {
         <h1 className="font-serif text-3xl md:text-4xl text-slate-stone mb-2">Infolettres</h1>
         <p className="text-sm text-stone-gray max-w-[70ch]">
           Rédigez, essayez sur votre propre adresse, puis envoyez.
-          <strong className="text-slate-stone"> {inscrites} inscrite(s)</strong> recevront le message —
+          <strong className="text-slate-stone"> {inscrites} inscrite(s) confirmée(s)</strong> recevront le message —
           un envoi par personne, environ un par seconde, pour que le serveur de messagerie
           ne prenne pas la boutique pour un expéditeur de courrier indésirable.
           Le lien de désinscription est ajouté automatiquement en bas de chaque envoi.
@@ -208,7 +208,7 @@ const InfolettreEditor = ({ fetchHeaders }) => {
 
             <button type="button" onClick={envoyer} disabled={occupe || !form.id || inscrites === 0}
               className="press ml-auto px-6 py-2.5 bg-[#7A5C2E] text-white rounded-full text-xs uppercase tracking-widest disabled:opacity-40">
-              Envoyer aux {inscrites} inscrite(s)
+              Envoyer aux {inscrites} confirmée(s)
             </button>
           </div>
         )}

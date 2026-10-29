@@ -937,6 +937,7 @@ function routeConnue(cheminComplet) {
   // moins encore derrière.
   if (chemin === '/compte' || chemin.startsWith('/compte/')) return true;
   if (chemin === '/desabonnement') return true;
+  if (chemin === '/confirmer-infolettre') return true;
   return ROUTES_DYNAMIQUES.some((r) => r.test(chemin));
 }
 
@@ -958,6 +959,7 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
   if (chemin === '/admin' || chemin.startsWith('/admin/')) return undefined;
   if (chemin === '/compte' || chemin.startsWith('/compte/')) return undefined;
   if (chemin === '/desabonnement') return undefined;
+  if (chemin === '/confirmer-infolettre') return undefined;
   if (/^\/search\//.test(chemin)) return undefined;
 
   const fixe = pagesPourLangue(langue)[chemin];

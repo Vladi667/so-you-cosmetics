@@ -137,6 +137,15 @@ const translations = {
       supprimerConfirme: 'Tapez votre mot de passe pour confirmer la suppression.',
       supprimerFait: 'Votre compte est supprimé.',
     },
+    confirmInfolettre: {
+      "titre": "Confirmer votre inscription",
+      "texte": "Confirmez que vous souhaitez recevoir la newsletter à l’adresse {email}.",
+      "bouton": "Confirmer mon inscription",
+      "fait": "C’est confirmé : vous recevrez notre prochaine newsletter. Merci !",
+      "invalide": "Ce lien de confirmation n’est pas valable. Réinscrivez-vous depuis le bas de n’importe quelle page.",
+      "reseau": "La connexion au site a échoué. Réessayez dans un instant.",
+      "retour": "Retour à la boutique"
+    },
     desabo: {
       titre: 'Se désabonner',
       confirmer: 'Confirmez le retrait de {email} de notre liste de diffusion.',
@@ -227,6 +236,7 @@ const translations = {
       emailPlaceholder: 'Votre adresse e-mail',
       subscribe: 'S’inscrire',
       subscribed: '✓ Inscrit',
+      checkEmail: "Presque fini : confirmez votre inscription grâce au lien que nous venons de vous envoyer par e-mail.",
       subscribing: 'Inscription…',
       subscribeError: "L’inscription n’a pas pu être enregistrée. Réessayez.",
       rights: '© {year} So You Cosmetics Genève. Tous droits réservés.',
@@ -958,6 +968,15 @@ const translations = {
       supprimerConfirme: 'Type your password to confirm deletion.',
       supprimerFait: 'Your account has been deleted.',
     },
+    confirmInfolettre: {
+      "titre": "Confirm your subscription",
+      "texte": "Confirm that you would like to receive the newsletter at {email}.",
+      "bouton": "Confirm my subscription",
+      "fait": "Confirmed: you will receive our next newsletter. Thank you!",
+      "invalide": "This confirmation link is not valid. Subscribe again from the bottom of any page.",
+      "reseau": "Could not reach the site. Please try again in a moment.",
+      "retour": "Back to the shop"
+    },
     desabo: {
       titre: 'Unsubscribe',
       confirmer: 'Confirm the removal of {email} from our mailing list.',
@@ -1047,6 +1066,7 @@ const translations = {
       emailPlaceholder: 'Your email address',
       subscribe: 'Subscribe',
       subscribed: '✓ Subscribed',
+      checkEmail: "Almost done: confirm your subscription with the link we have just e-mailed you.",
       subscribing: 'Subscribing…',
       subscribeError: 'We could not record your subscription. Please try again.',
       rights: '© {year} So You Cosmetics Geneva. All rights reserved.',
@@ -1758,6 +1778,15 @@ const translations = {
       supprimerConfirme: 'Geben Sie Ihr Passwort ein, um die Löschung zu bestätigen.',
       supprimerFait: 'Ihr Konto wurde gelöscht.',
     },
+    confirmInfolettre: {
+      "titre": "Anmeldung bestätigen",
+      "texte": "Bestätigen Sie, dass Sie den Newsletter an {email} erhalten möchten.",
+      "bouton": "Anmeldung bestätigen",
+      "fait": "Bestätigt: Sie erhalten unseren nächsten Newsletter. Vielen Dank!",
+      "invalide": "Dieser Bestätigungslink ist nicht gültig. Melden Sie sich unten auf einer beliebigen Seite erneut an.",
+      "reseau": "Die Verbindung zur Website ist fehlgeschlagen. Bitte versuchen Sie es gleich noch einmal.",
+      "retour": "Zurück zum Shop"
+    },
     desabo: {
       titre: 'Abmelden',
       confirmer: 'Bestätigen Sie die Entfernung von {email} aus unserem Verteiler.',
@@ -1847,6 +1876,7 @@ const translations = {
       emailPlaceholder: 'Ihre E-Mail-Adresse',
       subscribe: 'Abonnieren',
       subscribed: '✓ Abonniert',
+      checkEmail: "Fast geschafft: Bestätigen Sie Ihre Anmeldung über den Link, den wir Ihnen soeben per E-Mail gesendet haben.",
       subscribing: 'Anmeldung…',
       subscribeError: 'Ihre Anmeldung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.',
       rights: '© {year} So You Cosmetics Genf. Alle Rechte vorbehalten.',

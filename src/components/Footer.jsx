@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Lien from './Lien';
 
 import Logo from './Logo';
@@ -26,6 +26,12 @@ const EXPLORE_LINKS = [
 const Footer = () => {
   const { t, language } = useLanguage();
   const [email, setEmail] = useState('');
+  // Le piège à robots : un champ que personne ne voit, et que seuls les robots
+  // remplissent. Et l'heure d'affichage du formulaire : un humain met plus de
+  // deux secondes à taper son adresse, un robot non.
+  const [site, setSite] = useState('');
+  const affiche = useRef(0);
+  useEffect(() => { affiche.current = Date.now(); }, []);
   const { etat, enCours, message, messageVisible, envoyer } = useEnvoiFormulaire();
 
   // La confirmation vivait dans le `catch`, sous le commentaire « optimistic
@@ -40,7 +46,7 @@ const Footer = () => {
       fetch('/api/newsletter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: value })
+        body: JSON.stringify({ email: value, site, delai: affiche.current ? Date.now() - affiche.current : 0, langue: language })
       }),
       { surSucces: () => setEmail('') }
     );
@@ -108,7 +114,19 @@ const Footer = () => {
           <div>
             <h4 className="font-sans font-medium uppercase tracking-[0.2em] text-[10px] mb-8 text-alpine-silver">{t('footer.newsletter')}</h4>
             <p className="text-sm text-mist-white/60 mb-6 font-light">{t('footer.newsletterText')}</p>
-            <form onSubmit={handleSubscribe} className="flex border-b border-mist-white/20 pb-3 group">
+            <form onSubmit={handleSubscribe} className="relative flex border-b border-mist-white/20 pb-3 group">
+              {/* Hors de l'écran, hors du clavier, ignoré par les gestionnaires
+                  de mots de passe : seul un robot le remplit. */}
+              <input
+                type="text"
+                name="site"
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                value={site}
+                onChange={(e) => setSite(e.target.value)}
+                className="absolute -left-[9999px] w-px h-px opacity-0"
+              />
               <input
                 type="email"
                 required
@@ -126,6 +144,11 @@ const Footer = () => {
                 {enCours ? t('footer.subscribing') : etat === 'ok' ? t('footer.subscribed') : t('footer.subscribe')}
               </button>
             </form>
+            {etat === 'ok' && (
+              <p role="status" className="mt-3 text-xs font-light text-mist-white/70">
+                {t('footer.checkEmail')}
+              </p>
+            )}
             {message === 'erreur' && (
               <p
                 role="alert"

@@ -128,6 +128,10 @@ async function destinataires() {
     const e = String((typeof n === 'string' ? n : (n && n.email)) || '').trim().toLowerCase();
     if (!e || vues.has(e)) continue;
     vues.add(e);
+    // Seules les adresses confirmées reçoivent l'infolettre. Les autres —
+    // dont toutes celles inscrites avant la confirmation, en grande partie
+    // par des robots — restent dans la liste mais ne reçoivent rien.
+    if (!n || typeof n !== 'object' || !n.confirme_le) continue;
     // Une adresse écartée pour rebonds ne reçoit plus rien. Elle reste
     // inscrite — c'est peut-être une faute de frappe qu'elle corrigera — mais
     // continuer d'écrire à une boîte morte abîme la réputation de l'expéditeur,

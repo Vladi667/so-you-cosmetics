@@ -288,6 +288,9 @@ async function initProductionDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    // L'inscription confirmée, et le dernier envoi du lien de confirmation.
+    await ensureColumn(conn, 'newsletter', 'confirme_le', 'DATETIME NULL');
+    await ensureColumn(conn, 'newsletter', 'confirmation_envoyee_le', 'DATETIME NULL');
 
     // Create workshops table
     await conn.query(`
@@ -1243,7 +1246,7 @@ async function createContact(contact) {
 async function getNewsletterSubscribers() {
   if (pool) {
     try {
-      const [rows] = await pool.query('SELECT email, created_at FROM newsletter ORDER BY created_at DESC');
+      const [rows] = await pool.query('SELECT email, created_at, confirme_le, confirmation_envoyee_le FROM newsletter ORDER BY created_at DESC');
       return rows;
     } catch (err) {
       console.error('MySQL getNewsletterSubscribers failed, falling back to JSON file', err);
@@ -1294,6 +1297,87 @@ function signatureNewsletterValide(email, signature) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+// La signature du lien de CONFIRMATION, distincte de celle du désabonnement :
+// sans le préfixe, un lien de désabonnement servirait aussi à confirmer.
+function signerConfirmationNewsletter(email) {
+  return crypto.createHmac('sha256', secretNewsletter())
+    .update('confirmer:' + String(email || '').trim().toLowerCase())
+    .digest('hex')
+    .slice(0, 32);
+}
+
+function confirmationNewsletterValide(email, signature) {
+  const a = Buffer.from(signerConfirmationNewsletter(email));
+  const b = Buffer.from(String(signature || ''));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// Modifie une inscription du fichier JSON. Les anciennes entrées en simple
+// chaîne deviennent des objets au passage.
+function majInscriptionJson(email, modifier) {
+  const cible = String(email || '').trim().toLowerCase();
+  const data = JSON.parse(fs.readFileSync(NEWSLETTER_FILE, 'utf8'));
+  const liste = (Array.isArray(data) ? data : []).map((n) => (typeof n === 'string' ? { email: n, created_at: null } : n));
+  let entree = liste.find((n) => String(n.email || '').trim().toLowerCase() === cible);
+  if (!entree) {
+    entree = { email: cible, created_at: new Date().toISOString() };
+    liste.push(entree);
+  }
+  modifier(entree);
+  ecrireJson(NEWSLETTER_FILE, liste);
+  return entree;
+}
+
+// Confirmée : l'adresse a cliqué le lien reçu. C'est la seule preuve qu'elle
+// appartient à celle qui s'est inscrite, et pas à quelqu'un qu'un robot a
+// inscrit à sa place.
+async function confirmerNewsletterSubscriber(email) {
+  const cible = String(email || '').trim().toLowerCase();
+  const maintenant = new Date().toISOString();
+  if (pool) {
+    try {
+      await pool.query('INSERT INTO newsletter (email, confirme_le) VALUES (?, NOW()) ON DUPLICATE KEY UPDATE confirme_le = COALESCE(confirme_le, NOW())', [cible]);
+      return true;
+    } catch (err) {
+      console.error('MySQL confirmerNewsletterSubscriber failed, falling back to JSON file', err);
+    }
+  }
+  majInscriptionJson(cible, (e) => { if (!e.confirme_le) e.confirme_le = maintenant; });
+  return true;
+}
+
+async function marquerConfirmationEnvoyee(email) {
+  const cible = String(email || '').trim().toLowerCase();
+  if (pool) {
+    try {
+      await pool.query('UPDATE newsletter SET confirmation_envoyee_le = NOW() WHERE email = ?', [cible]);
+      return;
+    } catch (err) {
+      console.error('MySQL marquerConfirmationEnvoyee failed, falling back to JSON file', err);
+    }
+  }
+  majInscriptionJson(cible, (e) => { e.confirmation_envoyee_le = new Date().toISOString(); });
+}
+
+// Retire d'un coup les inscriptions jamais confirmées, plus anciennes que
+// `avant`. Renvoie le nombre d'adresses retirées.
+async function retirerNonConfirmees(avant) {
+  const limite = new Date(avant).toISOString();
+  if (pool) {
+    try {
+      const [r] = await pool.query('DELETE FROM newsletter WHERE confirme_le IS NULL AND (created_at IS NULL OR created_at < ?)', [limite]);
+      return r.affectedRows;
+    } catch (err) {
+      console.error('MySQL retirerNonConfirmees failed, falling back to JSON file', err);
+    }
+  }
+  const data = JSON.parse(fs.readFileSync(NEWSLETTER_FILE, 'utf8'));
+  const liste = (Array.isArray(data) ? data : []).map((n) => (typeof n === 'string' ? { email: n, created_at: null } : n));
+  const reste = liste.filter((n) => n.confirme_le || (n.created_at && n.created_at >= limite));
+  ecrireJson(NEWSLETTER_FILE, reste);
+  return liste.length - reste.length;
+}
+
 async function removeNewsletterSubscriber(email) {
   const cible = String(email || '').trim().toLowerCase();
   if (!cible) return false;
@@ -1324,25 +1408,25 @@ async function removeNewsletterSubscriber(email) {
 }
 
 // 5b. Create Newsletter Subscriber (idempotent — ignores duplicate emails)
+//
+// L'inscription naît NON CONFIRMÉE : elle ne reçoit rien tant que le lien de
+// confirmation n'a pas été cliqué. Renvoie l'entrée telle qu'elle est après
+// coup, confirmée ou non, pour que l'appelant sache s'il doit écrire.
 async function createNewsletterSubscriber(email) {
   const normalized = String(email).toLowerCase().trim();
-  const entry = { email: normalized, created_at: new Date().toISOString() };
+  const entry = { email: normalized, created_at: new Date().toISOString(), confirme_le: null, confirmation_envoyee_le: null };
 
   if (pool) {
     try {
       await pool.query('INSERT IGNORE INTO newsletter (email) VALUES (?)', [normalized]);
-      return entry;
+      const [rows] = await pool.query('SELECT email, created_at, confirme_le, confirmation_envoyee_le FROM newsletter WHERE email = ?', [normalized]);
+      return rows[0] || entry;
     } catch (err) {
       console.error('MySQL createNewsletterSubscriber failed, falling back to JSON file', err);
     }
   }
 
-  const data = JSON.parse(fs.readFileSync(NEWSLETTER_FILE, 'utf8'));
-  if (!data.some(s => s.email === normalized)) {
-    data.push(entry);
-    ecrireJson(NEWSLETTER_FILE, data);
-  }
-  return entry;
+  return majInscriptionJson(normalized, () => {});
 }
 
 // ==============================================
@@ -2151,6 +2235,11 @@ module.exports = {
   createBooking,
   createContact,
   createNewsletterSubscriber,
+  confirmerNewsletterSubscriber,
+  marquerConfirmationEnvoyee,
+  retirerNonConfirmees,
+  signerConfirmationNewsletter,
+  confirmationNewsletterValide,
   getNewsletterSubscribers,
   removeNewsletterSubscriber,
   signerEmailNewsletter,

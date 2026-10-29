@@ -70,7 +70,9 @@ async function fichier() {
     db.getOrders(), db.getBookings(), db.getWorkshops(), db.getNewsletterSubscribers(),
   ]);
   const titres = new Map((ateliers || []).map((w) => [String(w.id), w.title || '']));
-  const abonnees = new Set((inscrites || []).map((n) => cle(typeof n === 'string' ? n : n && n.email)));
+  // Abonnée = inscription CONFIRMÉE. Une inscription jamais confirmée ne
+  // reçoit rien, et vient le plus souvent d'un robot.
+  const abonnees = new Set((inscrites || []).filter((n) => n && n.confirme_le).map((n) => cle(n.email)));
   const notes = lireNotes().fiches;
   const parEmail = new Map();
 
