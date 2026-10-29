@@ -16,7 +16,7 @@ const db = require('./db');
 const comptes = require('./comptes');
 
 const FICHIER = path.join(__dirname, 'data', 'crm.json');
-const STATUTS_PAYES = ['paid', 'readyforpickup', 'shipped'];
+const STATUTS_PAYES = ['paid', 'readyforpickup', 'pickedup', 'shipped'];
 
 const cle = (email) => String(email || '').trim().toLowerCase();
 

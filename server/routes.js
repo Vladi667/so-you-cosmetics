@@ -1546,7 +1546,7 @@ router.get('/admin/orders/export', requireAdmin, async (req, res) => {
     // Seules les commandes encaissées intéressent la comptabilité : un panier
     // abandonné n'est pas une vente.
     const ventes = (toutes || []).filter((o) => {
-      const payee = ['paid', 'readyforpickup', 'shipped'].includes(String(o.status || '').toLowerCase());
+      const payee = ['paid', 'readyforpickup', 'pickedup', 'shipped'].includes(String(o.status || '').toLowerCase());
       return payee && String(o.created_at || '').startsWith(annee);
     });
 
@@ -2708,6 +2708,60 @@ router.get('/admin/tableau-de-bord', requireAdmin, async (req, res) => {
       .slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 5)
       .map((b) => ({ nom: b.customer_name, atelier: ((ateliers || []).find((w) => String(w.id) === String(b.workshop_id)) || {}).title || 'Atelier', creneau: b.slot_date, places: b.seats, le: b.created_at }));
 
+    // Les commandes à remettre au comptoir : à retirer, payées, prêtes ou non.
+    const retraits = commandes
+      .filter((o) => !db.exigeAdresse(o.shipping && o.shipping.id) && ['paid', 'readyforpickup'].includes(String(o.status || '').toLowerCase()))
+      .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+      .map((o) => ({
+        id: o.id, nom: o.customer_name, telephone: o.customer_phone || '', date: o.created_at, total: Number(o.total) || 0,
+        pret: String(o.status).toLowerCase() === 'readyforpickup',
+        articles: (o.items || []).map((a) => `${Number(a.qty) > 1 ? a.qty + ' × ' : ''}${a.name}`),
+      }));
+    const aExpedier = aTraiter.filter((o) => !o.retrait).length;
+
+    // Les ateliers du jour, à l'heure de Genève.
+    const ateliersDuJour = (ateliers || [])
+      .filter((w) => w.starts_at && audience.jourLocal(new Date(w.starts_at)) === aujourdhui)
+      .map((w) => ({ id: w.id, titre: w.title, date: w.starts_at }));
+
+    // « À fabriquer » : la rupture prévue d'après ce qui est parti en 30 jours,
+    // en ligne ET au comptoir (ventes de la caisse appliquées au stock). Un
+    // produit sans vente récente n'a pas de date de rupture ; il n'apparaît
+    // que s'il est déjà sous son seuil.
+    const il30 = new Date(Date.now() - 30 * 86400000).toISOString();
+    const venduEnLigne = {};
+    for (const o of payees) {
+      if (!o.created_at || o.created_at < il30) continue;
+      for (const a of o.items || []) venduEnLigne[a.id] = (venduEnLigne[a.id] || 0) + (Number(a.qty) || 1);
+    }
+    const venduBoutique = caisse.articlesVendusDepuis(il30);
+    const production = produits
+      .filter((p) => p.stock != null)
+      .map((p) => {
+        const enLigne = venduEnLigne[p.id] || 0;
+        const boutique = Math.max(0, venduBoutique[p.id] || 0);
+        const parJour = (enLigne + boutique) / 30;
+        const seuil = p.seuilAlerte == null ? seuilGeneral : Number(p.seuilAlerte);
+        return {
+          id: p.id, nom: p.name, stock: Number(p.stock), seuil, enLigne, boutique,
+          joursRestants: parJour > 0 ? Math.floor(Number(p.stock) / parJour) : null,
+        };
+      })
+      .filter((x) => (x.joursRestants !== null && x.joursRestants <= 21) || x.stock <= x.seuil)
+      .sort((a, b) => (a.joursRestants ?? 9999) - (b.joursRestants ?? 9999) || a.stock - b.stock);
+
+    // Le chiffre en ligne, jour par jour sur 60 jours : la courbe du tableau
+    // de bord le superpose à celui de la boutique.
+    const il60 = audience.jourLocal(new Date(Date.now() - 59 * 86400000));
+    const enLigneParJour = {};
+    for (const o of payees) {
+      const j = jourDe(o);
+      if (j < il60) continue;
+      const v = enLigneParJour[j] || (enLigneParJour[j] = { montant: 0, ventes: 0 });
+      v.montant += Number(o.total) || 0;
+      v.ventes += 1;
+    }
+
     const visites = audience.periode(aujourdhui, aujourdhui);
     res.json({
       aujourdhui,
@@ -2715,12 +2769,72 @@ router.get('/admin/tableau-de-bord', requireAdmin, async (req, res) => {
       mois: { ventes: duMois.length, montant: somme(duMois) },
       visitesDuJour: visites.visites,
       versBoutiqueDuJour: Object.values(visites.actions || {}).reduce((t, n) => t + n, 0),
-      meilleurs, aTraiter, stockBas, seuilGeneral, prochains, reservationsRecentes,
+      meilleurs, aTraiter, aExpedier, retraits, ateliersDuJour, production, enLigneParJour,
+      stockBas, seuilGeneral, prochains, reservationsRecentes,
       caisse: caisse.journal().dernierReleve,
     });
   } catch (err) {
     console.error('Tableau de bord illisible :', err);
     res.status(500).json({ error: 'Le tableau de bord n’a pas pu être composé.' });
+  }
+});
+
+// La boutique physique, d'après la caisse SumUp : le chiffre du jour, les
+// moyens de paiement, la courbe sur 60 jours, et les meilleures heures sur 90.
+// Séparé du reste du tableau de bord : SumUp peut être lent ou injoignable, et
+// l'accueil de l'administration ne doit pas l'attendre pour s'afficher.
+const MOYENS_LIBELLES = { POS: 'Carte', CASH: 'Espèces', APM: 'TWINT / autre', BALANCE: 'Solde SumUp', MOTO: 'Par téléphone' };
+
+function partiesGeneve(iso) {
+  const d = new Date(iso);
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Zurich', weekday: 'short', hour: '2-digit', hourCycle: 'h23' })
+    .formatToParts(d).map((x) => [x.type, x.value]));
+  return {
+    jour: d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Zurich' }),
+    // 0 = lundi … 6 = dimanche
+    semaine: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(p.weekday),
+    heure: Number(p.hour),
+  };
+}
+
+router.get('/admin/tableau-de-bord/boutique', requireAdmin, async (req, res) => {
+  if (!db.getSumupConfig().apiKey) return res.json({ configure: false });
+  try {
+    const ventes = await caisse.ventesBoutique({ jours: 90 });
+    const aujourdhui = audience.jourLocal();
+    const il60 = audience.jourLocal(new Date(Date.now() - 59 * 86400000));
+    const jour = { ventes: 0, montant: 0, rembourse: 0, moyens: {} };
+    const parJour = {};
+    const heures = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => ({ ventes: 0, montant: 0 })));
+    for (const v of ventes) {
+      const g = partiesGeneve(v.date);
+      const net = v.montant - v.rembourse;
+      if (g.semaine >= 0) {
+        heures[g.semaine][g.heure].ventes += 1;
+        heures[g.semaine][g.heure].montant += net;
+      }
+      if (g.jour >= il60) {
+        const pj = parJour[g.jour] || (parJour[g.jour] = { montant: 0, ventes: 0 });
+        pj.montant += net;
+        pj.ventes += 1;
+      }
+      if (g.jour === aujourdhui) {
+        jour.ventes += 1;
+        jour.montant += net;
+        jour.rembourse += v.rembourse;
+        const libelle = MOYENS_LIBELLES[v.moyen] || 'Autre';
+        const m = jour.moyens[libelle] || (jour.moyens[libelle] = { ventes: 0, montant: 0 });
+        m.ventes += 1;
+        m.montant += net;
+      }
+    }
+    const arrondi = (n) => Math.round(n * 100) / 100;
+    jour.montant = arrondi(jour.montant);
+    jour.panierMoyen = jour.ventes ? arrondi(jour.montant / jour.ventes) : 0;
+    res.json({ configure: true, aujourdhui, jour, parJour, heures, ventes90: ventes.length });
+  } catch (err) {
+    console.error('Ventes de la boutique illisibles :', err.response ? err.response.data : err.message);
+    res.json({ configure: true, erreur: err.response ? `SumUp a répondu ${err.response.status}` : 'SumUp n’a pas répondu' });
   }
 });
 

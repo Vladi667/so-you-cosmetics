@@ -121,7 +121,7 @@ function clicGoogle(brut = {}) {
 // Le nom de la conversion doit être EXACTEMENT celui de l'action créée dans
 // Google Ads : une différence d'une lettre, et chaque ligne est refusée.
 const NOM_CONVERSION = 'Achat en ligne';
-const STATUTS_PAYES = ['paid', 'readyforpickup', 'shipped'];
+const STATUTS_PAYES = ['paid', 'readyforpickup', 'pickedup', 'shipped'];
 
 function heureLocale(iso) {
   // « sv-SE » donne AAAA-MM-JJ HH:MM:SS, le format attendu par Google.

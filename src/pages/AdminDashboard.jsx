@@ -996,8 +996,8 @@ const AdminDashboard = ({ onLogout }) => {
                         </td>
                         <td className="p-6 text-right font-medium">CHF {order.total.toFixed(2)}</td>
                         <td className="p-6 text-center">
-                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusKey(order.status) === 'paid' ? 'bg-green-100 text-green-700' : statusKey(order.status) === 'shipped' ? 'bg-blue-100 text-blue-700' : statusKey(order.status) === 'readyforpickup' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
-                            {statusKey(order.status) === 'paid' ? 'Payé' : statusKey(order.status) === 'shipped' ? 'Envoyé' : statusKey(order.status) === 'readyforpickup' ? 'À retirer' : 'En attente'}
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusKey(order.status) === 'paid' ? 'bg-green-100 text-green-700' : statusKey(order.status) === 'shipped' ? 'bg-blue-100 text-blue-700' : statusKey(order.status) === 'readyforpickup' ? 'bg-purple-100 text-purple-700' : statusKey(order.status) === 'pickedup' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {statusKey(order.status) === 'paid' ? 'Payé' : statusKey(order.status) === 'shipped' ? 'Envoyé' : statusKey(order.status) === 'readyforpickup' ? 'À retirer' : statusKey(order.status) === 'pickedup' ? 'Remise' : 'En attente'}
                           </span>
                         </td>
                         <td className="p-6 text-center">
@@ -2660,6 +2660,7 @@ const AdminDashboard = ({ onLogout }) => {
                   <option value="Pending">En attente (Pending)</option>
                   <option value="Paid">Payé (Paid)</option>
                   <option value="ReadyForPickup">À retirer (Ready)</option>
+                  <option value="PickedUp">Remise en boutique</option>
                   <option value="Shipped">Envoyé (Shipped)</option>
                   {/* Le serveur acceptait déjà ces deux statuts ; ils
                       n'apparaissaient nulle part dans le menu, si bien qu'une

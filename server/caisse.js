@@ -273,6 +273,10 @@ async function appliquer({ depuis, codes, correspondances = {}, vue: vueFaite = 
     etat.traitees[v.code] = { etat: v.action === 'deduire' ? 'vendu' : 'rembourse', date: v.date, quand: new Date().toISOString() };
     etat.journal.unshift({
       quand: new Date().toISOString(), code: v.code, date: v.date, montant: v.montant, auto,
+      // Les articles, lisibles par la machine : c'est ce qui permet de prévoir
+      // une rupture d'après ce qui part au comptoir (liste « À fabriquer »).
+      sens: v.action === 'deduire' ? 1 : -1,
+      articles: lignes,
       action: v.action === 'deduire' ? 'Vente : stock diminué' : 'Remboursement : stock remis',
       lignes: v.lignes.filter((l) => l.produitId).map((l) => `${l.qte} × ${l.produitNom}`),
       ignorees,
@@ -282,6 +286,49 @@ async function appliquer({ depuis, codes, correspondances = {}, vue: vueFaite = 
   etat.dernierReleve = new Date().toISOString();
   ecrire(etat);
   return { appliquees, libres, evenements, seuil };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Les ventes de la boutique, pour le tableau de bord.
+//
+// Tout ce que la caisse sait d'une vente, même tapée en « montant libre » :
+// l'heure, le montant, le moyen de paiement, le remboursement. C'est assez pour
+// le chiffre du jour, la courbe, les meilleures heures — pas pour savoir ce
+// qui est parti (voir apercu, qui exige des articles).
+//
+// Gardé dix minutes en mémoire : le tableau de bord se rouvre souvent, et
+// SumUp n'a pas à être interrogé à chaque fois.
+// ─────────────────────────────────────────────────────────────────────────
+let ventesEnCache = { quand: 0, jours: 0, ventes: null };
+
+async function ventesBoutique({ jours = 90 } = {}) {
+  if (ventesEnCache.ventes && ventesEnCache.jours >= jours && Date.now() - ventesEnCache.quand < 10 * 60 * 1000) {
+    const limite = new Date(Date.now() - jours * 86400000).toISOString();
+    return ventesEnCache.ventes.filter((v) => v.date >= limite);
+  }
+  const depuis = new Date(Date.now() - jours * 86400000).toISOString();
+  const { items } = await historique(depuis);
+  const ventes = items
+    .filter((t) => String(t.type || 'PAYMENT').toUpperCase() === 'PAYMENT'
+      && String(t.payment_type || '').toUpperCase() !== 'ECOM'
+      && ['SUCCESSFUL', 'REFUNDED'].includes(String(t.status || '').toUpperCase()))
+    .map((t) => {
+      const montant = Number(t.amount) || 0;
+      const rembourse = String(t.status).toUpperCase() === 'REFUNDED' ? montant : Math.min(montant, Number(t.refunded_amount) || 0);
+      return { code: t.transaction_code || t.id, date: t.timestamp, montant, rembourse, moyen: String(t.payment_type || '').toUpperCase() };
+    });
+  ventesEnCache = { quand: Date.now(), jours, ventes };
+  return ventes;
+}
+
+// Ce qui est sorti du stock par la caisse depuis une date, par produit.
+function articlesVendusDepuis(depuisIso) {
+  const parId = {};
+  for (const j of lire().journal) {
+    if (!j.articles || !j.date || j.date < depuisIso) continue;
+    for (const a of j.articles) parId[a.id] = (parId[a.id] || 0) + (j.sens || 1) * (Number(a.qty) || 0);
+  }
+  return parId;
 }
 
 function journal() {
@@ -373,4 +420,4 @@ function resumeDuJour(jourLocal) {
   return { duJour, enAttente };
 }
 
-module.exports = { apercu, appliquer, journal, normaliser, sku, csvSumup, index, trouver, regler, releverAuto, resumeDuJour, automatiqueApplicable };
+module.exports = { ventesBoutique, articlesVendusDepuis, apercu, appliquer, journal, normaliser, sku, csvSumup, index, trouver, regler, releverAuto, resumeDuJour, automatiqueApplicable };

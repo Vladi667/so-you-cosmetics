@@ -1601,7 +1601,9 @@ async function getOrderById(orderId) {
 // unpaid, and concludes the payment provider is broken. Normalising here fixes
 // every writer at once instead of at each call site, and also repairs rows that
 // were already stored in the wrong case the next time they are updated.
-const ORDER_STATUSES = ['Pending', 'Paid', 'ReadyForPickup', 'Shipped', 'Cancelled', 'Refunded'];
+// « PickedUp » : une commande à retirer, remise à la cliente au comptoir. Elle
+// reste payée, simplement plus rien n'est à faire.
+const ORDER_STATUSES = ['Pending', 'Paid', 'ReadyForPickup', 'PickedUp', 'Shipped', 'Cancelled', 'Refunded'];
 
 function canonicalOrderStatus(status) {
   if (typeof status !== 'string') return status;
