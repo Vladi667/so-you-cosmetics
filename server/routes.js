@@ -2796,20 +2796,15 @@ router.get('/admin/caisse/journal', requireAdmin, (req, res) => {
   res.json(caisse.journal());
 });
 
-// Le stock, à reprendre dans la caisse SumUp. Une colonne par information
-// utile ; les noms de colonnes sont à faire correspondre dans l'import de
-// SumUp, qui les demande.
+// Le catalogue du site, au format d'import de SumUp, avec les références
+// (SKU) : voir caisse.csvSumup.
 router.get('/admin/caisse/export-stock.csv', requireAdmin, async (req, res) => {
   try {
-    const produits = await db.getProduitsTous();
-    const champ = (v) => { const t = String(v == null ? '' : v); return /[";\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
-    const lignes = produits
-      .slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'fr'))
-      .map((p) => [p.sumupNom || p.name, Number(p.price || 0).toFixed(2), p.stock == null ? '' : p.stock, (p.collections || [])[0] || '', p.id].map(champ).join(';'));
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="stock-pour-sumup.csv"');
-    res.send('\ufeff' + ['Nom;Prix;Stock;Catégorie;Référence', ...lignes].join('\r\n'));
+    res.setHeader('Content-Disposition', 'attachment; filename="articles-pour-sumup.csv"');
+    res.send(await caisse.csvSumup());
   } catch (err) {
+    console.error('Export SumUp impossible :', err);
     res.status(500).json({ error: 'L’export n’a pas pu être généré.' });
   }
 });

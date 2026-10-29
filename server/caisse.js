@@ -94,16 +94,86 @@ async function detail(headers, code, id) {
   return data || {};
 }
 
+// La référence d'un produit dans SumUp (le « SKU » de son import).
+//
+// Tirée de l'identifiant de la fiche, qui ne change jamais — pas du nom, qui
+// change. Un format (15 ml, 30 ml…) ajoute son propre suffixe : dans la caisse,
+// chaque format est un article distinct, même si le site les décompte d'un
+// seul stock. La même règle est reprise dans l'administration
+// (AdminDashboard.jsx, skuProduit) pour l'afficher sur la fiche.
+function sku(produit, variante) {
+  const court = String(produit.id || '').replace(/^product_/, '').replace(/[^a-z0-9]/gi, '').slice(0, 8).toUpperCase();
+  const suffixe = variante ? '-' + String(variante.id || variante.libelle || '').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase() : '';
+  return `SY-${court}${suffixe}`;
+}
+
+// Le nom sous lequel le produit apparaît dans la caisse.
+const nomCaisse = (p) => p.sumupNom || p.name;
+
 async function index() {
   const produits = await db.getProduitsTous();
   const parNom = new Map();
+  const poser = (nom, p) => { const k = normaliser(nom); if (k && !parNom.has(k)) parNom.set(k, p); };
   // Le nom de caisse d'abord : il a été choisi exprès, il l'emporte.
-  for (const p of produits) if (p.sumupNom) parNom.set(normaliser(p.sumupNom), p);
-  for (const p of produits) {
-    const k = normaliser(p.name);
-    if (k && !parNom.has(k)) parNom.set(k, p);
-  }
+  for (const p of produits) if (p.sumupNom) poser(p.sumupNom, p);
+  for (const p of produits) poser(p.name, p);
+  // Chaque format sous les deux formes que la caisse peut lui donner :
+  // « Nom 30 ml » et « Nom - 30 ml » se normalisent de la même façon.
+  for (const p of produits) for (const v of p.variantes || []) poser(`${nomCaisse(p)} ${v.libelle || ''}`, p);
   return { produits, parNom };
+}
+
+// Un nom de la caisse, rapproché d'une fiche : exact d'abord, puis le plus long
+// nom de fiche par lequel il commence (« Huile d'argan bio - 50 ml » quand la
+// fiche s'appelle « Huile d'argan bio »).
+function trouver(parNom, nom) {
+  const k = normaliser(nom);
+  if (parNom.has(k)) return parNom.get(k);
+  let meilleur = null;
+  let longueur = 0;
+  for (const [cle, p] of parNom) {
+    if (cle.length > longueur && cle.length >= 6 && k.startsWith(cle + ' ')) { meilleur = p; longueur = cle.length; }
+  }
+  return meilleur;
+}
+
+function champCsv(v) {
+  const t = String(v == null ? '' : v);
+  return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+}
+
+// Le catalogue au format d'import de SumUp (Articles → Importer, dans le
+// tableau de bord SumUp) : en-têtes anglais, virgule, une ligne par produit,
+// et pour un produit à formats, une ligne vide de prix suivie d'une ligne par
+// format — c'est ainsi que SumUp décrit les variantes dans son modèle.
+//
+// « Track inventory? » est à « No » partout, et c'est voulu : le stock vit sur
+// le site, qui le diminue pour les ventes en ligne ET pour celles de la caisse
+// (voir apercu/appliquer). Un second stock tenu par SumUp, que les ventes en
+// ligne ne toucheraient pas, divergerait dès la première commande.
+async function csvSumup() {
+  const produits = (await db.getProduitsTous()).filter((p) => Number(p.price) > 0 || (p.variantes || []).length);
+  const reglages = db.getShopSettings();
+  const tva = Number((reglages.invoice || {}).vatRate) || 0;
+  const seo = require('./seo');
+  const base = (process.env.PUBLIC_BASE_URL || 'https://soyoucosmetics.com').replace(/\/+$/, '');
+  const entetes = ['Item name', 'Variations', 'Price', 'Tax rate (%)', 'Track inventory?', 'SKU', 'Category', 'Description', 'Image 1'];
+  const lignes = [];
+  const prix = (n) => Number(n || 0).toFixed(2);
+  for (const p of produits.slice().sort((a, b) => String(nomCaisse(a)).localeCompare(String(nomCaisse(b)), 'fr'))) {
+    const rubrique = (p.collections || []).find((c) => c !== 'Coup de cœur') || '';
+    // Le résumé HTML laisse une espace devant la virgule là où une balise fermait.
+    const description = (seo.resumerTexte(p.description || '', 300) || '').replace(/\s+([,.])/g, '$1');
+    const image = (p.images || [])[0] ? seo.absolutiser(p.images[0], base) : '';
+    const variantes = p.variantes || [];
+    if (!variantes.length) {
+      lignes.push([nomCaisse(p), '', prix(p.price), tva, 'No', sku(p), rubrique, description, image]);
+    } else {
+      lignes.push([nomCaisse(p), '', '', '', '', '', '', '', '']);
+      for (const v of variantes) lignes.push(['', v.libelle || v.id, prix(v.prix), tva, 'No', sku(p, v), rubrique, description, image]);
+    }
+  }
+  return [entetes, ...lignes].map((l) => l.map(champCsv).join(',')).join('\r\n') + '\r\n';
 }
 
 // Ce que le relevé ferait, sans rien toucher.
@@ -132,7 +202,7 @@ async function apercu({ depuis }) {
     if (action === 'deduire' || action === 'restocker') {
       const d = await detail(headers, code, t.id);
       lignes = (d.products || []).map((a) => {
-        const p = parNom.get(normaliser(a.name));
+        const p = trouver(parNom, a.name);
         return { nom: a.name, qte: Math.max(1, Math.round(Number(a.quantity) || 1)), produitId: p ? p.id : null, produitNom: p ? p.name : null };
       });
     }
@@ -190,4 +260,4 @@ function journal() {
   return { journal: d.journal.slice(0, 100), dernierReleve: d.dernierReleve };
 }
 
-module.exports = { apercu, appliquer, journal, normaliser };
+module.exports = { apercu, appliquer, journal, normaliser, sku, csvSumup, index, trouver };

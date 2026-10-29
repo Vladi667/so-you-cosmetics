@@ -68,7 +68,7 @@ const Caisse = ({ fetchHeaders }) => {
       .then((b) => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(b);
-        a.download = 'stock-pour-sumup.csv';
+        a.download = 'articles-pour-sumup.csv';
         a.click();
         URL.revokeObjectURL(a.href);
       })
@@ -101,8 +101,24 @@ const Caisse = ({ fetchHeaders }) => {
         </button>
         <button type="button" onClick={exporter}
           className="press ml-auto px-5 py-2 border border-slate-stone/20 text-slate-stone rounded-full text-xs uppercase tracking-widest">
-          Exporter le stock (CSV)
+          Exporter les articles pour SumUp
         </button>
+      </div>
+
+      {/* Le chemin pour que la caisse connaisse les produits du site. Sans lui,
+          une vente tapée en « montant libre » ne dit pas ce qui a été vendu,
+          et le stock ne peut pas suivre. */}
+      <div className="rounded-2xl border border-slate-stone/10 bg-ivory p-5 text-sm text-stone-gray leading-relaxed">
+        <h2 className="font-serif text-lg text-slate-stone mb-2">Mettre les produits du site dans la caisse</h2>
+        <ol className="list-decimal pl-5 space-y-1">
+          <li>« Exporter les articles pour SumUp » : un fichier au format d’import de SumUp, avec la référence (SKU) de chaque produit et de chaque format.</li>
+          <li>Dans le tableau de bord SumUp : Articles → Importer, puis choisissez ce fichier.</li>
+          <li>À la caisse, touchez l’article au lieu de taper un montant libre : la vente dira ce qui est parti, et « Relever » diminuera le stock du site.</li>
+        </ol>
+        <p className="mt-2 text-xs">
+          Le stock reste tenu par le site (« Track inventory » à « No » dans SumUp) : un second stock dans la caisse, que les
+          ventes en ligne ne toucheraient pas, divergerait dès la première commande.
+        </p>
       </div>
 
       {message && <p className="rounded-xl border border-slate-stone/10 bg-ivory px-4 py-3 text-sm text-slate-stone">{message}</p>}

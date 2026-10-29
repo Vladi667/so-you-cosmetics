@@ -18,6 +18,10 @@ import { SHOP_CATEGORIES } from '../data/categories';
 // a folded key so a paid order is never displayed as "En attente".
 const statusKey = (s) => String(s || '').toLowerCase();
 
+// La référence d'un produit dans la caisse SumUp. Même règle que
+// server/caisse.js (sku) : tirée de l'identifiant, qui ne change jamais.
+const skuProduit = (id) => `SY-${String(id || '').replace(/^product_/, '').replace(/[^a-z0-9]/gi, '').slice(0, 8).toUpperCase()}`;
+
 // Le marqueur qui remonte un produit en page d'accueil. Ce n'est pas une
 // rubrique — il se range avec les catégories parce qu'il se saisit au même
 // endroit, mais il est présenté à part pour qu'on ne le confonde pas.
@@ -1368,6 +1372,12 @@ const AdminDashboard = ({ onLogout }) => {
                         <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Nom dans la caisse SumUp</label>
                         <input type="text" placeholder="si différent du nom de la fiche" value={productForm.sumupNom} onChange={e => setProductForm({...productForm, sumupNom: e.target.value})} className="px-4 py-2 border rounded w-full" />
                         <p className="text-[11px] text-stone-gray mt-1">Sert à reconnaître les ventes faites au comptoir (onglet « Ventes en boutique »).</p>
+                        {productForm.id && (
+                          <p className="text-[11px] text-stone-gray mt-1">
+                            Référence SumUp (SKU) : <span className="font-mono text-slate-stone">{skuProduit(productForm.id)}</span>
+                            {(productForm.variantes || []).length > 0 && ' — chaque format ajoute son suffixe'}
+                          </p>
+                        )}
                       </div>
                       <div className="md:col-span-2">
                         <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Catégories</label>
