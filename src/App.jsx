@@ -16,6 +16,7 @@ import SideDrawer from './components/SideDrawer';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { separerLangue } from './i18n/routes';
 import ScrollToTop from './components/ScrollToTop';
+import Audience from './components/Audience';
 import PersonnalisationPage from './pages/PersonnalisationPage';
 import Home from './pages/Home';
 import CategoryPage from './pages/CategoryPage';
@@ -268,6 +269,7 @@ function App() {
   return (
     <div className="font-sans antialiased text-stone-gray bg-mist-white min-h-screen flex flex-col overflow-x-hidden">
       <ScrollToTop />
+      {!isAdminPage && <Audience />}
       {!isAdminPage && <PageLoader isVisible={isLoading} />}
       {!isAdminPage && <AbsenceNotice />}
       {/* Les deux tiroirs occupent exactement la meme place, sur le bord droit.

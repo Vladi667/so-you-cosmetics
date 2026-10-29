@@ -13,6 +13,7 @@ const comptes = require('./comptes');
 const infolettre = require('./infolettre');
 const rebonds = require('./rebonds');
 const payrexx = require('./payrexx');
+const audience = require('./audience');
 
 // Compare two strings in constant time; tolerates length mismatch
 function timingSafeEqualStr(a, b) {
@@ -611,6 +612,20 @@ router.post('/orders', async (req, res) => {
       // et la commande ne doit pas pretendre le contraire.
       cadeau: cadeau ? { ...cadeau, emballage: calcul.giftWrapCost > 0 } : null,
     });
+
+    // D'où venait la visite : de quoi dire, plus tard, combien de ventes une
+    // annonce a rapportées. Classée par le serveur, pas par le navigateur. Une
+    // erreur ici ne doit jamais coûter la commande.
+    if (req.body.source && typeof req.body.source === 'object') {
+      try {
+        const source = audience.classer(req.body.source);
+        const clic = audience.clicGoogle(req.body.source);
+        if (clic) source.clic = clic;
+        await db.setOrderSource(newOrder.id, source);
+      } catch (err) {
+        console.error('Source de la commande non enregistrée :', err.message);
+      }
+    }
 
     // TWINT : une passerelle Payrexx restreinte à TWINT, ouverte dans le
     // panier même. Rien de ce qui suit — SumUp, ni le paiement simulé quand
@@ -2380,6 +2395,124 @@ router.get('/admin/paniers-abandonnes', requireAdmin, async (req, res) => {
     console.error('Lecture des paniers abandonnés impossible :', err);
     res.status(500).json({ error: 'Les paniers abandonnés n’ont pas pu être lus.' });
   }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// La mesure d'audience, sans cookie : voir server/audience.js.
+// ─────────────────────────────────────────────────────────────────────────
+
+// Une page vue. Répond 204 dans tous les cas : le navigateur n'attend rien, et
+// un robot n'a pas à apprendre qu'il a été écarté.
+router.post('/audience', (req, res) => {
+  const b = req.body || {};
+  const source = b.source && typeof b.source === 'object' ? b.source : null;
+  if (b.action) {
+    audience.noterAction({ action: String(b.action), source }, req.get('user-agent'));
+    return res.status(204).end();
+  }
+  audience.noter({
+    chemin: b.chemin,
+    nouvelle: b.nouvelle === true,
+    source: b.source && typeof b.source === 'object' ? b.source : null,
+  }, req.get('user-agent'));
+  res.status(204).end();
+});
+
+const { STATUTS_PAYES } = audience;
+
+// Le tableau « Marketing » : les visites d'une période, et ce qu'elles ont
+// rapporté. Les commandes sont comptées payées seulement — un panier
+// abandonné n'est pas une vente — et rangées par la provenance de la visite
+// qui les a passées.
+router.get('/admin/audience', requireAdmin, async (req, res) => {
+  try {
+    const jours = Math.min(Math.max(parseInt(req.query.jours, 10) || 30, 1), 400);
+    const fin = audience.jourLocal();
+    const debut = audience.jourLocal(new Date(Date.now() - (jours - 1) * 86400000));
+    const visites = audience.periode(debut, fin);
+
+    const commandes = (await db.getOrders()).filter((o) => {
+      const jour = o.created_at ? audience.jourLocal(new Date(o.created_at)) : '';
+      return jour >= debut && jour <= fin && STATUTS_PAYES.includes(String(o.status || '').toLowerCase());
+    });
+    const ventes = {};
+    const ventesCampagnes = {};
+    for (const o of commandes) {
+      // Les commandes d'avant le suivi n'ont pas de provenance : on le dit,
+      // plutôt que de les ranger d'office sous « Direct ».
+      const canal = (o.source && o.source.canal) || 'Inconnue';
+      const v = ventes[canal] || (ventes[canal] = { commandes: 0, montant: 0 });
+      v.commandes += 1;
+      v.montant += Number(o.total) || 0;
+      const camp = o.source && o.source.campagne;
+      if (camp) {
+        const c = ventesCampagnes[camp] || (ventesCampagnes[camp] = { commandes: 0, montant: 0 });
+        c.commandes += 1;
+        c.montant += Number(o.total) || 0;
+      }
+    }
+
+    res.json({ debut, fin, ...visites, ventes, ventesCampagnes });
+  } catch (err) {
+    console.error('Lecture de l’audience impossible :', err);
+    res.status(500).json({ error: 'Les chiffres de fréquentation n’ont pas pu être lus.' });
+  }
+});
+
+// Les ventes venues de Google Ads, renvoyées à Google Ads.
+//
+// Sans cela, Google Ads ne sait pas qu'une annonce a fait vendre : son traceur
+// habituel dépose des cookies, et la boutique n'en veut pas. Le fichier est lu
+// de deux façons : téléchargé depuis l'onglet Marketing, ou relevé chaque jour
+// par Google Ads lui-même, avec un identifiant et une clé (authentification
+// HTTP « Basic », ce que l'import programmé de Google Ads sait faire).
+const UTILISATEUR_ADS = 'google-ads';
+
+router.get('/admin/google-ads', requireAdmin, async (req, res) => {
+  const commandes = await db.getOrders();
+  const csv = audience.csvConversionsGoogle(commandes);
+  res.json({
+    cle: db.getSetting('GOOGLE_ADS_EXPORT_KEY') || '',
+    utilisateur: UTILISATEUR_ADS,
+    adresse: `${publicBaseUrl()}/api/google-ads/conversions.csv`,
+    nomConversion: audience.NOM_CONVERSION,
+    ventes: csv.trim().split('\r\n').length - 2,
+  });
+});
+
+router.post('/admin/google-ads/cle', requireAdmin, (req, res) => {
+  const cle = crypto.randomBytes(18).toString('base64url');
+  db.updateSettings({ GOOGLE_ADS_EXPORT_KEY: cle });
+  res.json({ cle });
+});
+
+router.get('/admin/google-ads/conversions.csv', requireAdmin, async (req, res) => {
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="conversions-google-ads.csv"');
+  res.send(audience.csvConversionsGoogle(await db.getOrders()));
+});
+
+router.get('/google-ads/conversions.csv', async (req, res) => {
+  const cle = db.getSetting('GOOGLE_ADS_EXPORT_KEY') || '';
+  const [type, valeur] = String(req.get('authorization') || '').split(' ');
+  let utilisateur = '';
+  let motDePasse = '';
+  if (type === 'Basic' && valeur) {
+    const brut = Buffer.from(valeur, 'base64').toString('utf8');
+    const i = brut.indexOf(':');
+    utilisateur = brut.slice(0, i);
+    motDePasse = brut.slice(i + 1);
+  }
+  const a = Buffer.from(motDePasse);
+  const b = Buffer.from(cle);
+  // Pas de clé réglée : fermé, même à qui enverrait un mot de passe vide.
+  if (!cle || utilisateur !== UTILISATEUR_ADS || a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="google-ads"');
+    return res.status(401).send('Unauthorized');
+  }
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(audience.csvConversionsGoogle(await db.getOrders()));
 });
 
 // ─────────────────────────────────────────────────────────────────────────

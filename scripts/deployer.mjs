@@ -94,6 +94,8 @@ const FICHIERS_SERVEUR = [
   'rebonds.js',
   // TWINT par Payrexx. Requis par routes.js.
   'payrexx.js',
+  // La mesure d'audience sans cookie. Requis par routes.js.
+  'audience.js',
   'package.json',
 ];
 

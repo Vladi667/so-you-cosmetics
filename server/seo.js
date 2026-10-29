@@ -551,8 +551,8 @@ const PAGES_EN = {
     image: '/botanical_flatlay.png',
   },
   '/contact': {
-    titre: 'Our natural cosmetics boutique in Geneva',
-    description: 'So You Cosmetics — 3 av. Pictet-de-Rochemont, 1207 Geneva, Eaux-Vives. Opening hours, directions, phone, and free in-store pickup.',
+    titre: 'Soap shop and natural cosmetics boutique in Geneva',
+    description: 'Handmade soaps and skincare to smell and try in Eaux-Vives, 3 av. Pictet-de-Rochemont, Geneva. Advice, workshops, opening hours, directions, free pickup.',
     image: '/boutique_exterior.png',
   },
   '/personnalisation': {
@@ -634,8 +634,8 @@ const PAGES_DE = {
     image: '/botanical_flatlay.png',
   },
   '/contact': {
-    titre: 'Unsere Naturkosmetik-Boutique in Genf',
-    description: 'So You Cosmetics — 3 av. Pictet-de-Rochemont, 1207 Genf, Eaux-Vives. Öffnungszeiten, Anfahrt, Telefon und kostenlose Abholung.',
+    titre: 'Seifenmanufaktur und Naturkosmetik-Boutique in Genf',
+    description: 'Handgemachte Seifen und Pflege zum Riechen und Testen in Eaux-Vives, Genf. Beratung, Workshops, Öffnungszeiten, Anfahrt und kostenlose Abholung.',
     image: '/boutique_exterior.png',
   },
   '/personnalisation': {
@@ -712,8 +712,8 @@ const PAGES = {
     image: '/botanical_flatlay.png',
   },
   '/contact': {
-    titre: 'Notre boutique de cosmétiques naturels à Genève',
-    description: 'So You Cosmetics — 3 av. Pictet-de-Rochemont, 1207 Genève, quartier des Eaux-Vives. Horaires, plan d’accès, téléphone et retrait gratuit en boutique.',
+    titre: 'Savonnerie et cosmétiques naturels à Genève — la boutique',
+    description: 'Savons et soins faits main à sentir et tester aux Eaux-Vives, 3 av. Pictet-de-Rochemont, Genève. Conseils, ateliers, horaires, itinéraire et retrait gratuit.',
     image: '/boutique_exterior.png',
   },
   '/personnalisation': {

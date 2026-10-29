@@ -8,6 +8,8 @@ import { totalPanier, nombreArticles } from '../services/panier';
 import { lireCaisse, ecrireCaisse, oublierCaisse } from '../services/caisse';
 import MoyensPaiement from './MoyensPaiement';
 import { chargerMoyens } from '../services/paiement';
+import { sourceVisite } from '../services/audience';
+import StatutBoutique from './StatutBoutique';
 import useVerrouDefilement from '../hooks/useVerrouDefilement';
 
 const CHAMP_CAISSE = 'w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40';
@@ -320,6 +322,9 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
       cgvAcceptees: true,
       moyen: twintDispo && moyen === 'twint' ? 'twint' : 'carte',
       langue: language,
+      // D'où venait la visite (annonce, recherche, infolettre…), pour savoir ce
+      // que chaque canal rapporte. Aucun identifiant : voir services/audience.js.
+      source: sourceVisite(),
       items: items.map(item => ({
         id: item.id,
         name: getName(item),
@@ -545,10 +550,19 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                           />
                           <span className="flex-1 min-w-0">
                             <span className="block font-sans text-sm text-slate-stone">{o.label}</span>
-                            {o.note && <span className="block font-sans text-[11px] text-stone-gray/80">{o.note}</span>}
+                            {o.note && o.id !== 'pickup' && <span className="block font-sans text-[11px] text-stone-gray/80">{o.note}</span>}
+                            {/* Le retrait fait venir en boutique, où l'on
+                                achète souvent autre chose : il dit où, quand
+                                c'est prêt, et si c'est ouvert. */}
+                            {o.id === 'pickup' && (
+                              <>
+                                <span className="block font-sans text-[11px] text-stone-gray/80">{t('boutique.retrait')}</span>
+                                <StatutBoutique boutons={false} className="mt-1" />
+                              </>
+                            )}
                           </span>
                           <span className="font-sans text-sm text-slate-stone whitespace-nowrap">
-                            {cout === 0 ? (offert ? t('drawer.shippingFree') : t('drawer.shippingIncluded')) : `CHF ${cout.toFixed(2)}`}
+                            {cout === 0 ? (offert || o.id === 'pickup' ? t('drawer.shippingFree') : t('drawer.shippingIncluded')) : `CHF ${cout.toFixed(2)}`}
                           </span>
                         </label>
                       );

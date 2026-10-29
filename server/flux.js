@@ -79,6 +79,11 @@ function evaluer(produit, base) {
       // Un « !inStock » aurait mis 170 produits en rupture dans le flux.
       dispo: produit.inStock === false ? 'out_of_stock' : 'in_stock',
       rubrique: (Array.isArray(produit.collections) && produit.collections[0]) || '',
+      // Deux étiquettes pour Google Ads, qui ne servent qu'à ranger les
+      // annonces Shopping : mettre en avant ses coups de cœur, et ne pas
+      // enchérir autant sur un savon à 9 francs que sur un coffret à 60.
+      coupDeCoeur: Array.isArray(produit.collections) && produit.collections.includes('Coup de cœur'),
+      tranche: prix < 15 ? 'moins-de-15' : prix < 35 ? '15-35' : 'plus-de-35',
     },
   };
 }
@@ -97,6 +102,8 @@ function article(a) {
     `<g:brand>${escapeXml(MARQUE)}</g:brand>`,
     `<g:identifier_exists>no</g:identifier_exists>`,
     a.rubrique ? `<g:product_type>${escapeXml(a.rubrique)}</g:product_type>` : '',
+    `<g:custom_label_0>${a.coupDeCoeur ? 'coup-de-coeur' : 'catalogue'}</g:custom_label_0>`,
+    `<g:custom_label_1>${a.tranche}</g:custom_label_1>`,
   ];
   return `<item>${champs.filter(Boolean).join('')}</item>`;
 }

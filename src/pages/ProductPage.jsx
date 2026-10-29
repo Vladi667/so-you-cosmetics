@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
+import StatutBoutique from '../components/StatutBoutique';
 import Lien from '../components/Lien';
 import { useParams } from 'react-router-dom';
 import { getProducts, imageUrl, catalogueInitial } from '../services/products';
@@ -726,6 +727,17 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                       </span>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* La boutique, sous le bouton d'achat. Une fiche produit est
+                  souvent la page d'arrivée d'une recherche locale : dire que le
+                  produit se sent et s'essaie aux Eaux-Vives, si c'est ouvert,
+                  et comment y aller, c'est offrir l'autre façon de l'acheter. */}
+              {product.inStock !== false && (
+                <div className="mt-7 rounded-2xl border border-slate-stone/10 bg-ivory p-4 sm:p-5">
+                  <p className="font-sans text-xs sm:text-sm text-stone-gray mb-3">{t('boutique.produit')}</p>
+                  <StatutBoutique />
                 </div>
               )}
 

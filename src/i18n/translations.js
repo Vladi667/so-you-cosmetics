@@ -450,6 +450,41 @@ const translations = {
       defaultSubject: 'Demande de renseignement - Ateliers',
       reservationSubject: 'Réservation: {title}',
     },
+    boutique: {
+      "statut": {
+        "ouvert": "Ouvert · ferme à {h}",
+        "pause": "Pause de midi · rouvre à {h}",
+        "ouvreAujourdhui": "Fermé · ouvre aujourd’hui à {h}",
+        "ouvreDemain": "Fermé · ouvre demain à {h}",
+        "ouvreJour": "Fermé · ouvre {jour} à {h}"
+      },
+      "itineraire": "Itinéraire",
+      "appeler": "Appeler",
+      "bandeau": "Notre boutique aux Eaux-Vives",
+      "bandeauTexte": "Venez sentir, tester et vous faire conseiller.",
+      "produit": "Aussi en boutique aux Eaux-Vives : venez le sentir et le tester.",
+      "retrait": "Au 3 av. Pictet-de-Rochemont. Un e-mail vous prévient dès que votre commande est prête.",
+      "pourquoiTitre": "Pourquoi passer en boutique",
+      "pourquoi": [
+        {
+          "titre": "Sentir et tester",
+          "texte": "Nos savons et nos soins sont en rayon : sentez-les, essayez les textures avant de choisir."
+        },
+        {
+          "titre": "Des conseils pour votre peau",
+          "texte": "Nous fabriquons tout nous-mêmes : nous savons ce que contient chaque produit, et pour qui il est fait."
+        },
+        {
+          "titre": "Vos cadeaux, composés sur place",
+          "texte": "Choisissez, nous emballons. Bons cadeaux disponibles pour les ateliers."
+        },
+        {
+          "titre": "Retrait gratuit",
+          "texte": "Commandez en ligne, passez le chercher : sans frais de port."
+        }
+      ],
+      "ateliers": "Découvrir les ateliers"
+    },
     contact: {
       eyebrow: 'Genève, Suisse',
       title: 'Nous trouver',
@@ -707,7 +742,7 @@ const translations = {
     },
     privacy: {
       title: 'Politique de confidentialité',
-      lastUpdated: 'Septembre 2026',
+      lastUpdated: 'Octobre 2026',
       intro: "So You SARL accorde une grande importance à la protection de votre sphère privée. La présente politique explique quelles données personnelles sont collectées, dans quel but, et comment elles sont protégées, conformément à la législation suisse applicable en matière de protection des données.",
       sections: [
         { heading: '1. Responsable du traitement', body: [
@@ -770,6 +805,8 @@ const translations = {
         { heading: '7. Cookies', body: [
           "Le site internet utilise des cookies et des technologies similaires nécessaires à son bon fonctionnement, notamment pour assurer la gestion du panier, de la langue choisie et des sessions de connexion.",
           "Le site ne dépose aucun cookie publicitaire ni de mesure d’audience.",
+          "Pour savoir combien de personnes le visitent et d’où elles arrivent (moteur de recherche, réseau social, annonce, infolettre), le site compte lui-même les pages consultées, sans cookie ni identifiant, et sans conserver votre adresse IP. Seuls des totaux par jour sont enregistrés, qui ne permettent pas de vous reconnaître. Le temps de votre visite, votre navigateur garde en mémoire, dans l’onglet ouvert, la provenance de cette visite ; elle est jointe à la commande que vous passez éventuellement, afin de savoir quel canal a mené à l’achat. Cette mémoire s’efface à la fermeture de l’onglet.",
+          "Si vous arrivez par une annonce Google, l’identifiant de clic que Google a lui-même ajouté au lien est conservé avec votre commande. Une fois la commande payée, cet identifiant, l’heure et le montant de l’achat sont transmis à Google, afin de mesurer l’efficacité de l’annonce. Ni votre nom, ni votre adresse, ni votre e-mail ne lui sont transmis.",
           "La carte Google Maps qui indique l’emplacement de la boutique n’est pas chargée automatiquement : elle n’apparaît que si vous cliquez pour l’afficher. Aucune donnée, y compris votre adresse IP, n’est transmise à Google avant ce geste. Notre prestataire de paiement dépose ses propres cookies au moment du paiement.",
           "Vous pouvez configurer votre navigateur afin d’accepter, de limiter ou de refuser tout ou partie des cookies. Le refus de certains cookies peut toutefois affecter le bon fonctionnement de certaines fonctionnalités du site.",
         ]},
@@ -1213,6 +1250,41 @@ const translations = {
       defaultSubject: 'Information request - Workshops',
       reservationSubject: 'Booking: {title}',
     },
+    boutique: {
+      "statut": {
+        "ouvert": "Open · closes at {h}",
+        "pause": "Lunch break · reopens at {h}",
+        "ouvreAujourdhui": "Closed · opens today at {h}",
+        "ouvreDemain": "Closed · opens tomorrow at {h}",
+        "ouvreJour": "Closed · opens {jour} at {h}"
+      },
+      "itineraire": "Directions",
+      "appeler": "Call",
+      "bandeau": "Our boutique in Eaux-Vives",
+      "bandeauTexte": "Come and smell, try and ask for advice.",
+      "produit": "Also in our Eaux-Vives boutique: come and smell it, try it.",
+      "retrait": "At 3 av. Pictet-de-Rochemont. We e-mail you as soon as your order is ready.",
+      "pourquoiTitre": "Why visit the boutique",
+      "pourquoi": [
+        {
+          "titre": "Smell and try",
+          "texte": "Our soaps and skincare are on the shelves: smell them and try the textures before you choose."
+        },
+        {
+          "titre": "Advice for your skin",
+          "texte": "We make everything ourselves, so we know what is in each product and who it is made for."
+        },
+        {
+          "titre": "Gifts put together on the spot",
+          "texte": "You choose, we wrap. Gift vouchers available for the workshops."
+        },
+        {
+          "titre": "Free pickup",
+          "texte": "Order online and collect it here, with no shipping costs."
+        }
+      ],
+      "ateliers": "Discover the workshops"
+    },
     contact: {
       eyebrow: 'Geneva, Switzerland',
       title: 'Find Us',
@@ -1470,7 +1542,7 @@ const translations = {
     },
     privacy: {
       title: 'Privacy Policy',
-      lastUpdated: 'September 2026',
+      lastUpdated: 'October 2026',
       intro: 'So You SARL attaches great importance to the protection of your privacy. This policy explains which personal data is collected, for what purpose, and how it is protected, in accordance with applicable Swiss data protection law. This is a translation: in the event of any discrepancy, the French version prevails.',
       sections: [
         { heading: '1. Data controller', body: [
@@ -1533,6 +1605,8 @@ const translations = {
         { heading: '7. Cookies', body: [
           'The website uses cookies and similar technologies necessary for it to work properly, in particular to manage the basket, the chosen language and login sessions.',
           'The site sets no advertising or analytics cookies.',
+          'To know how many people visit it and where they come from (search engine, social network, advertisement, newsletter), the site counts the pages viewed itself, without cookies or identifiers, and without keeping your IP address. Only daily totals are recorded, which cannot be used to recognise you. For the duration of your visit, your browser keeps in the open tab where that visit came from; it is attached to any order you place, so that we know which channel led to the purchase. This memory is erased when the tab is closed.',
+          'If you arrive through a Google advertisement, the click identifier that Google itself added to the link is kept with your order. Once the order is paid, this identifier, the time and the amount of the purchase are sent to Google in order to measure the effectiveness of the advertisement. Neither your name, your address nor your e-mail is sent to Google.',
           'The Google Maps map showing the shop’s location is not loaded automatically: it appears only if you click to display it. No data, including your IP address, is sent to Google before that action. Our payment provider sets its own cookies at the time of payment.',
           'You may configure your browser to accept, limit or refuse all or some cookies. Refusing certain cookies may however affect the proper functioning of some features of the site.',
         ]},
@@ -1976,6 +2050,41 @@ const translations = {
       defaultSubject: 'Informationsanfrage - Workshops',
       reservationSubject: 'Buchung: {title}',
     },
+    boutique: {
+      "statut": {
+        "ouvert": "Geöffnet · schliesst um {h}",
+        "pause": "Mittagspause · wieder offen um {h}",
+        "ouvreAujourdhui": "Geschlossen · öffnet heute um {h}",
+        "ouvreDemain": "Geschlossen · öffnet morgen um {h}",
+        "ouvreJour": "Geschlossen · öffnet {jour} um {h}"
+      },
+      "itineraire": "Route",
+      "appeler": "Anrufen",
+      "bandeau": "Unsere Boutique in Eaux-Vives",
+      "bandeauTexte": "Kommen Sie vorbei: riechen, testen, sich beraten lassen.",
+      "produit": "Auch in unserer Boutique in Eaux-Vives: zum Riechen und Testen.",
+      "retrait": "An der Av. Pictet-de-Rochemont 3. Wir benachrichtigen Sie per E-Mail, sobald Ihre Bestellung bereit ist.",
+      "pourquoiTitre": "Warum in die Boutique kommen",
+      "pourquoi": [
+        {
+          "titre": "Riechen und testen",
+          "texte": "Unsere Seifen und Pflegeprodukte stehen im Regal: riechen Sie daran und testen Sie die Texturen, bevor Sie wählen."
+        },
+        {
+          "titre": "Beratung für Ihre Haut",
+          "texte": "Wir stellen alles selbst her und wissen, was in jedem Produkt steckt und für wen es gedacht ist."
+        },
+        {
+          "titre": "Geschenke vor Ort zusammengestellt",
+          "texte": "Sie wählen, wir verpacken. Gutscheine für die Workshops erhältlich."
+        },
+        {
+          "titre": "Kostenlose Abholung",
+          "texte": "Online bestellen und hier abholen – ohne Versandkosten."
+        }
+      ],
+      "ateliers": "Die Workshops entdecken"
+    },
     contact: {
       eyebrow: 'Genf, Schweiz',
       title: 'So finden Sie uns',
@@ -2233,7 +2342,7 @@ const translations = {
     },
     privacy: {
       title: 'Datenschutzerklärung',
-      lastUpdated: 'September 2026',
+      lastUpdated: 'Oktober 2026',
       intro: 'So You SARL misst dem Schutz Ihrer Privatsphäre grosse Bedeutung bei. Diese Erklärung legt dar, welche Personendaten erhoben werden, zu welchem Zweck und wie sie geschützt sind, gemäss dem anwendbaren schweizerischen Datenschutzrecht. Dies ist eine Übersetzung: Bei Abweichungen ist die französische Fassung massgebend.',
       sections: [
         { heading: '1. Verantwortliche Stelle', body: [
@@ -2296,6 +2405,8 @@ const translations = {
         { heading: '7. Cookies', body: [
           'Die Website verwendet Cookies und ähnliche Technologien, die für ihren Betrieb erforderlich sind, namentlich für den Warenkorb, die gewählte Sprache und Anmeldesitzungen.',
           'Die Website setzt keine Werbe- oder Reichweitenmessungs-Cookies.',
+          'Um zu wissen, wie viele Personen sie besuchen und woher sie kommen (Suchmaschine, soziales Netzwerk, Werbeanzeige, Newsletter), zählt die Website die aufgerufenen Seiten selbst – ohne Cookies oder Kennungen und ohne Ihre IP-Adresse zu speichern. Erfasst werden nur Tagessummen, die keine Rückschlüsse auf Ihre Person zulassen. Für die Dauer Ihres Besuchs merkt sich Ihr Browser im geöffneten Tab, woher dieser Besuch kam; diese Angabe wird einer allfälligen Bestellung beigefügt, damit wir wissen, welcher Kanal zum Kauf geführt hat. Sie wird beim Schliessen des Tabs gelöscht.',
+          'Gelangen Sie über eine Google-Anzeige auf die Website, wird die von Google selbst an den Link angefügte Klickkennung mit Ihrer Bestellung gespeichert. Nach der Bezahlung werden diese Kennung, der Zeitpunkt und der Betrag des Kaufs an Google übermittelt, um die Wirksamkeit der Anzeige zu messen. Weder Ihr Name noch Ihre Adresse noch Ihre E-Mail-Adresse werden an Google übermittelt.',
           'Die Google-Maps-Karte mit dem Standort der Boutique wird nicht automatisch geladen: Sie erscheint erst, wenn Sie zum Anzeigen klicken. Vor dieser Handlung werden keine Daten — auch nicht Ihre IP-Adresse — an Google übermittelt. Unser Zahlungsdienstleister setzt beim Bezahlvorgang eigene Cookies.',
           'Sie können Ihren Browser so einstellen, dass er Cookies ganz oder teilweise akzeptiert, einschränkt oder ablehnt. Die Ablehnung bestimmter Cookies kann den ordnungsgemässen Betrieb einzelner Funktionen beeinträchtigen.',
         ]},
