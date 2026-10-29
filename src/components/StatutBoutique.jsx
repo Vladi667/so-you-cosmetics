@@ -25,7 +25,12 @@ const StatutBoutique = ({ sombre = false, boutons = true, className = '' }) => {
   }, []);
 
   let texte = '';
-  if (statut && statut.ouvert) texte = t('boutique.statut.ouvert', { h: statut.jusqua });
+  if (statut && statut.exceptionnel) {
+    const jour = statut.dans === 1
+      ? t('boutique.statut.demain')
+      : statut.date.toLocaleDateString({ fr: 'fr-CH', en: 'en-GB', de: 'de-CH' }[language] || 'fr-CH', { weekday: 'long', timeZone: 'Europe/Zurich' });
+    texte = t('boutique.statut.exceptionnel', { jour, h: statut.heure });
+  } else if (statut && statut.ouvert) texte = t('boutique.statut.ouvert', { h: statut.jusqua });
   else if (statut && statut.pause) texte = t('boutique.statut.pause', { h: statut.heure });
   else if (statut && statut.dans === 0) texte = t('boutique.statut.ouvreAujourdhui', { h: statut.heure });
   else if (statut && statut.dans === 1) texte = t('boutique.statut.ouvreDemain', { h: statut.heure });

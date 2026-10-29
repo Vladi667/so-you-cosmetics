@@ -9,6 +9,7 @@ import Marketing from './admin/Marketing';
 import Accueil from './admin/Accueil';
 import FichierClients from './admin/FichierClients';
 import Caisse from './admin/Caisse';
+import Comptoir from './admin/Comptoir';
 import ApercuFiche from './ApercuFiche';
 import { imageUrl } from '../services/products';
 import { SHOP_CATEGORIES } from '../data/categories';
@@ -115,6 +116,9 @@ function EnteteSection({ section, form, chapeau }) {
 
 const AdminDashboard = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState('accueil');
+  // Sur téléphone, le menu se replie : il remplissait tout le premier écran,
+  // et le contenu commençait sous quinze boutons.
+  const [menuOuvert, setMenuOuvert] = useState(false);
   // Les inscrites a l'infolettre. Elles etaient collectees depuis le debut sans
   // qu'aucun ecran ne permette de les relire.
   const [abonnees, setAbonnees] = useState([]);
@@ -876,16 +880,23 @@ const AdminDashboard = ({ onLogout }) => {
     <div className="pt-20 min-h-screen bg-mist-white flex flex-col md:flex-row font-sans">
       
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-white border-r border-slate-stone/5 p-6 flex flex-col justify-between shrink-0">
+      <aside className="w-full md:w-64 bg-white border-r border-slate-stone/5 px-6 py-4 md:p-6 flex flex-col justify-between shrink-0">
         <div>
-          <div className="mb-8 pt-4">
-            <h2 className="font-serif text-2xl text-slate-stone">Dashboard</h2>
-            <p className="text-[10px] text-stone-gray/60 uppercase tracking-widest mt-1">Session : {username}</p>
+          <div className="md:mb-8 md:pt-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-serif text-2xl text-slate-stone">Dashboard</h2>
+              <p className="text-[10px] text-stone-gray/60 uppercase tracking-widest mt-1">Session : {username}</p>
+            </div>
+            <button type="button" className="md:hidden px-4 py-2 rounded-xl border border-slate-stone/15 text-sm text-slate-stone"
+              aria-expanded={menuOuvert} onClick={() => setMenuOuvert(!menuOuvert)}>
+              {menuOuvert ? 'Fermer ✕' : 'Menu ☰'}
+            </button>
           </div>
           
-          <nav className="space-y-2">
+          <nav className={`space-y-2 mt-4 md:mt-0 ${menuOuvert ? 'block' : 'hidden'} md:block`}>
             {[
               { id: 'accueil', label: 'Accueil', icon: '🏠' },
+              { id: 'comptoir', label: 'Comptoir', icon: '🛍️' },
               { id: 'orders', label: 'Commandes', icon: '🛒' },
               { id: 'caisse', label: 'Ventes en boutique', icon: '🧾' },
               { id: 'paniers', label: 'Paniers abandonnés', icon: '🛒' },
@@ -906,6 +917,7 @@ const AdminDashboard = ({ onLogout }) => {
                 onClick={() => {
                   setActiveTab(tab.id);
                   setSelectedOrder(null);
+                  setMenuOuvert(false);
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium tracking-wide transition-all ${activeTab === tab.id ? 'bg-slate-stone text-white shadow-md' : 'text-stone-gray hover:bg-mist-white hover:text-slate-stone'}`}
               >
@@ -918,7 +930,7 @@ const AdminDashboard = ({ onLogout }) => {
 
         <button
           onClick={handleLogout}
-          className="mt-12 w-full py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-xs uppercase tracking-widest font-bold hover:bg-red-100 transition-colors"
+          className={`${menuOuvert ? 'block' : 'hidden'} md:block mt-12 w-full py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-xs uppercase tracking-widest font-bold hover:bg-red-100 transition-colors`}
         >
           Déconnexion 🚪
         </button>
@@ -2313,6 +2325,7 @@ const AdminDashboard = ({ onLogout }) => {
         {activeTab === 'marketing' && <Marketing fetchHeaders={fetchHeaders} />}
         {activeTab === 'accueil' && <Accueil fetchHeaders={fetchHeaders} allerA={setActiveTab} />}
         {activeTab === 'caisse' && <Caisse fetchHeaders={fetchHeaders} />}
+        {activeTab === 'comptoir' && <Comptoir fetchHeaders={fetchHeaders} allerA={setActiveTab} />}
 
         {activeTab === 'shop' && <ShopSettings fetchHeaders={fetchHeaders} />}
 

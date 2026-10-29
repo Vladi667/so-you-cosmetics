@@ -2021,6 +2021,12 @@ function getShopSettings() {
     giftWrap: { ...SHOP_DEFAULTS.giftWrap, ...(saved.giftWrap || {}) },
     alerts: { ...SHOP_DEFAULTS.alerts, ...(saved.alerts || {}) },
     invoice: { ...SHOP_DEFAULTS.invoice, ...(saved.invoice || {}) },
+    // Une fermeture d'un jour, décidée au comptoir : le site cesse de dire
+    // « ouvert » ce jour-là. Une date AAAA-MM-JJ, ou rien.
+    fermeLe: typeof saved.fermeLe === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(saved.fermeLe) ? saved.fermeLe : '',
+    // Noël : le dernier jour où un colis posté arrive à temps. C'est elle qui
+    // le fixe, d'après les délais que La Poste publie chaque année.
+    noel: { dernierEnvoi: '', ...(saved.noel || {}) },
     shipping: {
       freeFrom: saved.shipping && saved.shipping.freeFrom !== undefined
         ? saved.shipping.freeFrom : SHOP_DEFAULTS.shipping.freeFrom,
@@ -2040,6 +2046,9 @@ function updateShopSettings(patch) {
     giftWrap: { ...current.giftWrap, ...(patch.giftWrap || {}) },
     alerts: { ...current.alerts, ...(patch.alerts || {}) },
     invoice: { ...current.invoice, ...(patch.invoice || {}) },
+    fermeLe: patch.fermeLe === undefined ? current.fermeLe
+      : (typeof patch.fermeLe === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(patch.fermeLe) ? patch.fermeLe : ''),
+    noel: { ...current.noel, ...(patch.noel || {}) },
     shipping: { ...current.shipping, ...(patch.shipping || {}) },
   };
   writeSettings({ ...readSettings(), shop: next });

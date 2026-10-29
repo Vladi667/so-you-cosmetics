@@ -362,6 +362,8 @@ function reglagesPublics(shop, apercu) {
   return {
     hours: shop.hours,
     absence: shop.absence,
+    // La fermeture exceptionnelle du jour : le site ne dit plus « ouvert ».
+    fermeLe: shop.fermeLe || '',
     shipping: shop.shipping,
     // Le prix de l'emballage cadeau est public : il s'affiche a la caisse. Ce
     // qui reste prive, c'est tout le reste — l'adresse d'alerte, le compteur de

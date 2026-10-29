@@ -466,6 +466,8 @@ const translations = {
         "pause": "Pause de midi · rouvre à {h}",
         "ouvreAujourdhui": "Fermé · ouvre aujourd’hui à {h}",
         "ouvreDemain": "Fermé · ouvre demain à {h}",
+        "exceptionnel": "Fermé exceptionnellement aujourd’hui · ouvre {jour} à {h}",
+        "demain": "demain",
         "ouvreJour": "Fermé · ouvre {jour} à {h}"
       },
       "itineraire": "Itinéraire",
@@ -1276,6 +1278,8 @@ const translations = {
         "pause": "Lunch break · reopens at {h}",
         "ouvreAujourdhui": "Closed · opens today at {h}",
         "ouvreDemain": "Closed · opens tomorrow at {h}",
+        "exceptionnel": "Exceptionally closed today · opens {jour} at {h}",
+        "demain": "tomorrow",
         "ouvreJour": "Closed · opens {jour} at {h}"
       },
       "itineraire": "Directions",
@@ -2086,6 +2090,8 @@ const translations = {
         "pause": "Mittagspause · wieder offen um {h}",
         "ouvreAujourdhui": "Geschlossen · öffnet heute um {h}",
         "ouvreDemain": "Geschlossen · öffnet morgen um {h}",
+        "exceptionnel": "Heute ausnahmsweise geschlossen · öffnet {jour} um {h}",
+        "demain": "morgen",
         "ouvreJour": "Geschlossen · öffnet {jour} um {h}"
       },
       "itineraire": "Route",

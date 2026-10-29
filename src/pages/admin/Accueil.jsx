@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import StatutBoutique from '../../components/StatutBoutique';
+import Retraits from './Retraits';
 
 // L'accueil de l'administration : les deux boutiques, la physique et la
 // boutique en ligne, sur un seul écran.
@@ -212,14 +213,61 @@ function Heures({ b }) {
   );
 }
 
+// Du 15 novembre au 24 décembre : le compte à rebours, les commandes cadeau à
+// préparer, et ce qui part le mieux cette semaine.
+function Noel({ noel, allerA }) {
+  return (
+    <div className="rounded-2xl border border-[#C8A96B]/40 bg-[#FBF6EC] p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h2 className="font-serif text-xl text-slate-stone">Noël</h2>
+        <span className="text-sm text-[#7A5C2E]">J-{noel.joursAvantNoel}</span>
+      </div>
+      <div className="mt-3 grid gap-4 md:grid-cols-3 text-sm">
+        <div>
+          <p className="text-[11px] uppercase tracking-widest text-[#7A5C2E]">Dernier envoi postal</p>
+          {noel.dernierEnvoi ? (
+            <p className="font-serif text-2xl text-slate-stone mt-1">
+              {noel.joursAvantEnvoi > 0 ? `dans ${noel.joursAvantEnvoi} jour(s)` : noel.joursAvantEnvoi === 0 ? 'aujourd’hui' : 'passé'}
+              <span className="block text-xs text-stone-gray font-sans">{new Date(`${noel.dernierEnvoi}T12:00:00`).toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+            </p>
+          ) : (
+            <p className="text-xs text-stone-gray mt-1">
+              Pas encore fixé. <button type="button" className="underline underline-offset-4" onClick={() => allerA('shop')}>Le régler</button> d’après les délais de La Poste.
+            </p>
+          )}
+        </div>
+        <div>
+          <p className="text-[11px] uppercase tracking-widest text-[#7A5C2E]">Commandes cadeau à préparer ({noel.cadeaux.length})</p>
+          {noel.cadeaux.length === 0 ? <p className="text-xs text-stone-gray mt-1">Aucune pour l’instant.</p> : (
+            <ul className="mt-1 text-xs text-slate-stone">
+              {noel.cadeaux.slice(0, 6).map((c) => (
+                <li key={c.id}>{c.nom}{c.pour && ` → ${c.pour}`}{c.emballage && ' · emballage'}{c.retrait && ' · retrait'}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <p className="text-[11px] uppercase tracking-widest text-[#7A5C2E]">Les plus vendus cette semaine</p>
+          {noel.semaine.length === 0 ? <p className="text-xs text-stone-gray mt-1">Pas encore de vente en ligne cette semaine.</p> : (
+            <ol className="mt-1 text-xs text-slate-stone">
+              {noel.semaine.map((p, i) => <li key={p.nom + i}>{i + 1}. {p.nom} <span className="text-stone-gray">· {p.qte}</span></li>)}
+            </ol>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const Accueil = ({ fetchHeaders, allerA }) => {
   const [d, setD] = useState(null);
   const [b, setB] = useState(null);
   const [erreur, setErreur] = useState('');
-  const [retirees, setRetirees] = useState({});
 
   useEffect(() => {
-    fetch('/api/admin/tableau-de-bord', { headers: fetchHeaders })
+    // « ?apercuNoel=1 » dans l'adresse de l'admin : voir le mode Noël hors saison.
+    const apercuNoel = window.location.search.includes('apercuNoel=1') ? '?apercuNoel=1' : '';
+    fetch(`/api/admin/tableau-de-bord${apercuNoel}`, { headers: fetchHeaders })
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then(setD)
       .catch(() => setErreur('Le tableau de bord n’a pas pu être chargé.'));
@@ -229,26 +277,10 @@ const Accueil = ({ fetchHeaders, allerA }) => {
       .catch(() => setB({ configure: true, erreur: 'lecture impossible' }));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // « Prête » prévient la cliente par e-mail (même chemin que la fiche de
-  // commande) ; « Remise » clôt la commande, sans message.
-  const marquer = (o, quoi) => {
-    const requete = quoi === 'prete'
-      ? fetch(`/api/admin/orders/${o.id}/fulfill`, { method: 'POST', headers: fetchHeaders, body: JSON.stringify({ type: 'pickup' }) })
-      : fetch(`/api/admin/orders/${o.id}`, { method: 'PUT', headers: fetchHeaders, body: JSON.stringify({ status: 'PickedUp' }) });
-    requete
-      .then((r) => { if (!r.ok) throw new Error(); })
-      .then(() => {
-        if (quoi === 'remise') setRetirees((x) => ({ ...x, [o.id]: true }));
-        else setD((x) => ({ ...x, retraits: x.retraits.map((y) => (y.id === o.id ? { ...y, pret: true } : y)) }));
-      })
-      .catch(() => alert('La commande n’a pas pu être mise à jour.'));
-  };
-
   if (erreur) return <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{erreur}</p>;
   if (!d) return <p className="text-sm text-stone-gray">Chargement…</p>;
 
   const jourLong = new Date(`${d.aujourdhui}T12:00:00`).toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long' });
-  const retraits = (d.retraits || []).filter((o) => !retirees[o.id]);
 
   return (
     <div className="space-y-6">
@@ -260,37 +292,22 @@ const Accueil = ({ fetchHeaders, allerA }) => {
         <StatutBoutique boutons={false} />
       </div>
 
+      {(d.fermeLe === d.aujourdhui || d.absence) && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {d.absence
+            ? 'Le message d’absence est affiché sur le site : la boutique est annoncée en vacances.'
+            : 'La boutique est annoncée fermée exceptionnellement aujourd’hui sur le site.'}
+          {' '}<button type="button" className="underline underline-offset-4" onClick={() => allerA('comptoir')}>Changer</button>
+        </p>
+      )}
+
       <Aujourdhui d={d} b={b} />
 
+      {d.noel && <Noel noel={d.noel} allerA={allerA} />}
+
       <div className="grid gap-4 lg:grid-cols-2">
-        <Bloc titre={`À remettre au comptoir (${retraits.length})`} action={<button type="button" className={lienOnglet} onClick={() => allerA('orders')}>Commandes</button>}>
-          {retraits.length === 0 ? (
-            <p className="text-sm text-stone-gray">Aucune commande en attente de retrait.</p>
-          ) : (
-            <ul className="flex flex-col divide-y divide-slate-stone/10">
-              {retraits.map((o) => (
-                <li key={o.id} className="py-3 flex flex-wrap items-start justify-between gap-3 text-sm">
-                  <span className="min-w-0 flex-1">
-                    <span className="text-slate-stone">{o.nom || 'Sans nom'}</span>
-                    {o.telephone && <span className="text-xs text-stone-gray"> · {o.telephone}</span>}
-                    <span className="block text-xs text-stone-gray">{date(o.date)} · {chf(o.total)} · {o.articles.join(', ')}</span>
-                  </span>
-                  <span className="flex gap-2 shrink-0">
-                    {!o.pret && (
-                      <button type="button" onClick={() => marquer(o, 'prete')} title="La cliente reçoit un e-mail : sa commande l’attend"
-                        className="press px-3 py-1.5 border border-slate-stone/20 rounded-full text-[11px] uppercase tracking-widest text-slate-stone">
-                        Prête
-                      </button>
-                    )}
-                    <button type="button" onClick={() => marquer(o, 'remise')}
-                      className="press px-3 py-1.5 bg-slate-stone text-white rounded-full text-[11px] uppercase tracking-widest">
-                      Remise
-                    </button>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+        <Bloc titre={`À remettre au comptoir (${(d.retraits || []).length})`} action={<button type="button" className={lienOnglet} onClick={() => allerA('orders')}>Commandes</button>}>
+          <Retraits retraits={d.retraits} fetchHeaders={fetchHeaders} />
           <p className="text-xs text-stone-gray mt-3">
             {d.aExpedier} commande(s) à préparer pour un envoi postal.
             {d.ateliersDuJour.length > 0 && ` Atelier aujourd’hui : ${d.ateliersDuJour.map((w) => `${w.titre} à ${heure(w.date)}`).join(', ')}.`}

@@ -141,16 +141,20 @@ export function statutBoutique(date = new Date()) {
   if (parJour.every((p) => p.length === 0)) return null;
 
   const { jour, minutes } = maintenantGeneve(date);
-  const aujourdhui = parJour[jour];
+  // Fermée exceptionnellement aujourd'hui (décidé au comptoir) : on cherche la
+  // réouverture à partir de demain.
+  const fermeeAujourdhui = shop.fermeLe && shop.fermeLe === date.toLocaleDateString('sv-SE', { timeZone: 'Europe/Zurich' });
+  const aujourdhui = fermeeAujourdhui ? [] : parJour[jour];
   const enCours = aujourdhui.find(([a, b]) => minutes >= a && minutes < b);
   if (enCours) return { ouvert: true, jusqua: hhmm(enCours[1]) };
 
-  for (let d = 0; d < 8; d++) {
+  for (let d = fermeeAujourdhui ? 1 : 0; d < 8; d++) {
     const j = (jour + d) % 7;
     const prochaine = parJour[j].find(([a]) => d > 0 || a > minutes);
     if (prochaine) {
       return {
         ouvert: false,
+        exceptionnel: Boolean(fermeeAujourdhui),
         // Entre deux plages du même jour : la pause de midi, pas une fermeture.
         pause: d === 0 && aujourdhui.some(([, b]) => b <= minutes),
         dans: d,

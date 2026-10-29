@@ -197,6 +197,19 @@ const ShopSettings = ({ fetchHeaders }) => {
         </div>
       </div>
 
+      {/* Noël : le compte à rebours de l'accueil, du 15 novembre au 24 décembre. */}
+      <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 sm:p-8 shadow-sm mb-6">
+        <h2 className="font-serif text-xl text-slate-stone mb-1">Noël</h2>
+        <p className="text-xs text-stone-gray mb-4">
+          Le dernier jour où un colis posté arrive avant Noël, d’après les délais que La Poste publie
+          chaque année (post.ch). L’accueil de l’administration en fait un compte à rebours.
+        </p>
+        <label className="block text-[11px] uppercase tracking-widest text-stone-gray mb-1">Dernier envoi postal avant Noël</label>
+        <input type="date" value={settings.noel?.dernierEnvoi || ''}
+          onChange={(e) => maj({ noel: { ...(settings.noel || {}), dernierEnvoi: e.target.value } })}
+          className="px-4 py-2 border rounded" />
+      </div>
+
       {/* Frais de port */}
       <div className="bg-white rounded-3xl border border-slate-stone/5 p-6 sm:p-8 shadow-sm mb-6">
         <h2 className="font-serif text-xl text-slate-stone mb-1">Frais de port</h2>

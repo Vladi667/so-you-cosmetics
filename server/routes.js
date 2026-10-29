@@ -2762,8 +2762,39 @@ router.get('/admin/tableau-de-bord', requireAdmin, async (req, res) => {
       v.ventes += 1;
     }
 
+    // Le mode Noël : du 15 novembre au 24 décembre. Les commandes cadeau à
+    // préparer, les meilleures ventes de la semaine, et le compte à rebours
+    // jusqu'au dernier jour d'envoi qu'elle a fixé.
+    const reglagesBoutique = db.getShopSettings();
+    const md = aujourdhui.slice(5);
+    let noel = null;
+    // « ?apercuNoel=1 » montre le bloc hors saison, pour le prévisualiser.
+    if ((md >= '11-15' && md <= '12-24') || req.query.apercuNoel === '1') {
+      const il7 = new Date(Date.now() - 7 * 86400000).toISOString();
+      const semaine = new Map();
+      for (const o of payees) {
+        if (!o.created_at || o.created_at < il7) continue;
+        for (const a of o.items || []) {
+          const v = semaine.get(a.id) || { nom: a.name, qte: 0 };
+          v.qte += Number(a.qty) || 1;
+          semaine.set(a.id, v);
+        }
+      }
+      const dernierEnvoi = (reglagesBoutique.noel || {}).dernierEnvoi || '';
+      noel = {
+        dernierEnvoi,
+        joursAvantEnvoi: dernierEnvoi ? Math.round((new Date(`${dernierEnvoi}T12:00:00Z`) - new Date(`${aujourdhui}T12:00:00Z`)) / 86400000) : null,
+        joursAvantNoel: Math.round((new Date(`${aujourdhui.slice(0, 4)}-12-25T12:00:00Z`) - new Date(`${aujourdhui}T12:00:00Z`)) / 86400000),
+        cadeaux: commandes
+          .filter((o) => o.cadeau && ['paid', 'readyforpickup'].includes(String(o.status || '').toLowerCase()))
+          .map((o) => ({ id: o.id, nom: o.customer_name, pour: o.cadeau.destinataire || '', emballage: !!o.cadeau.emballage, date: o.created_at, retrait: !db.exigeAdresse(o.shipping && o.shipping.id) })),
+        semaine: [...semaine.values()].sort((a, b) => b.qte - a.qte).slice(0, 5),
+      };
+    }
+
     const visites = audience.periode(aujourdhui, aujourdhui);
     res.json({
+      noel, fermeLe: reglagesBoutique.fermeLe || '', absence: !!(reglagesBoutique.absence && reglagesBoutique.absence.active),
       aujourdhui,
       jour: { ventes: duJour.length, montant: somme(duJour) },
       mois: { ventes: duMois.length, montant: somme(duMois) },
