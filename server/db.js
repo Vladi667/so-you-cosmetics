@@ -1930,7 +1930,7 @@ function deleteArticle(id) {
 // turning the feature on changes nothing until she edits something.
 // Les saisons que la boutique sait porter. « aucune » est le défaut, et il le
 // reste : personne ne doit se réveiller avec de la neige sur son site.
-const SAISONS = ['aucune', 'hiver', 'printemps', 'ete', 'automne'];
+const SAISONS = ['aucune', 'hiver', 'printemps', 'ete', 'automne', 'noel'];
 
 const SHOP_DEFAULTS = {
   saison: 'aucune',

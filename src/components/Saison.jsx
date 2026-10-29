@@ -12,7 +12,7 @@ import React, { useMemo } from 'react';
 // voit en bas et disparaît en haut, une particule sombre fait l'inverse. D'où
 // la neige blanche à ombre portée, et la lavande violette pour l'été.
 
-export const SAISONS = ['aucune', 'hiver', 'printemps', 'ete', 'automne'];
+export const SAISONS = ['aucune', 'hiver', 'printemps', 'ete', 'automne', 'noel'];
 
 // Les couleurs d'accent, une par saison. Elles restent dans la famille minérale
 // du site — aucune ne vient d'ailleurs.
@@ -21,6 +21,7 @@ export const ACCENTS = {
   printemps: '#9FAE86',  // la sauge du site, à sa saison
   ete: '#C08A6A',        // terre cuite claire
   automne: '#A8825C',    // travertin profond
+  noel: '#9E4B3E',       // rouge brique, sourd
 };
 
 // Un flocon à six branches, avec ses ramifications. Un disque blanc aurait
@@ -99,7 +100,17 @@ const lavande = (
   </svg>
 );
 
+// Une petite étoile dorée, à cinq branches, pour Noël. Mêlée aux flocons une
+// fois sur trois : de la neige seule, ce serait l'hiver.
+const etoile = (
+  <svg viewBox="0 0 100 100" aria-hidden="true">
+    <path d="M50 8 L61 38 L93 39 L67 58 L77 90 L50 71 L23 90 L33 58 L7 39 L39 38 Z"
+      fill="#D9B66A" stroke="#B08A3E" strokeWidth="3" strokeLinejoin="round" />
+  </svg>
+);
+
 const SPRITE = {
+  noel: (i) => (i % 3 === 1 ? etoile : flocon),
   hiver: () => flocon,
   printemps: () => petale,
   ete: () => lavande,
@@ -131,6 +142,23 @@ const GRAINS = [
 // Le petit végétal de l'angle. Tracé en ivoire par-dessus la vidéo sombre —
 // une illustration colorée s'y perdrait.
 const VEGETAL = {
+  // Un rameau de sapin, une baie, une étoile.
+  noel: (
+    <g fill="none" stroke="currentColor" strokeLinecap="round">
+      <path d="M112 10 C92 32 70 56 40 86" strokeWidth="1.9" />
+      <g strokeWidth="1.2">
+        {[[104, 19], [96, 28], [88, 37], [80, 46], [72, 55], [64, 63], [56, 71], [48, 79]].map(([x, y]) => (
+          <g key={`${x}-${y}`}>
+            <path d={`M${x} ${y} l9 3`} />
+            <path d={`M${x} ${y} l-3 -9`} />
+          </g>
+        ))}
+      </g>
+      <circle cx="58" cy="86" r="4.5" fill="currentColor" stroke="none" opacity=".85" />
+      <circle cx="66" cy="92" r="3.6" fill="currentColor" stroke="none" opacity=".7" />
+      <path d="M26 30 L29 39 L38 39 L31 45 L34 54 L26 48 L18 54 L21 45 L14 39 L23 39 Z" strokeWidth="1.3" />
+    </g>
+  ),
   hiver: (
     <g fill="none" stroke="currentColor" strokeLinecap="round">
       <path d="M110 8 C92 34 72 60 44 88" strokeWidth="1.9" />

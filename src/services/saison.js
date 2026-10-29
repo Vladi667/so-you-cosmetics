@@ -9,7 +9,7 @@
 // ce que l'aperçu de l'administration utilisera pour montrer les quatre
 // habillages avant qu'elle en choisisse un.
 
-export const SAISONS = ['aucune', 'hiver', 'printemps', 'ete', 'automne'];
+export const SAISONS = ['aucune', 'hiver', 'printemps', 'ete', 'automne', 'noel'];
 
 export function saisonCourante() {
   // Une seule source : ce que le serveur a posé dans la page. Il a déjà tenu

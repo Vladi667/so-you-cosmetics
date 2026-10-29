@@ -1352,7 +1352,7 @@ router.put('/admin/settings/shop', requireAdmin, (req, res) => {
   // La saison se pose sur le bandeau public : on refuse une valeur inconnue au
   // lieu de la laisser retomber en silence sur « aucune ». Un réglage qu'on
   // croit enregistré et qui ne l'est pas se cherche longtemps.
-  if (patch.saison !== undefined && !['aucune', 'hiver', 'printemps', 'ete', 'automne'].includes(patch.saison)) {
+  if (patch.saison !== undefined && !['aucune', 'hiver', 'printemps', 'ete', 'automne', 'noel'].includes(patch.saison)) {
     return res.status(400).json({ error: 'Saison inconnue' });
   }
 
@@ -2762,14 +2762,14 @@ router.get('/admin/tableau-de-bord', requireAdmin, async (req, res) => {
       v.ventes += 1;
     }
 
-    // Le mode Noël : du 15 novembre au 24 décembre. Les commandes cadeau à
-    // préparer, les meilleures ventes de la semaine, et le compte à rebours
-    // jusqu'au dernier jour d'envoi qu'elle a fixé.
+    // Le bloc Noël : les commandes cadeau à préparer, les meilleures ventes de
+    // la semaine, et le compte à rebours jusqu'au dernier jour d'envoi qu'elle
+    // a fixé. Il suit le thème du site : choisir « Noël » dans « Horaires &
+    // absences » l'affiche, revenir à un autre thème le retire. « ?apercuNoel=1 »
+    // le montre sans changer de thème.
     const reglagesBoutique = db.getShopSettings();
-    const md = aujourdhui.slice(5);
     let noel = null;
-    // « ?apercuNoel=1 » montre le bloc hors saison, pour le prévisualiser.
-    if ((md >= '11-15' && md <= '12-24') || req.query.apercuNoel === '1') {
+    if (reglagesBoutique.saison === 'noel' || req.query.apercuNoel === '1') {
       const il7 = new Date(Date.now() - 7 * 86400000).toISOString();
       const semaine = new Map();
       for (const o of payees) {

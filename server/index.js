@@ -356,7 +356,7 @@ function escapeHtml(str) {
 //
 // Liste blanche plutôt que liste noire : le prochain réglage ajouté sera privé
 // par défaut, ce qui est le bon sens de l'erreur.
-const SAISONS = ['aucune', 'hiver', 'printemps', 'ete', 'automne'];
+const SAISONS = ['aucune', 'hiver', 'printemps', 'ete', 'automne', 'noel'];
 
 function reglagesPublics(shop, apercu) {
   return {

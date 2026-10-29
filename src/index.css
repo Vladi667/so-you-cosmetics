@@ -367,7 +367,8 @@
 
 /* Une ombre portée, sans quoi un flocon blanc disparaît dans un ciel d'aube.
    Le bandeau n'est pas sombre : c'est le Léman au petit matin, pâle et rose. */
-.saison[data-saison="hiver"] .saison-grain svg { filter: drop-shadow(0 1px 3px rgba(58, 51, 43, .35)); }
+.saison[data-saison="hiver"] .saison-grain svg,
+.saison[data-saison="noel"] .saison-grain svg { filter: drop-shadow(0 1px 3px rgba(58, 51, 43, .35)); }
 .saison[data-saison="printemps"] .saison-grain svg,
 .saison[data-saison="ete"] .saison-grain svg,
 .saison[data-saison="automne"] .saison-grain svg { filter: drop-shadow(0 1px 3px rgba(255, 255, 255, .45)); }
@@ -394,6 +395,7 @@
 }
 
 .saison[data-saison="hiver"]     .saison-grain { animation-name: saisonDescend; }
+.saison[data-saison="noel"]      .saison-grain { animation-name: saisonDescend; }
 .saison[data-saison="printemps"] .saison-grain { animation-name: saisonCulbute; }
 .saison[data-saison="automne"]   .saison-grain { animation-name: saisonCulbute; }
 .saison[data-saison="ete"]       .saison-grain { animation-name: saisonCulbute; }

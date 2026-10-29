@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-// Les cinq choix offerts à Catherine. Le détail sous chaque nom dit ce qui
+// Les six choix offerts à Catherine. Le détail sous chaque nom dit ce qui
 // tombe : c'est la seule chose qu'on ne devine pas d'après le mot « Automne ».
 const SAISONS = [
   { cle: 'aucune',    nom: 'Aucune',    detail: 'Le site normal',      couleur: '#DED3C4' },
@@ -8,6 +8,9 @@ const SAISONS = [
   { cle: 'printemps', nom: 'Printemps', detail: 'Fleurs de cerisier',  couleur: '#9FAE86' },
   { cle: 'ete',       nom: 'Été',       detail: 'Lavande',             couleur: '#7A64A0' },
   { cle: 'automne',   nom: 'Automne',   detail: 'Feuilles mortes',     couleur: '#A8825C' },
+  // Noël : la neige, des étoiles dorées, un rameau de sapin. Choisi, il
+  // montre aussi le bloc Noël de l'accueil de l'administration.
+  { cle: 'noel',      nom: 'Noël',      detail: 'Neige et étoiles',     couleur: '#9E4B3E' },
 ];
 
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
@@ -91,7 +94,7 @@ const ShopSettings = ({ fetchHeaders }) => {
           textes, ni les photos, ni les prix. Vous pouvez revenir à « Aucune » quand vous voulez.
         </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {SAISONS.map((s) => {
             const choisie = (settings.saison || 'aucune') === s.cle;
             return (
@@ -202,7 +205,8 @@ const ShopSettings = ({ fetchHeaders }) => {
         <h2 className="font-serif text-xl text-slate-stone mb-1">Noël</h2>
         <p className="text-xs text-stone-gray mb-4">
           Le dernier jour où un colis posté arrive avant Noël, d’après les délais que La Poste publie
-          chaque année (post.ch). L’accueil de l’administration en fait un compte à rebours.
+          chaque année (post.ch). Quand le thème « Noël » est choisi ci-dessus, l’accueil de
+          l’administration en fait un compte à rebours.
         </p>
         <label className="block text-[11px] uppercase tracking-widest text-stone-gray mb-1">Dernier envoi postal avant Noël</label>
         <input type="date" value={settings.noel?.dernierEnvoi || ''}
