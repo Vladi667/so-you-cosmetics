@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import StatutBoutique from '../components/StatutBoutique';
 import Lien from '../components/Lien';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { getProducts, imageUrl, catalogueInitial } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
 import ProductPlaceholder from '../components/ProductPlaceholder';
@@ -91,7 +91,7 @@ const FICHE_VIDE = {
   rituel: [], senteurs: [], relatedProducts: [],
 };
 
-function etatDeLaFiche(id, productsList) {
+function etatDeLaFiche(id, productsList, formatDemande = null) {
   // L'adresse porte un slug lisible ; l'empreinte de huit caractères qui
   // le termine désigne la fiche. Les anciennes adresses, faites de
   // l'identifiant Wix entier, restent reconnues — le serveur les redirige
@@ -111,8 +111,13 @@ function etatDeLaFiche(id, productsList) {
   // On ouvre sur la contenance la moins chère, et non sur la première de
   // la liste : c'est ce montant que la grille vient d'annoncer, et voir le
   // prix grimper en arrivant sur la fiche se lit comme un piège.
+  //
+  // Sauf si l'adresse en demande une (« ?format=30-ml ») : c'est le lien des
+  // annonces Google Shopping, un par format, et la page doit s'ouvrir au prix
+  // que l'annonce vient d'afficher.
   const formats = Array.isArray(foundProduct.variantes) ? foundProduct.variantes : [];
-  const varianteId = formats.length > 0
+  const demande = formatDemande && formats.find((v) => String(v.id) === String(formatDemande));
+  const varianteId = demande ? demande.id : formats.length > 0
     ? formats.reduce((a, b) => (Number(b.prix) < Number(a.prix) ? b : a)).id
     : null;
 
@@ -192,6 +197,8 @@ function etatDeLaFiche(id, productsList) {
 const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   const { t, tCategory } = useLanguage();
   const { id } = useParams();
+  const [parametres] = useSearchParams();
+  const formatDemande = parametres.get('format');
 
   // L'état de départ, calculé sans rien attendre.
   //
@@ -210,7 +217,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   // l'affaire de l'effet.
   const depart = useMemo(() => {
     const liste = catalogueInitial();
-    return liste ? etatDeLaFiche(id, liste) : FICHE_VIDE;
+    return liste ? etatDeLaFiche(id, liste, formatDemande) : FICHE_VIDE;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -248,7 +255,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
       // Même fonction que pour l'état de départ : c'est ce qui garantit qu'un
       // rafraîchissement du catalogue ne fasse pas apparaître autre chose que
       // ce que le serveur avait rendu.
-      const etat = etatDeLaFiche(id, productsList);
+      const etat = etatDeLaFiche(id, productsList, formatDemande);
       setProduct(etat.product);
       setIntrouvable(etat.introuvable);
       setVarianteId(etat.varianteId);
@@ -258,7 +265,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
       setActiveImage(0);
       setQuantity(1);
     });
-  }, [id]);
+  }, [id, formatDemande]);
 
   useEffect(() => {
     const cible = blocAchatRef.current;

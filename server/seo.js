@@ -446,18 +446,47 @@ function schemaProduit(produit, urlPage, base) {
     // n'est stockée nulle part : on la calcule à un an de la requête.
     const dans1An = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
       .toISOString().slice(0, 10);
-    noeud.offers = {
+    const disponibilite = produit.inStock === false || produit.stock === 0
+      ? 'https://schema.org/OutOfStock'
+      : 'https://schema.org/InStock';
+    const offre = (montant, url) => ({
       '@type': 'Offer',
-      url: urlPage,
+      url,
       priceCurrency: 'CHF',
-      price: prix.toFixed(2),
+      price: Number(montant).toFixed(2),
       priceValidUntil: dans1An,
       itemCondition: 'https://schema.org/NewCondition',
-      availability: produit.inStock === false
-        ? 'https://schema.org/OutOfStock'
-        : 'https://schema.org/InStock',
+      availability: disponibilite,
       seller: { '@id': `${base}/#boutique` },
-    };
+    });
+
+    // Une fiche à formats : un ProductGroup, et un produit par format, chacun
+    // à son prix et à son adresse (?format=…) — la forme que Google documente
+    // pour les variantes, et la seule qui accorde le prix de la page à celui
+    // du flux Merchant Center, article par article.
+    const variantes = (Array.isArray(produit.variantes) ? produit.variantes : []).filter((v) => Number(v.prix) > 0);
+    if (variantes.length) {
+      const { sku } = require('./caisse');
+      return {
+        ...noeud,
+        '@type': 'ProductGroup',
+        productGroupID: sku(produit),
+        variesBy: 'https://schema.org/size',
+        hasVariant: variantes.map((v) => {
+          const url = `${urlPage}?format=${encodeURIComponent(v.id)}`;
+          return {
+            '@type': 'Product',
+            name: `${produit.name} – ${v.libelle || v.id}`,
+            sku: sku(produit, v),
+            size: v.libelle || v.id,
+            image: images[0],
+            url,
+            offers: offre(v.prix, url),
+          };
+        }),
+      };
+    }
+    noeud.offers = offre(prix, urlPage);
   }
 
   return noeud;
@@ -1061,7 +1090,8 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
     const description = resumerTexte(produit.description);
     const rubrique = Array.isArray(produit.collections) && produit.collections[0];
     const jsonLd = [schemaEtablissement(base, shop)];
-    const noeud = schemaProduit(produit, urlPage, base);
+    // L’adresse française, la seule canonique : les formats y renvoient.
+    const noeud = schemaProduit(produit, `${base}/product/${slugProduit(produit)}`, base);
     if (noeud) jsonLd.push(noeud);
     jsonLd.push(schemaFilAriane(base, [
       { nom: 'Accueil', chemin: '/' },
