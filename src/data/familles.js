@@ -546,3 +546,49 @@ export function contenuFamille(famille, langue) {
   if (!famille) return null;
   return famille[langue] || famille.fr;
 }
+
+// Les textes d'une famille, à plat, pour l'éditeur « Textes du site ».
+//
+// L'éditeur ne sait modifier que des textes simples rangés par clé, pas des
+// listes : les sections deviennent section1Titre, section1Texte, etc. C'est
+// translations.js qui les range sous « savoirFaire.<slug> », dans les trois
+// langues, comme valeurs par défaut.
+export function textesFamille(contenu) {
+  const out = { titre: contenu.titre, chapeau: contenu.chapeau, intro: contenu.intro };
+  (contenu.sections || []).forEach((s, i) => {
+    out[`section${i + 1}Titre`] = s.titre;
+    out[`section${i + 1}Texte`] = s.corps;
+  });
+  out.question = contenu.question;
+  out.reponse = contenu.reponse;
+  return out;
+}
+
+export function savoirFaireTraductions(langue) {
+  return Object.fromEntries(FAMILLES.map((f) => [f.slug, textesFamille(f[langue] || f.fr)]));
+}
+
+// Le contenu tel qu'elle l'a peut-être retouché dans l'administration : chaque
+// champ passe par t(), qui rend sa version si elle en a écrit une, et sinon
+// le texte d'origine. Le pied de page et la page de la famille lisent ceci.
+export function contenuFamilleRetouche(famille, langue, t) {
+  const base = contenuFamille(famille, langue);
+  if (!base || !t) return base;
+  const lire = (champ, defaut) => {
+    const cle = `savoirFaire.${famille.slug}.${champ}`;
+    const v = t(cle);
+    return typeof v === 'string' && v !== cle ? v : defaut;
+  };
+  return {
+    ...base,
+    titre: lire('titre', base.titre),
+    chapeau: lire('chapeau', base.chapeau),
+    intro: lire('intro', base.intro),
+    sections: (base.sections || []).map((s, i) => ({
+      titre: lire(`section${i + 1}Titre`, s.titre),
+      corps: lire(`section${i + 1}Texte`, s.corps),
+    })),
+    question: lire('question', base.question),
+    reponse: lire('reponse', base.reponse),
+  };
+}

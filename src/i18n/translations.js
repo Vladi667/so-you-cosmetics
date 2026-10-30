@@ -15,8 +15,14 @@ export const LANGUAGES = [
 
 export const DEFAULT_LANGUAGE = 'fr';
 
+// Les six « savoir-faire » (pied de page et pages de famille) viennent de
+// src/data/familles.js : ils sont posés ici comme valeurs par défaut, pour que
+// l'éditeur « Textes du site » les montre et qu'elle puisse les réécrire.
+import { savoirFaireTraductions } from '../data/familles.js';
+
 const translations = {
   fr: {
+    savoirFaire: savoirFaireTraductions('fr'),
     nav: {
       journal: "Journal",
       home: 'Accueil',
@@ -850,6 +856,7 @@ const translations = {
   },
 
   en: {
+    savoirFaire: savoirFaireTraductions('en'),
     nav: {
       journal: "Journal",
       home: 'Home',
@@ -1662,6 +1669,7 @@ const translations = {
   },
 
   de: {
+    savoirFaire: savoirFaireTraductions('de'),
     nav: {
       journal: "Journal",
       home: 'Startseite',

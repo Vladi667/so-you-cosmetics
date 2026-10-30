@@ -4,7 +4,7 @@ import Lien from './Lien';
 import Logo from './Logo';
 import { useLanguage } from '../i18n/LanguageContext';
 import useEnvoiFormulaire from '../hooks/useEnvoiFormulaire';
-import { FAMILLES } from '../data/familles';
+import { FAMILLES, contenuFamilleRetouche } from '../data/familles';
 
 // Les adresses publiques des profils, les mêmes que celles déclarées à Google
 // (server/seo.js, sameAs). Les liens copiés depuis le téléphone portaient des
@@ -181,7 +181,7 @@ const Footer = () => {
                   to={`/${f.slug}`}
                   className="text-sm text-mist-white/60 hover:text-white transition-colors duration-200 font-light tracking-wide"
                 >
-                  {(f[language] || f.fr).titre}
+                  {contenuFamilleRetouche(f, language, t).titre}
                 </Lien>
               </li>
             ))}

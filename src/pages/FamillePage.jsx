@@ -2,7 +2,7 @@ import Lien from '../components/Lien';
 import Catalog from '../components/Catalog';
 import { useLanguage } from '../i18n/LanguageContext';
 import useMetadonnees from '../hooks/useMetadonnees';
-import { FAMILLES, trouverFamille, contenuFamille } from '../data/familles';
+import { FAMILLES, trouverFamille, contenuFamilleRetouche } from '../data/familles';
 
 // Une page de famille commerciale.
 //
@@ -17,7 +17,8 @@ import { FAMILLES, trouverFamille, contenuFamille } from '../data/familles';
 const FamillePage = ({ slug, addToCart, toggleFavorite, favorites }) => {
   const { t, language } = useLanguage();
   const famille = trouverFamille(slug);
-  const contenu = contenuFamille(famille, language);
+  // Ses retouches de « Textes du site » d'abord, le texte d'origine sinon.
+  const contenu = contenuFamilleRetouche(famille, language, t);
 
   // Le serveur ne route que les six slugs connus, donc ce cas ne devrait pas
   // survenir. Il est traité quand même : un composant qui suppose ses données
@@ -98,7 +99,7 @@ const FamillePage = ({ slug, addToCart, toggleFavorite, favorites }) => {
                   to={`/${f.slug}`}
                   className="font-sans text-sm font-light text-stone-gray hover:text-slate-stone underline underline-offset-4 transition-colors"
                 >
-                  {contenuFamille(f, language).titre}
+                  {contenuFamilleRetouche(f, language, t).titre}
                 </Lien>
               </li>
             ))}

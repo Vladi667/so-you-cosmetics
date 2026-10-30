@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import translations, { DEFAULT_LANGUAGE, LANGUAGES } from '../../i18n/translations';
+import { FAMILLES } from '../../data/familles';
 
 // The sections she can rewrite, in the order they appear on the site.
 //
@@ -27,6 +28,9 @@ const SECTIONS = [
   { key: 'workshopsPage', label: 'Page « Ateliers »', page: '/workshops' },
   { key: 'contact', label: 'Page « Contact »', page: '/contact' },
   { key: 'footer', label: 'Pied de page', page: '/' },
+  // Les six familles : leur titre est le lien du pied de page « Nos
+  // savoir-faire », et le reste le texte de leur page.
+  { key: 'savoirFaire', label: 'Nos savoir-faire (pied de page et pages)', page: `/${FAMILLES[0].slug}` },
   { key: 'nav', label: 'Menu de navigation', page: '/' },
   { key: 'catalog', label: 'Boutique — liste et filtres', page: '/' },
   {
@@ -120,8 +124,25 @@ const blankLike = (sample) => {
 
 // A dot-path makes a poor label. Turn "titleLine1" into "Title line 1" so the
 // list reads as fields rather than as code.
+// Dans « Nos savoir-faire », six familles ont les mêmes champs : le nom de la
+// famille précède celui du champ, sans quoi la liste répéterait six fois
+// « Titre ».
+const CHAMPS_FAMILLE = {
+  titre: 'Titre (lien du pied de page et titre de la page)',
+  chapeau: 'Chapeau',
+  intro: 'Introduction',
+  question: 'Question',
+  reponse: 'Réponse',
+};
 const prettify = (path) => {
-  const last = path.split('.').pop();
+  const parts = path.split('.');
+  if (parts[0] === 'savoirFaire' && parts.length === 3) {
+    const famille = FAMILLES.find((f) => f.slug === parts[1]);
+    const m = parts[2].match(/^section(\d+)(Titre|Texte)$/);
+    const champ = CHAMPS_FAMILLE[parts[2]] || (m ? `Section ${m[1]} — ${m[2] === 'Titre' ? 'titre' : 'texte'}` : parts[2]);
+    return `${famille ? famille.fr.titre : parts[1]} · ${champ}`;
+  }
+  const last = parts.pop();
   const spaced = last.replace(/([a-z])([A-Z0-9])/g, '$1 $2').replace(/_/g, ' ');
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 };
