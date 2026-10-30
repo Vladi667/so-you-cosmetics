@@ -6,9 +6,12 @@ import { useLanguage } from '../i18n/LanguageContext';
 import useEnvoiFormulaire from '../hooks/useEnvoiFormulaire';
 import { FAMILLES } from '../data/familles';
 
+// Les adresses publiques des profils, les mêmes que celles déclarées à Google
+// (server/seo.js, sameAs). Les liens copiés depuis le téléphone portaient des
+// paramètres de partage (igsh, mibextid) et, pour Facebook, une redirection.
 const SOCIAL = {
-  instagram: 'https://www.instagram.com/soyoucosmetics.ch?igsh=MTM4bWd2NTd2OHB1Mw==',
-  facebook: 'https://www.facebook.com/share/1JV7jPXXqX/?mibextid=wwXIfr'
+  instagram: 'https://www.instagram.com/soyoucosmetics.ch/',
+  facebook: 'https://www.facebook.com/soyoucosmeticsgeneve'
 };
 
 // Order requested by the client: So You · Boutique · Notre histoire · Ateliers · Contact.

@@ -4,10 +4,10 @@ import Saison from './Saison';
 import { useLanguage } from '../i18n/LanguageContext';
 import { saisonCourante } from '../services/saison';
 
-// The client asked for a button linking to her Marie Claire article but has not
-// sent the URL yet. Fill this in and the button appears; left empty it stays
-// hidden, so nothing broken ships in the meantime.
-const MARIE_CLAIRE_URL = '';
+// Le bouton vers son article Marie Claire (« So You, la marque de cosmétique
+// naturel made in Genève »). Vide, le bouton se cache : rien de cassé ne part
+// en ligne si l'article venait à disparaître et qu'on retirait l'adresse.
+const MARIE_CLAIRE_URL = 'https://www.marieclaire.fr/adresses-incontournables/so-you-le-cosmetique-naturel-made-in-geneve/';
 
 // Composition follows the mockup she supplied: the wordmark leads, the promise
 // sits under it, then a rule, then the two-line nature/science couplet. The
