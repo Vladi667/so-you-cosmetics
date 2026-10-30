@@ -112,6 +112,12 @@ export default function useMetadonnees({ titre, description, image, type = 'webs
     || (titre ? `${titre} — So You Cosmetics` : DEFAUT_TITRE);
   const resume = (serveur && serveur.description) || (description ? resumer(description) : '');
   const url = typeof window !== 'undefined' ? window.location.href.split('#')[0] : '';
+  // L'adresse canonique : sans paramètres (un lien partagé avec ?utm_source
+  // reste la même page), et pour une fiche produit, la version française —
+  // la même règle que server/seo.js, les fiches n'existant qu'en français.
+  const canonique = typeof window !== 'undefined'
+    ? window.location.origin + window.location.pathname.replace(/^\/(en|de)(\/product\/)/, '$2')
+    : '';
   const absolue = image && typeof window !== 'undefined'
     ? new URL(image, window.location.origin).href
     : '';
@@ -129,7 +135,7 @@ export default function useMetadonnees({ titre, description, image, type = 'webs
     // Sans image, une grande carte afficherait un cadre vide : on annonce
     // alors la petite, qui est faite pour se passer d'illustration.
     baliseMeta('twitter:card', absolue ? 'summary_large_image' : 'summary');
-    lienCanonique(url);
+    lienCanonique(canonique);
 
     return () => {
       document.title = DEFAUT_TITRE;

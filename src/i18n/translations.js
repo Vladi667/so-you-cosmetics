@@ -44,6 +44,7 @@ const translations = {
     loader: { text: 'Fait main à Genève' },
     hero: {
       brand: 'So You',
+      h1Detail: "Cosmétiques naturels faits main à Genève",
       titleLine1: 'La beauté, pensée.',
       titleLine2: 'À savourer.',
       subtitleLine1: 'La nature est le fondement.',
@@ -878,6 +879,7 @@ const translations = {
     loader: { text: 'Handmade in Geneva' },
     hero: {
       brand: 'So You',
+      h1Detail: "Natural cosmetics handmade in Geneva",
       titleLine1: 'Beauty, created with intention.',
       titleLine2: 'To be enjoyed.',
       subtitleLine1: 'Nature is the foundation.',
@@ -1691,6 +1693,7 @@ const translations = {
     loader: { text: 'Handgemacht in Genf' },
     hero: {
       brand: 'So You',
+      h1Detail: "Naturkosmetik, handgemacht in Genf",
       titleLine1: 'Schönheit, durchdacht.',
       titleLine2: 'Zum Geniessen.',
       subtitleLine1: 'Die Natur ist das Fundament.',

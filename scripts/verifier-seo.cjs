@@ -93,6 +93,16 @@ const shop = {
   ok(prod.offers.availability.endsWith('InStock'), 'inStock absent => disponible (défaut correct)');
   ok(prod.image.every((u) => /^https?:\/\//.test(u)), 'toutes les images absolues');
   ok(m1.jsonLd.some((n) => n['@type'] === 'BreadcrumbList'), 'fil d’Ariane émis');
+  // Une fiche n'existe qu'en français : la version /en en est un doublon.
+  const m1en = await seo.metadonneesDeRoute('/en/product/' + p1.id, BASE + '/en/product/' + p1.id, BASE, db, shop);
+  const htmlFicheEn = seo.baliseshtml(m1en, BASE + '/en/product/' + p1.id, 'N');
+  ok(htmlFicheEn.includes('rel="canonical" href="' + BASE + '/product/' + seo.slugProduit(p1) + '"'), '/en/product : canonique vers la fiche française');
+  ok(!htmlFicheEn.includes('hreflang='), '/en/product : pas de hreflang');
+  const titres = catalogue.filter((p) => p.price > 0).map((p) => seo.titreProduit(p.name));
+  const descriptions = catalogue.filter((p) => p.price > 0).map((p) => seo.descriptionProduit(p));
+  ok(titres.every((t) => t.length <= 60), 'titres de fiche ≤ 60 caractères');
+  ok(descriptions.every((d) => d.length <= 160 && d.includes('CHF') && d.includes('Genève')), 'descriptions de fiche ≤ 160, avec prix et lieu');
+  ok(!descriptions.some((d) => /fait main/i.test(d)), 'aucune description ne prétend « fait main » (faux pour les accessoires)');
   const inconnu = await seo.metadonneesDeRoute('/product/nexiste-pas', BASE + '/x', BASE, db, shop);
   ok(inconnu === null, 'produit inconnu -> 404');
 
@@ -149,10 +159,14 @@ const shop = {
   // test doit échouer si une famille disparaît du plan, pas si quelqu'un en
   // ajoute une septième et oublie de venir corriger un nombre.
   const rubriques = new Set(catalogue.flatMap((p) => p.collections || [])).size;
-  const parLangue = catalogue.length + rubriques + 1 + 9 + seo.SLUGS_FAMILLES.length +
+  // Les fiches produit n'existent qu'en français (catalogue non traduit) :
+  // une entrée chacune, sans alternatives. Tout le reste est en trois langues.
+  const parLangue = rubriques + 1 + 9 + seo.SLUGS_FAMILLES.length +
                     ateliers.length + articles.filter((a) => a.published).length;
   const attendu = parLangue * 3;
-  ok(n === attendu, 'nombre d’URL attendu ' + attendu + ' (' + parLangue + ' × 3), obtenu ' + n);
+  const fiches = catalogue.length;
+  ok(n === attendu + fiches, 'nombre d’URL attendu ' + (attendu + fiches) + ' (' + parLangue + ' × 3 + ' + fiches + ' fiches en français), obtenu ' + n);
+  ok(!/<loc>[^<]*\/(en|de)\/product\//.test(xml), 'aucune fiche produit en /en ou /de au plan');
   ok(xml.includes('xmlns:xhtml="http://www.w3.org/1999/xhtml"'), 'espace de noms xhtml déclaré');
   ok(xml.includes('<loc>' + BASE + '/en/about</loc>'), 'la version anglaise est au plan');
   ok(xml.includes('<loc>' + BASE + '/de/contact</loc>'), 'la version allemande est au plan');

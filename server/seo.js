@@ -41,6 +41,72 @@ function titreDePage(nom) {
   const complet = `${nom} — ${SITE_NOM}`;
   return complet.length <= LIMITE_TITRE ? complet : nom;
 }
+
+// Un nom de fiche, débarrassé des guillemets qui entourent les noms de gamme
+// (« 'So Lumineux' », « ''Lacrème'' ») : dans un titre de recherche, ils ne
+// sont que du bruit.
+function nomPropre(nom) {
+  return String(nom || '')
+    .replace(/['’"«»]{1,2}([^'’"«»]+?)['’"«»]{1,2}(?=[\s\-–—,.]|$)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Le titre d'une fiche produit dans Google. Le nom affiché sur le site ne
+// change pas ; seul le titre des résultats est raccourci quand le nom dépasse
+// ce que Google affiche (35 fiches sur 87, en octobre 2026). On coupe à la
+// première articulation du nom (« - », « , », « ( »), qui sépare d'ordinaire
+// le produit de ses précisions, sinon au dernier mot entier.
+function titreProduit(nom) {
+  const propre = nomPropre(nom);
+  if (`${propre} — ${SITE_NOM}`.length <= LIMITE_TITRE) return `${propre} — ${SITE_NOM}`;
+  if (propre.length <= LIMITE_TITRE) return propre;
+  const coupure = propre.search(/\s[-–—]\s|,|\s\(/);
+  if (coupure >= 20 && coupure <= LIMITE_TITRE) return propre.slice(0, coupure).trim();
+  const tronque = propre.slice(0, LIMITE_TITRE - 1);
+  return tronque.slice(0, tronque.lastIndexOf(' ')).replace(/[\s,;:–—-]+$/, '') + '…';
+}
+
+// La description d'une fiche produit dans Google.
+//
+// C'était la première phrase de la fiche, telle quelle : « Pensez à toujours
+// l'avoir avec vous ! » sous le nom d'une eau d'aloe vera. Elle dit maintenant
+// ce qu'on cherche avant de cliquer : quoi, combien, où, et une phrase de la
+// fiche qui dit à quoi sert le produit.
+//
+// Pas de « fait main » : c'est vrai des savons et des soins, faux des éponges,
+// des flacons et des matières premières qu'elle revend. « Chez So You
+// Cosmetics à Genève » est vrai de tout le catalogue.
+const LIMITE_DESCRIPTION = 160;
+
+function phraseParlante(texte) {
+  const phrases = String(texte || '').split(/(?<=[.!?…])\s+/).map((p) => p.trim()).filter(Boolean);
+  // Une phrase d'accroche (« Pensez à toujours l'avoir avec vous ! ») ne dit
+  // rien du produit : on préfère une phrase assez longue, qui ne s'exclame pas.
+  return phrases.find((p) => p.length >= 40 && !p.endsWith('!')) || '';
+}
+
+function couper(texte, max) {
+  if (texte.length <= max) return texte;
+  const t = texte.slice(0, max - 1);
+  return t.slice(0, t.lastIndexOf(' ')).replace(/[\s,;:–—-]+$/, '') + '…';
+}
+
+function descriptionProduit(produit) {
+  const nom = nomPropre(produit.name);
+  const prixs = (Array.isArray(produit.variantes) && produit.variantes.length
+    ? produit.variantes.map((v) => Number(v.prix)) : [Number(produit.price)]).filter((n) => Number.isFinite(n) && n > 0);
+  const prix = prixs.length ? `${prixs.length > 1 ? 'dès ' : ''}CHF ${Math.min(...prixs).toFixed(2)}` : '';
+  const tete = `${nom}${prix ? `, ${prix}` : ''} chez So You Cosmetics à Genève.`;
+  const fin = ' Retrait gratuit en boutique.';
+  const phrase = phraseParlante(resumerTexte(produit.description, 2000));
+  const place = LIMITE_DESCRIPTION - tete.length - fin.length - 1;
+  // La phrase de la fiche, coupée s'il le faut, tant qu'il en reste assez
+  // pour dire quelque chose.
+  if (phrase && place >= 45) return `${tete} ${couper(phrase, place)}${fin}`;
+  if (`${tete}${fin}`.length <= LIMITE_DESCRIPTION) return `${tete}${fin}`;
+  return couper(tete, LIMITE_DESCRIPTION);
+}
 const TITRE_DEFAUT = 'So You Cosmetics — Cosmétiques naturels faits main à Genève';
 
 // La langue est dans l'adresse. Le français reste à la racine — aucune adresse
@@ -1004,8 +1070,16 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
     ], langue));
     return {
       ...commun,
-      titre: titreDePage(produit.name),
-      description,
+      // Une fiche produit n'existe qu'en français : nom, description et
+      // composition viennent du catalogue et ne sont pas traduits. Les
+      // adresses /en/ et /de/ servent la même fiche avec un menu traduit —
+      // pour Google, ce sont des doublons de la française. Leur adresse
+      // canonique est donc la française, et elles ne se déclarent pas comme
+      // des versions en d'autres langues (pas de hreflang).
+      alternatives: [],
+      canonique: `${base}/product/${slugProduit(produit)}`,
+      titre: titreProduit(produit.name),
+      description: descriptionProduit(produit) || description,
       image: absolutiser((produit.images || [])[0], base),
       type: 'product',
       jsonLd,
@@ -1115,7 +1189,7 @@ function baliseshtml(meta, urlPage, nonce) {
     // navigateur la pose, mais seulement après React. Elle est donnée sans
     // paramètres — une même page partagée avec un ?utm_source ne doit pas
     // devenir un doublon.
-    `<link rel="canonical" href="${escapeHtml(urlPage)}" data-pose="app">`,
+    `<link rel="canonical" href="${escapeHtml(meta.canonique || urlPage)}" data-pose="app">`,
     // hreflang : ce qui dit à un moteur que ces trois adresses sont la même
     // page en trois langues, et non trois pages qui se ressemblent. Sans elles,
     // les versions se cannibalisent au lieu d'être servies chacune à son public.
@@ -1181,6 +1255,10 @@ async function construireSitemap(base, db) {
   // porter cela sans alourdir chaque page de trois balises supplémentaires —
   // sauf qu'on les pose aussi dans le <head>, parce que les autres moteurs ne
   // lisent que celui-là.
+  // Une page qui n'existe qu'en français (les fiches produit) : une seule
+  // entrée, sans versions en d'autres langues.
+  const urlFr = (chemin, priorite, frequence) =>
+    `<url><loc>${esc(`${base}${chemin}`)}</loc><changefreq>${frequence}</changefreq><priority>${priorite}</priority></url>`;
   const url = (chemin, priorite, frequence) => {
     const groupe = alternatives(chemin, base);
     const liens = groupe
@@ -1209,7 +1287,7 @@ async function construireSitemap(base, db) {
     ...rubriques.map((c) => url(`/category/${encodeURIComponent(c)}`, '0.8', 'weekly')),
     ...listeProduits
       .filter((p) => p && p.id)
-      .map((p) => url(`/product/${slugProduit(p)}`, '0.7', 'weekly')),
+      .map((p) => urlFr(`/product/${slugProduit(p)}`, '0.7', 'weekly')),
     url('/workshops', '0.8', 'monthly'),
     ...(Array.isArray(ateliers) ? ateliers : [])
       .filter((w) => w && w.id)
@@ -1314,6 +1392,8 @@ module.exports = {
   separerLangue,
   avecLangue,
   alternatives,
+  titreProduit,
+  descriptionProduit,
   BOUTIQUE,
   escapeHtml,
   resumerTexte,

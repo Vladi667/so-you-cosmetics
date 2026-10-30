@@ -44,23 +44,37 @@ const Hero = () => {
       <Saison saison={saisonCourante()} />
 
       <div className="relative z-20 text-center px-5 max-w-3xl mx-auto flex flex-col items-center mt-14 sm:mt-16">
-        {/* Wordmark */}
-        <p
-          className="font-serif text-ivory text-5xl sm:text-6xl md:text-7xl mb-5 sm:mb-7
+        {/* Le titre principal de la page, pour Google : le nom, et ce qu'elle
+            fait. La promesse en dessous restait le seul <h1> — « La beauté,
+            pensée. À savourer. » — sans un mot de ce que la boutique vend ni
+            d'où. La ligne descriptive est visible, en petites capitales sous
+            le nom ; elle se réécrit dans « Textes du site ». */}
+        <h1
+          className="flex flex-col items-center mb-5 sm:mb-7
                      opacity-0 animate-[fadeIn_0.55s_cubic-bezier(0.16,1,0.3,1)_forwards]"
-          style={{ letterSpacing: '-0.02em', textShadow: '0 2px 24px rgba(0,0,0,0.45), 0 1px 6px rgba(0,0,0,0.28)' }}
         >
-          {t('hero.brand')}
-        </p>
+          <span
+            className="font-serif text-ivory text-5xl sm:text-6xl md:text-7xl"
+            style={{ letterSpacing: '-0.02em', textShadow: '0 2px 24px rgba(0,0,0,0.45), 0 1px 6px rgba(0,0,0,0.28)' }}
+          >
+            {t('hero.brand')}
+          </span>
+          <span
+            className="mt-3 font-sans text-ivory/85 text-[10px] sm:text-xs uppercase tracking-[0.28em]"
+            style={{ textShadow: '0 1px 10px rgba(0,0,0,0.45)' }}
+          >
+            {t('hero.h1Detail')}
+          </span>
+        </h1>
 
         {/* The promise */}
-        <h1
+        <p
           className="font-serif font-light text-ivory text-[1.375rem]/[1.24] sm:text-3xl md:text-[2.6rem]/[1.12] max-w-2xl
                      opacity-0 animate-[fadeInUp_0.55s_cubic-bezier(0.16,1,0.3,1)_0.08s_forwards]"
           style={{ textShadow: '0 2px 20px rgba(0,0,0,0.45), 0 1px 6px rgba(0,0,0,0.25)' }}
         >
           {t('hero.titleLine1')}<br className="hidden sm:block" /> {t('hero.titleLine2')}
-        </h1>
+        </p>
 
         {/* Hairline — the divider she drew between the two thoughts */}
         <span
