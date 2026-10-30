@@ -282,16 +282,19 @@ app.get('/sitemap.xml', async (req, res) => {
 // Même emplacement et même raison que le plan du site : avant le catch-all,
 // pour qu'une panne réponde une erreur franche plutôt que du HTML sous un nom
 // de fichier XML.
-app.get('/flux-produits.xml', async (req, res) => {
+// Deux adresses : le catalogue entier, et les seuls produits mis en avant —
+// celle-ci est le flux déclaré dans Merchant Center.
+const FLUX = { '/flux-produits.xml': {}, '/flux-mises-en-avant.xml': { seulementMisEnAvant: true } };
+app.get(Object.keys(FLUX), async (req, res) => {
   try {
     const schema = req.get('x-forwarded-proto') || req.protocol || 'https';
     const base = `${schema}://${req.get('host')}`;
-    const { xml, retenus, total, ecartes } = await flux.construireFlux(base, db);
+    const { xml, retenus, total, ecartes } = await flux.construireFlux(base, db, FLUX[req.path]);
     // Ce qui est écarté est dit, et compté. Un catalogue de 177 fiches dont 7
     // n'entrent pas dans le flux doit pouvoir s'expliquer en une ligne — sinon
     // on cherche des semaines pourquoi un produit n'apparaît pas sur Shopping.
     const motifs = Object.entries(ecartes).map(([r, n]) => `${n} ${r}`).join(', ');
-    console.log(`flux-produits.xml : ${retenus}/${total} articles${motifs ? ` (écartés : ${motifs})` : ''}`);
+    console.log(`${req.path.slice(1)} : ${retenus}/${total} articles${motifs ? ` (écartés : ${motifs})` : ''}`);
     res.type('application/xml').send(xml);
   } catch (err) {
     // Un flux tronqué est pire qu'un flux absent : Merchant Center prendrait la

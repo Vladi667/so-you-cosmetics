@@ -218,9 +218,13 @@ function article(a) {
   return `<item>${champs.filter(Boolean).join('')}</item>`;
 }
 
-async function construireFlux(base, db) {
+// « seulementMisEnAvant » : le flux des seuls produits qu'elle a choisi de
+// pousser (case « Mettre en avant dans les annonces »), servi à part pour que
+// Merchant Center ne contienne que ceux-là.
+async function construireFlux(base, db, { seulementMisEnAvant = false } = {}) {
   const produits = await db.getProducts();
-  const liste = Array.isArray(produits) ? produits : [];
+  const liste = (Array.isArray(produits) ? produits : [])
+    .filter((p) => !seulementMisEnAvant || p.annonces === true);
 
   const retenus = [];
   const ecartes = {};
