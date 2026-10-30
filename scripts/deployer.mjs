@@ -76,11 +76,57 @@ const FICHIERS_SERVEUR = [
   'db.js',
   'routes.js',
   'seo.js',
+  // Requis par index.js au démarrage, tous les deux. Ils manquaient à cette
+  // liste : le transfert aurait livré un index.js qui plante aussitôt sur
+  // MODULE_NOT_FOUND, et le site serait tombé. Le contrôle ci-dessous les
+  // vérifie désormais contre ce que le serveur exige réellement.
+  'mesure.js',
+  'flux.js',
   'email.js',
   'imap.js',
   'uploads.js',
+  // Les comptes clientes. Requis par routes.js : sans lui, le serveur tombe
+  // au premier redémarrage sur MODULE_NOT_FOUND.
+  'comptes.js',
+  // L'infolettre. Requis par routes.js.
+  'infolettre.js',
+  // Le traitement des rebonds. Requis par infolettre.js et routes.js.
+  'rebonds.js',
+  // TWINT par Payrexx. Requis par routes.js.
+  'payrexx.js',
+  // La mesure d'audience sans cookie. Requis par routes.js.
+  'audience.js',
+  // Le fichier clients et les ventes de la caisse SumUp. Requis par routes.js.
+  'crm.js',
+  'caisse.js',
   'package.json',
 ];
+
+// Le garde-fou qui manquait.
+//
+// Une liste blanche oubliée ne se voit pas : le fichier existe localement, il
+// n'est simplement pas énuméré, donc rien ne prévient. On relit donc ce que le
+// serveur require vraiment, et on refuse de partir si l'un d'eux n'est pas
+// transporté. C'est ce qui a rattrapé mesure.js et flux.js.
+function verifierDependancesServeur(base) {
+  const requis = new Set();
+  for (const nom of fs.readdirSync(base).filter((n) => n.endsWith('.js'))) {
+    const source = fs.readFileSync(path.join(base, nom), 'utf8');
+    for (const m of source.matchAll(/require\('\.\/([a-zA-Z0-9_-]+)'\)/g)) {
+      requis.add(m[1] + '.js');
+    }
+  }
+  const oublies = [...requis].filter(
+    (n) => !FICHIERS_SERVEUR.includes(n) && fs.existsSync(path.join(base, n))
+  );
+  if (oublies.length) {
+    mourir(
+      `Le serveur exige des fichiers que le transfert n'emporte pas : ${oublies.join(', ')}.\n` +
+      `  Livrer sans eux ferait tomber le site au redémarrage.\n` +
+      `  Les ajouter à FICHIERS_SERVEUR dans ce script.`
+    );
+  }
+}
 
 // Le catalogue de repli. Exclu par défaut : si l'hôte tourne sans MySQL, c'est
 // ce fichier qu'écrit l'administration, et la version du dépôt a divergé de la
@@ -229,6 +275,7 @@ function listerDossier(nom) {
 
 function listerServeur() {
   const base = path.join(RACINE, 'server');
+  verifierDependancesServeur(base);
   const noms = [...FICHIERS_SERVEUR, ...(AVEC_CATALOGUE ? [CATALOGUE] : [])];
   return noms
     .map((n) => ({ local: path.join(base, n), relatif: n }))

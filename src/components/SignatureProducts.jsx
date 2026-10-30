@@ -4,7 +4,7 @@ import Lien from './Lien';
 import SectionHeader from './SectionHeader';
 import { useLanguage } from '../i18n/LanguageContext';
 
-import { getProducts, imageUrl, imageSrcSet } from '../services/products';
+import { getProducts, imageUrl, imageSrcSet, catalogueInitial } from '../services/products';
 import { cheminProduit } from '../data/slug';
 import { normaliserTexte } from '../data/texte';
 
@@ -17,7 +17,14 @@ const RESUME_DELAY_MS = 2500;
 
 const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
   const { t, tCategory } = useLanguage();
-  const [productsList, setProductsList] = useState([]);
+  // Semé depuis le catalogue injecté par le serveur, comme la grille, la
+  // navigation et le menu mobile le font déjà.
+  //
+  // Cette bande partait d'un tableau vide et n'attendait que l'effet. Or un
+  // effet ne s'exécute pas pendant le rendu serveur : la section entière était
+  // donc absente du HTML servi, invisible pour les moteurs comme pour un
+  // visiteur sans JavaScript, et n'apparaissait qu'après hydratation.
+  const [productsList, setProductsList] = useState(() => catalogueInitial() || []);
 
   useEffect(() => {
     let active = true;
@@ -62,19 +69,31 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
   const trackRef = useRef(null);
   const pausedUntilRef = useRef(0);
   const holdRef = useRef(false);      // pointer is down, or the pointer is over the band
-  const [hasOverflow, setHasOverflow] = useState(false);
+  // Une seule question décide de tout ici : est-ce qu'une copie de la liste
+  // déborde du cadre ? Si oui, il faut boucler, donc une seconde copie, et les
+  // flèches ont un sens. Si non, ni l'une ni les autres.
+  const [doitBoucler, setDoitBoucler] = useState(false);
 
   const pauseDrift = useCallback((ms = RESUME_DELAY_MS) => {
     pausedUntilRef.current = performance.now() + ms;
   }, []);
 
-  // Exactly two copies of the list. The loop works by teleporting back by half
-  // the track once we pass it — invisible, because the second half is identical
-  // to the first. The previous version animated to -50% over *three* copies, so
-  // the jump back landed mid-copy and the seam was plainly visible on every
-  // cycle. Two copies is not a stylistic choice here; it is what makes the
-  // arithmetic come out even.
-  const loop = products.length > 0 ? [...products, ...products] : [];
+  // Deux copies de la liste — mais seulement quand il y a de quoi boucler.
+  //
+  // La boucle fonctionne en revenant en arrière d'une demi-piste dès qu'on la
+  // dépasse : invisible, puisque la seconde moitié est identique à la première.
+  // Deux copies n'est pas un choix esthétique, c'est ce qui fait tomber
+  // l'arithmétique juste.
+  //
+  // Mais quand la liste tient entière à l'écran, la seconde copie ne raccorde
+  // plus rien : elle réaffiche les mêmes fiches à côté des premières. C'est ce
+  // qu'on a vu en production — trois fiches étiquetées « Coup de cœur », toutes
+  // trois la même crème en trois contenances, doublées en six vignettes
+  // identiques. La boutique paraissait bégayer.
+  const copies = doitBoucler ? 2 : 1;
+  const loop = products.length > 0
+    ? Array.from({ length: copies }, () => products).flat()
+    : [];
 
   // Drift, wrap-around, and every reason to hold still, in one frame loop.
   // Writing scrollLeft ourselves (rather than a CSS transform) means the same
@@ -92,7 +111,9 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
       const dt = Math.min(now - last, 100) / 1000; // ignore long gaps after a background tab
       last = now;
 
-      const half = el.scrollWidth / 2;
+      // Rien à faire dériver quand tout tient à l'écran : il n'y a qu'une copie,
+      // et la faire défiler ne ferait que masquer des fiches sans en révéler.
+      const half = doitBoucler ? el.scrollWidth / 2 : 0;
       if (half > 0) {
         const moving = !reduced.matches
           && !holdRef.current
@@ -109,18 +130,26 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [loop.length]);
+  }, [loop.length, doitBoucler]);
 
-  // Arrows are only useful when there is something off-screen to reach.
+  // La mesure porte sur UNE copie, quel qu'en soit le nombre affiché.
+  //
+  // C'est ce qui rend la bascule stable plutôt qu'oscillante : à deux copies,
+  // scrollWidth/2 donne la largeur d'une copie ; à une seule, scrollWidth/1
+  // donne la même. Passer de deux à une ne change donc pas la valeur mesurée,
+  // et la décision ne se retourne pas contre elle-même à la frame suivante.
   useEffect(() => {
     const el = trackRef.current;
     if (!el) return;
-    const check = () => setHasOverflow(el.scrollWidth / 2 > el.clientWidth + 8);
-    check();
-    const ro = new ResizeObserver(check);
+    const mesurer = () => {
+      const uneCopie = el.scrollWidth / copies;
+      setDoitBoucler(uneCopie > el.clientWidth + 8);
+    };
+    mesurer();
+    const ro = new ResizeObserver(mesurer);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [loop.length]);
+  }, [loop.length, copies]);
 
   const nudge = (direction) => {
     const el = trackRef.current;
@@ -174,7 +203,7 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
         <div className="pointer-events-none absolute inset-y-0 left-0 z-20 w-10 sm:w-24 bg-gradient-to-r from-mist-white to-transparent" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-20 w-10 sm:w-24 bg-gradient-to-l from-mist-white to-transparent" />
 
-        {hasOverflow && (
+        {doitBoucler && (
           <>
             <button
               type="button"
@@ -207,14 +236,30 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
 
         <div
           ref={trackRef}
-          className="flex overflow-x-auto hide-scrollbar cursor-grab active:cursor-grabbing select-none px-4"
-          style={{ touchAction: 'pan-y pinch-zoom', overscrollBehaviorX: 'contain' }}
+          // Centrée quand tout tient : sur un grand écran (un iMac), quatre
+          // fiches calées à gauche laissaient la moitié droite de la bande vide.
+          // Seulement dans ce cas — une piste qui déborde, centrée, rognerait sa
+          // gauche hors de portée du défilement.
+          className={`flex overflow-x-auto hide-scrollbar cursor-grab active:cursor-grabbing select-none px-4${doitBoucler ? '' : ' justify-center'}`}
+          // « pan-y » seul interdisait le geste horizontal — sur un carrousel
+          // horizontal. Le doigt ne pouvait pas faire défiler la bande : le
+          // navigateur réservait tout mouvement à la page. Les deux axes sont
+          // désormais autorisés, et `overscrollBehaviorX: contain` empêche que
+          // le défilement de la bande, arrivé au bout, entraîne la page ou
+          // déclenche un retour arrière.
+          style={{ touchAction: 'pan-x pan-y pinch-zoom', overscrollBehaviorX: 'contain' }}
           onMouseEnter={() => { holdRef.current = true; }}
           onMouseLeave={() => { holdRef.current = false; endDrag(); }}
           onFocusCapture={() => pauseDrift(6000)}
           onWheel={() => pauseDrift()}
           onTouchStart={() => { holdRef.current = true; }}
           onTouchEnd={() => { holdRef.current = false; pauseDrift(); }}
+          // Un geste peut être annulé plutôt que terminé — le navigateur reprend
+          // la main pour faire défiler la page, l'appel arrive, le doigt sort de
+          // l'écran. C'est alors « touchcancel » qui part, jamais « touchend ».
+          // Sans cette ligne, le verrou posé au premier contact ne se levait
+          // plus et la bande cessait de défiler pour de bon.
+          onTouchCancel={() => { holdRef.current = false; pauseDrift(); }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
@@ -332,6 +377,17 @@ const SignatureProducts = ({ addToCart, toggleFavorite, favorites }) => {
                       {product.name}
                     </h3>
                   </Lien>
+                  {/* La contenance, comme sur la grille de la boutique.
+                      Ici le titre est coupé à UNE ligne : « 'Absolute' - Gel
+                      Crème Visage à l'extra… ». Tout ce qui distingue les trois
+                      contenances d'un même produit disparaît donc du nom, et la
+                      bande montre trois vignettes que seul le prix sépare. Le
+                      champ dédié le dit sans dépendre de la longueur du titre. */}
+                  {product.contenance && (
+                    <p className="font-sans text-[11px] sm:text-xs text-stone-gray/80 tracking-wide mb-1">
+                      {product.contenance}
+                    </p>
+                  )}
                   <p className="font-sans text-sm text-stone-gray">CHF {Number(product.price || 0).toFixed(2)}</p>
                 </div>
               </div>

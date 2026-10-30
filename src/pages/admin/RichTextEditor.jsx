@@ -19,8 +19,23 @@ const BOUTONS = [
   { cmd: 'formatBlock', arg: 'h3', label: 'Titre', titre: 'Sous-titre' },
   { cmd: 'formatBlock', arg: 'p', label: '¶', titre: 'Paragraphe normal' },
   { cmd: 'insertUnorderedList', label: '•—', titre: 'Liste à puces' },
+  { cmd: 'unlink', label: 'Sans lien', titre: 'Retirer le lien' },
   { cmd: 'removeFormat', label: '✕', titre: 'Effacer la mise en forme' },
 ];
+
+// L'adresse telle qu'elle la colle, rendue utilisable.
+//   « https://soyoucosmetics.com/journal/x » → « /journal/x » (reste sur le site)
+//   « www.exemple.ch »                       → « https://www.exemple.ch »
+//   « /journal/x »                           → inchangée
+// Tout autre schéma (javascript:, data:…) est refusé.
+function normaliserAdresse(saisie) {
+  let a = String(saisie || '').trim();
+  if (!a || a === 'https://' || a === 'http://') return '';
+  a = a.replace(/^https?:\/\/(www\.)?soyoucosmetics\.com(?=\/|$)/i, '') || '/';
+  if (a.startsWith('/') || /^mailto:/i.test(a)) return a;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(a)) return /^https?:\/\//i.test(a) ? a : '';
+  return `https://${a}`;
+}
 
 const RichTextEditor = ({ value, onChange, placeholder, minHeight = 220 }) => {
   const ref = useRef(null);
@@ -57,6 +72,48 @@ const RichTextEditor = ({ value, onChange, placeholder, minHeight = 220 }) => {
     onChange(ref.current.innerHTML);
   };
 
+  // Un lien vers un article du journal, une autre fiche, ou un autre site —
+  // demandé tel quel. On sélectionne les mots, on colle l'adresse.
+  //
+  // Une adresse du site lui-même (« soyoucosmetics.com/… » ou « /journal/… »)
+  // est gardée relative et s'ouvre dans l'onglet ; toute autre part dans un
+  // nouvel onglet, pour ne pas faire quitter la boutique.
+  const insererLien = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    const selection = window.getSelection();
+    const vide = !selection || selection.isCollapsed || !el.contains(selection.anchorNode);
+    const saisie = window.prompt(
+      vide
+        ? 'Adresse du lien (une page du site, un article, ou un autre site) :'
+        : 'Adresse du lien pour le texte sélectionné :',
+      'https://'
+    );
+    const adresse = normaliserAdresse(saisie);
+    if (!adresse) return;
+    if (vide) {
+      const texte = window.prompt('Texte du lien :', '');
+      if (!texte) return;
+      const a = document.createElement('a');
+      a.textContent = texte;
+      a.setAttribute('href', adresse);
+      document.execCommand('insertHTML', false, a.outerHTML);
+    } else {
+      document.execCommand('createLink', false, adresse);
+    }
+    el.querySelectorAll('a[href]').forEach((a) => {
+      if (/^https?:\/\//i.test(a.getAttribute('href'))) {
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener');
+      } else {
+        a.removeAttribute('target');
+        a.removeAttribute('rel');
+      }
+    });
+    onChange(el.innerHTML);
+  };
+
   // Paste as plain text. Copying from Word or from the old site otherwise brings
   // its entire style soup along — the nested <span> markup already clogging the
   // descriptions imported from Wix.
@@ -85,6 +142,15 @@ const RichTextEditor = ({ value, onChange, placeholder, minHeight = 220 }) => {
             {b.label}
           </button>
         ))}
+        <button
+          type="button"
+          title="Insérer un lien"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={insererLien}
+          className="h-8 px-2 rounded-md bg-white border border-slate-stone/15 text-sm text-slate-stone underline underline-offset-2 hover:bg-slate-stone hover:text-white transition-colors"
+        >
+          Lien
+        </button>
         <span className="ml-auto self-center text-[11px] text-stone-gray pr-1">
           Les paragraphes sont conservés tels quels
         </span>
@@ -104,7 +170,7 @@ const RichTextEditor = ({ value, onChange, placeholder, minHeight = 220 }) => {
           style={{ minHeight }}
           className="px-4 py-3 text-sm text-slate-stone focus:outline-none overflow-y-auto
                      [&_h3]:font-serif [&_h3]:text-lg [&_h3]:mt-3 [&_h3]:mb-1
-                     [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_strong]:font-semibold"
+                     [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_strong]:font-semibold [&_a]:underline [&_a]:text-mist-blue"
         />
       </div>
     </div>

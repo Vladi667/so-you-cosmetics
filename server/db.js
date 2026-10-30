@@ -9,6 +9,8 @@ const productsData = require('./products.json');
 // Paths for local JSON files
 const DATA_DIR = path.join(__dirname, 'data');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
+// Les commandes supprimées y sont recopiées avant de quitter orders.json.
+const CORBEILLE_COMMANDES = path.join(DATA_DIR, 'orders_supprimees.json');
 const BOOKINGS_FILE = path.join(DATA_DIR, 'bookings.json');
 const CONTACTS_FILE = path.join(DATA_DIR, 'contacts.json');
 const ADMIN_FILE = path.join(DATA_DIR, 'admin.json');
@@ -17,6 +19,10 @@ const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 const CONTENT_FILE = path.join(DATA_DIR, 'content.json');
 const ARTICLES_FILE = path.join(DATA_DIR, 'articles.json');
 const NEWSLETTER_FILE = path.join(DATA_DIR, 'newsletter.json');
+// Le secret qui signe les liens de désabonnement. Tiré une fois, puis relu :
+// s'il changeait à chaque démarrage, tous les liens déjà envoyés cesseraient
+// de fonctionner — et un lien de désabonnement mort est pire que pas de lien.
+const SECRET_FILE = path.join(DATA_DIR, 'secret_newsletter.txt');
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 const PRODUCTS_FILE = path.join(__dirname, 'products.json');
 
@@ -222,6 +228,22 @@ async function initProductionDatabase() {
 
     // Migrate orders tables created before pickup/shipping tracking existed.
     await ensureColumn(conn, 'orders', 'fulfillment', 'TEXT NULL');
+    await ensureColumn(conn, 'orders', 'paiement', 'TEXT NULL');
+    await ensureColumn(conn, 'orders', 'source', 'TEXT NULL');
+    // Le téléphone et la société, facultatifs, ajoutés après coup. NULL permis :
+    // les commandes déjà passées n'en ont pas, et rien ne doit les invalider.
+    await ensureColumn(conn, 'orders', 'customer_phone', 'VARCHAR(40) NULL');
+    await ensureColumn(conn, 'orders', 'customer_company', 'VARCHAR(120) NULL');
+    // Quatre colonnes qui manquaient depuis toujours. La commande était bien
+    // construite avec son adresse, son mode d'expédition, son cadeau et la
+    // trace d'acceptation des CGV — mais l'insertion MySQL n'écrivait que
+    // l'identité, le total, les articles et le statut. Tout le reste ne
+    // survivait que dans le repli JSON : dès que MySQL est configuré, une
+    // commande postale arrivait sans adresse et devenait inexpédiable.
+    await ensureColumn(conn, 'orders', 'address', 'TEXT NULL');
+    await ensureColumn(conn, 'orders', 'shipping', 'TEXT NULL');
+    await ensureColumn(conn, 'orders', 'cadeau', 'TEXT NULL');
+    await ensureColumn(conn, 'orders', 'cgv', 'TEXT NULL');
 
     // La date de séance des ateliers, absente des tables créées avant elle.
     //
@@ -266,6 +288,9 @@ async function initProductionDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    // L'inscription confirmée, et le dernier envoi du lien de confirmation.
+    await ensureColumn(conn, 'newsletter', 'confirme_le', 'DATETIME NULL');
+    await ensureColumn(conn, 'newsletter', 'confirmation_envoyee_le', 'DATETIME NULL');
 
     // Create workshops table
     await conn.query(`
@@ -377,24 +402,39 @@ function mapProductRow(r) {
 // are JSON-encoded TEXT columns; a malformed value must degrade gracefully
 // rather than throw, and `fulfillment` must be an object — the admin reads
 // .type/.carrier/.tracking_number off it directly.
+// Une colonne TEXT qui contient du JSON revient parfois déjà décodée selon le
+// pilote et le type de colonne. Les deux cas sont traités ici plutôt qu'à
+// chaque champ, et un contenu illisible vaut « absent » plutôt que de faire
+// échouer la lecture de toute la commande.
+function colonneJson(valeur, defaut = null) {
+  if (valeur === null || valeur === undefined) return defaut;
+  if (typeof valeur !== 'string') return valeur;
+  try { return JSON.parse(valeur); } catch (_) { return defaut; }
+}
+
 function mapOrderRow(r) {
-  let fulfillment = null;
-  if (r.fulfillment) {
-    if (typeof r.fulfillment === 'string') {
-      try { fulfillment = JSON.parse(r.fulfillment); } catch (_) { fulfillment = null; }
-    } else {
-      fulfillment = r.fulfillment;
-    }
-  }
-  let items = r.items;
-  if (typeof items === 'string') {
-    try { items = JSON.parse(items); } catch (_) { items = []; }
-  }
-  return { ...r, total: parseFloat(r.total), items, fulfillment };
+  return {
+    ...r,
+    total: parseFloat(r.total),
+    items: colonneJson(r.items, []),
+    fulfillment: colonneJson(r.fulfillment),
+    // Relus depuis leurs colonnes. Ils n'y étaient pas écrits jusqu'ici, donc
+    // les commandes déjà enregistrées sous MySQL les auront vides — c'est la
+    // situation qu'on répare, pas une régression.
+    address: colonneJson(r.address),
+    shipping: colonneJson(r.shipping),
+    cadeau: colonneJson(r.cadeau),
+    cgv: colonneJson(r.cgv),
+    paiement: colonneJson(r.paiement),
+    source: colonneJson(r.source),
+  };
 }
 
 // 1. Get Products
-async function getProducts() {
+// Le catalogue entier, fiches en attente comprises. Réservé à ce qui regarde
+// EN ARRIÈRE — l'administration, et les vignettes des commandes déjà passées,
+// où une fiche retirée de la vente doit continuer de porter son image.
+async function getProduitsTous() {
   if (pool) {
     try {
       const [rows] = await pool.query('SELECT * FROM products');
@@ -404,6 +444,19 @@ async function getProducts() {
     }
   }
   return productsData.products;
+}
+
+// Le catalogue tel que la boutique le montre.
+//
+// C'est CETTE fonction qui porte le nom court, et ce n'est pas un hasard : une
+// dizaine d'endroits l'appellent — la grille, le rendu serveur, le plan du
+// site, le flux Google, et le calcul du total d'une commande. En oublier un
+// laisserait une fiche en attente s'afficher, ou pire, s'acheter. Nommer ainsi
+// la version filtrée fait que l'oubli se trompe du bon côté : la fiche reste
+// cachée au lieu d'apparaître.
+async function getProducts() {
+  const tous = await getProduitsTous();
+  return (tous || []).filter((p) => p.enLigne !== false);
 }
 
 // 2. Get Product By ID
@@ -595,7 +648,22 @@ function normalizeProductInput(input, base = {}) {
   // comme identifiants : un nom changé ne doit pas rompre l'association.
   if (input.related !== undefined) out.related = toArray(input.related);
   if (input.images !== undefined) {
-    const next = toUrls(input.images).map(normalizeImageUrl);
+    // Deux fois la même adresse dans une galerie n'est jamais une intention :
+    // c'est un formulaire renvoyé, un double clic, ou la même photo téléversée
+    // deux fois. Le doublon se voyait en boutique — deux vignettes
+    // rigoureusement identiques sur la même fiche, impossibles à distinguer.
+    //
+    // Dédoublonné ici plutôt qu'à l'affichage : une galerie propre en base vaut
+    // mieux qu'un filtre à chaque rendu, et l'ordre du premier passage est
+    // conservé.
+    const vues = new Set();
+    const next = toUrls(input.images)
+      .map(normalizeImageUrl)
+      .filter((url) => {
+        if (vues.has(url)) return false;
+        vues.add(url);
+        return true;
+      });
     const had = Array.isArray(base.images) && base.images.length > 0;
     // Refuse to silently wipe a product's images. A client bug (or a stale form
     // that never loaded them) must not destroy them; clearing is only honoured
@@ -612,6 +680,27 @@ function normalizeProductInput(input, base = {}) {
   }
   if (input.inStock !== undefined) {
     out.inStock = !!input.inStock;
+  }
+  // Le seuil d'alerte propre à ce produit. Vide : le seuil général de
+  // « Horaires & absences » s'applique. Trois savons, c'est beaucoup ; trois
+  // coffrets de Noël en décembre, c'est déjà trop peu.
+  if (input.seuilAlerte !== undefined) {
+    const n = Number(input.seuilAlerte);
+    out.seuilAlerte = input.seuilAlerte === '' || input.seuilAlerte === null || !Number.isFinite(n) || n < 0 ? null : Math.round(n);
+  }
+  // Le nom de l'article dans la caisse SumUp, quand il diffère de celui de la
+  // fiche. C'est la clé du rapprochement des ventes en boutique (server/caisse.js) :
+  // l'API de SumUp donne le nom des articles vendus, pas de référence.
+  if (input.sumupNom !== undefined) out.sumupNom = String(input.sumupNom || '').trim();
+  // Les produits qu'elle veut pousser dans les annonces Google. Le flux le
+  // dit à Google Ads (custom_label_2), qui peut alors leur réserver une
+  // campagne et un budget, sans toucher à la page d'accueil.
+  if (input.annonces !== undefined) out.annonces = !!input.annonces;
+  // « En attente » : la fiche existe dans l'administration, mais la boutique
+  // ne la connaît pas. À distinguer d'« épuisé », qui s'affiche et se voit —
+  // ici, la cliente ne saura jamais que le produit existe.
+  if (input.enLigne !== undefined) {
+    out.enLigne = input.enLigne !== false;
   }
 
   // Ce qu'il y a dans le flacon.
@@ -671,6 +760,94 @@ function normalizeProductInput(input, base = {}) {
     const n = Number(input.rechargePrix);
     out.rechargePrix = Number.isFinite(n) && n > 0 ? n : null;
   }
+
+  // Les contenances d'un même produit — 15, 30, 50 ml — sur UNE fiche.
+  //
+  // Elles existaient en trois fiches séparées, héritées de l'export Wix : même
+  // nom, mêmes photos, trois prix. La boutique paraissait bégayer, et trois
+  // pages se disputaient le même mot-clé.
+  //
+  // Chaque variante porte son poids, et ce n'est pas cosmétique : c'est lui qui
+  // décide de la limite des 2 kg, donc des modes d'expédition proposés. Un pot
+  // de 15 ml et un de 200 ml ne s'envoient pas au même tarif.
+  //
+  // Le stock reste au niveau du produit, à dessein : trois stocks à tenir pour
+  // trois contenances est une charge d'inventaire, pas une commodité.
+  //
+  // Liste vide — le cas de presque tout le catalogue — et rien ne change :
+  // aucune barre de choix, un seul prix.
+  if (input.variantes !== undefined) {
+    const brut = Array.isArray(input.variantes) ? input.variantes : [];
+    const vues = new Set();
+    out.variantes = brut
+      .map((v, i) => {
+        const libelle = String((v && v.libelle) || '').trim();
+        const prix = Number(v && v.prix);
+        // Sans libellé ni prix, ce n'est pas une variante : c'est une ligne
+        // qu'on a commencé à remplir puis abandonnée.
+        if (!libelle || !(prix > 0)) return null;
+        const g = Number(String((v && v.poids) || '').replace(',', '.'));
+        return {
+          // L'identifiant sert de clé de ligne au panier et de référence au
+          // serveur qui refacture. Dérivé du libellé, donc stable d'un
+          // enregistrement à l'autre : un panier gardé ne se dénoue pas.
+          id: String((v && v.id) || libelle).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `v${i + 1}`,
+          libelle,
+          prix,
+          poids: Number.isFinite(g) && g > 0 ? Math.round(g) : null,
+        };
+      })
+      .filter(Boolean)
+      // Deux variantes de même identifiant rendraient la refacturation
+      // ambiguë : le serveur ne saurait laquelle facturer.
+      .filter((v) => {
+        if (vues.has(v.id)) return false;
+        vues.add(v.id);
+        return true;
+      });
+  }
+  // Les identifiants des fiches que celle-ci a absorbées.
+  //
+  // Sans cette ligne, la fusion écrirait la liste, le serveur l'accepterait
+  // sans broncher, et elle s'évaporerait au premier enregistrement suivant :
+  // les deux adresses supprimées retomberaient en 404 des semaines plus tard,
+  // sans que rien ne relie la panne à sa cause.
+  if (input.anciensIds !== undefined) {
+    const vus = new Set();
+    out.anciensIds = (Array.isArray(input.anciensIds) ? input.anciensIds : [])
+      .map((v) => String(v || '').trim())
+      .filter((v) => v && v !== out.id && !vus.has(v) && vus.add(v));
+  }
+
+  // Le prix de la fiche suit la contenance la moins chère.
+  //
+  // Partout ailleurs — grille, bande signature, « vous aimerez aussi », balises
+  // pour Google, tri par prix — c'est `price` qui est lu. Sans cette ligne, une
+  // fiche à contenances afficherait CHF 0.00 sur la grille et le resterait dans
+  // les résultats de recherche. Le montant facturé, lui, reste celui de la
+  // contenance choisie : le serveur ne lit jamais `price` quand il y a des
+  // variantes.
+  if (Array.isArray(out.variantes) && out.variantes.length > 0) {
+    out.price = Math.min(...out.variantes.map((v) => Number(v.prix)));
+
+    // Et la contenance de la fiche résume les formats.
+    //
+    // C'est elle que la carte affiche sous le nom, sur la grille. Une fiche qui
+    // propose 15, 30 et 50 ml et affiche « 15 ml » ment à qui la survole ; et
+    // depuis que l'admin masque ce champ dès qu'il y a plusieurs formats, plus
+    // personne ne peut le corriger à la main. Il se déduit donc d'eux.
+    //
+    // Quand tous les formats partagent la même unité — le cas courant — on ne
+    // l'écrit qu'une fois : « 15 · 30 · 50 ml » plutôt que « 15 ml · 30 ml ·
+    // 50 ml », qui déborde de la carte.
+    const libelles = out.variantes.map((v) => String(v.libelle).trim());
+    const unites = libelles.map((l) => (l.match(/[a-zA-Z]+\.?$/) || [''])[0].toLowerCase());
+    const memeUnite = unites[0] && unites.every((u) => u === unites[0]);
+    out.contenance = memeUnite
+      ? libelles.map((l) => l.replace(/\s*[a-zA-Z]+\.?$/, '').trim()).join(' · ') + ' ' + unites[0]
+      : libelles.join(' · ');
+  }
+
   if (input.rituel !== undefined) {
     const r = input.rituel || {};
     out.rituel = r && (r.etape || r.geste)
@@ -753,12 +930,31 @@ function decrementStock(items, seuilBas = 3) {
     produit.stock = apres;
     if (apres === 0) produit.inStock = false;
 
+    // Le seuil du produit s'il en a un, sinon le seuil général.
+    const seuil = produit.seuilAlerte == null ? seuilBas : Number(produit.seuilAlerte);
     if (apres === 0) evenements.push({ nom: produit.name, restant: 0, type: 'rupture' });
-    else if (apres <= seuilBas) evenements.push({ nom: produit.name, restant: apres, type: 'bas' });
+    else if (apres <= seuil) evenements.push({ nom: produit.name, restant: apres, type: 'bas', seuil });
   }
 
   writeProductsFile(data);
   return evenements;
+}
+
+// L'inverse, pour un remboursement en boutique : l'article revient en rayon.
+// Un produit épuisé par la vente redevient disponible ; un produit non suivi
+// (stock null) reste non suivi.
+function incrementStock(items) {
+  const data = readProductsFile();
+  const parId = new Map(data.products.map((p) => [String(p.id), p]));
+  for (const ligne of items || []) {
+    const produit = parId.get(String(ligne.id));
+    if (!produit || produit.stock === null || produit.stock === undefined) continue;
+    const qte = Math.max(1, parseInt(ligne.qty, 10) || 1);
+    const avant = Number(produit.stock) || 0;
+    produit.stock = avant + qte;
+    if (avant === 0 && produit.inStock === false) produit.inStock = true;
+  }
+  writeProductsFile(data);
 }
 
 async function updateProduct(id, input) {
@@ -890,6 +1086,12 @@ async function createOrder(order) {
     id: orderId,
     customer_name: order.name,
     customer_email: order.email,
+    // Facultatifs. Le téléphone est ce que La Poste réclame pour un envoi
+    // signé ; la société est ce qui doit figurer sur la facture d'un achat
+    // professionnel. Vides quand ils n'ont pas été renseignés — jamais absents,
+    // pour que la fiche de commande et l'export CSV lisent toujours la clé.
+    customer_phone: String(order.phone || '').trim(),
+    customer_company: String(order.company || '').trim(),
     total: order.total,
     items: order.items,
     // Ce qu'elle doit expédier, et ce que le client a payé pour cela. Sans ce
@@ -937,14 +1139,22 @@ async function createOrder(order) {
   if (pool) {
     try {
       await pool.query(
-        'INSERT INTO orders (id, customer_name, customer_email, total, items, status) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO orders (id, customer_name, customer_email, customer_phone, customer_company, total, items, status, address, shipping, cadeau, cgv) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
           newOrder.id,
           newOrder.customer_name,
           newOrder.customer_email,
+          newOrder.customer_phone || null,
+          newOrder.customer_company || null,
           newOrder.total,
           JSON.stringify(newOrder.items),
-          newOrder.status
+          newOrder.status,
+          // Sérialisés comme les articles le sont déjà. Sans ces quatre-là,
+          // l'objet relu depuis MySQL n'avait ni adresse ni mode d'expédition.
+          newOrder.address ? JSON.stringify(newOrder.address) : null,
+          newOrder.shipping ? JSON.stringify(newOrder.shipping) : null,
+          newOrder.cadeau ? JSON.stringify(newOrder.cadeau) : null,
+          newOrder.cgv ? JSON.stringify(newOrder.cgv) : null
         ]
       );
       return newOrder;
@@ -1040,7 +1250,7 @@ async function createContact(contact) {
 async function getNewsletterSubscribers() {
   if (pool) {
     try {
-      const [rows] = await pool.query('SELECT email, created_at FROM newsletter ORDER BY created_at DESC');
+      const [rows] = await pool.query('SELECT email, created_at, confirme_le, confirmation_envoyee_le FROM newsletter ORDER BY created_at DESC');
       return rows;
     } catch (err) {
       console.error('MySQL getNewsletterSubscribers failed, falling back to JSON file', err);
@@ -1064,6 +1274,114 @@ async function getNewsletterSubscribers() {
 // sur simple demande. Sans cette fonction, honorer cette promesse voulait dire
 // ouvrir un fichier JSON sur le serveur — autant dire que la promesse ne
 // tenait pas.
+// La signature d'une adresse, pour qu'un lien de désabonnement ne puisse pas
+// être forgé. Sans elle, il suffirait de deviner des adresses pour désabonner
+// les clientes d'une concurrente — ou les siennes.
+function secretNewsletter() {
+  try {
+    return fs.readFileSync(SECRET_FILE, 'utf8').trim();
+  } catch (_) {
+    const secret = crypto.randomBytes(32).toString('hex');
+    try { fs.writeFileSync(SECRET_FILE, secret); } catch (e) { console.error('Secret newsletter non conservé :', e.message); }
+    return secret;
+  }
+}
+
+function signerEmailNewsletter(email) {
+  return crypto.createHmac('sha256', secretNewsletter())
+    .update(String(email || '').trim().toLowerCase())
+    .digest('hex')
+    .slice(0, 32);
+}
+
+function signatureNewsletterValide(email, signature) {
+  const attendue = signerEmailNewsletter(email);
+  const a = Buffer.from(attendue);
+  const b = Buffer.from(String(signature || ''));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// La signature du lien de CONFIRMATION, distincte de celle du désabonnement :
+// sans le préfixe, un lien de désabonnement servirait aussi à confirmer.
+function signerConfirmationNewsletter(email) {
+  return crypto.createHmac('sha256', secretNewsletter())
+    .update('confirmer:' + String(email || '').trim().toLowerCase())
+    .digest('hex')
+    .slice(0, 32);
+}
+
+function confirmationNewsletterValide(email, signature) {
+  const a = Buffer.from(signerConfirmationNewsletter(email));
+  const b = Buffer.from(String(signature || ''));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// Modifie une inscription du fichier JSON. Les anciennes entrées en simple
+// chaîne deviennent des objets au passage.
+function majInscriptionJson(email, modifier) {
+  const cible = String(email || '').trim().toLowerCase();
+  const data = JSON.parse(fs.readFileSync(NEWSLETTER_FILE, 'utf8'));
+  const liste = (Array.isArray(data) ? data : []).map((n) => (typeof n === 'string' ? { email: n, created_at: null } : n));
+  let entree = liste.find((n) => String(n.email || '').trim().toLowerCase() === cible);
+  if (!entree) {
+    entree = { email: cible, created_at: new Date().toISOString() };
+    liste.push(entree);
+  }
+  modifier(entree);
+  ecrireJson(NEWSLETTER_FILE, liste);
+  return entree;
+}
+
+// Confirmée : l'adresse a cliqué le lien reçu. C'est la seule preuve qu'elle
+// appartient à celle qui s'est inscrite, et pas à quelqu'un qu'un robot a
+// inscrit à sa place.
+async function confirmerNewsletterSubscriber(email) {
+  const cible = String(email || '').trim().toLowerCase();
+  const maintenant = new Date().toISOString();
+  if (pool) {
+    try {
+      await pool.query('INSERT INTO newsletter (email, confirme_le) VALUES (?, NOW()) ON DUPLICATE KEY UPDATE confirme_le = COALESCE(confirme_le, NOW())', [cible]);
+      return true;
+    } catch (err) {
+      console.error('MySQL confirmerNewsletterSubscriber failed, falling back to JSON file', err);
+    }
+  }
+  majInscriptionJson(cible, (e) => { if (!e.confirme_le) e.confirme_le = maintenant; });
+  return true;
+}
+
+async function marquerConfirmationEnvoyee(email) {
+  const cible = String(email || '').trim().toLowerCase();
+  if (pool) {
+    try {
+      await pool.query('UPDATE newsletter SET confirmation_envoyee_le = NOW() WHERE email = ?', [cible]);
+      return;
+    } catch (err) {
+      console.error('MySQL marquerConfirmationEnvoyee failed, falling back to JSON file', err);
+    }
+  }
+  majInscriptionJson(cible, (e) => { e.confirmation_envoyee_le = new Date().toISOString(); });
+}
+
+// Retire d'un coup les inscriptions jamais confirmées, plus anciennes que
+// `avant`. Renvoie le nombre d'adresses retirées.
+async function retirerNonConfirmees(avant) {
+  const limite = new Date(avant).toISOString();
+  if (pool) {
+    try {
+      const [r] = await pool.query('DELETE FROM newsletter WHERE confirme_le IS NULL AND (created_at IS NULL OR created_at < ?)', [limite]);
+      return r.affectedRows;
+    } catch (err) {
+      console.error('MySQL retirerNonConfirmees failed, falling back to JSON file', err);
+    }
+  }
+  const data = JSON.parse(fs.readFileSync(NEWSLETTER_FILE, 'utf8'));
+  const liste = (Array.isArray(data) ? data : []).map((n) => (typeof n === 'string' ? { email: n, created_at: null } : n));
+  const reste = liste.filter((n) => n.confirme_le || (n.created_at && n.created_at >= limite));
+  ecrireJson(NEWSLETTER_FILE, reste);
+  return liste.length - reste.length;
+}
+
 async function removeNewsletterSubscriber(email) {
   const cible = String(email || '').trim().toLowerCase();
   if (!cible) return false;
@@ -1094,25 +1412,25 @@ async function removeNewsletterSubscriber(email) {
 }
 
 // 5b. Create Newsletter Subscriber (idempotent — ignores duplicate emails)
+//
+// L'inscription naît NON CONFIRMÉE : elle ne reçoit rien tant que le lien de
+// confirmation n'a pas été cliqué. Renvoie l'entrée telle qu'elle est après
+// coup, confirmée ou non, pour que l'appelant sache s'il doit écrire.
 async function createNewsletterSubscriber(email) {
   const normalized = String(email).toLowerCase().trim();
-  const entry = { email: normalized, created_at: new Date().toISOString() };
+  const entry = { email: normalized, created_at: new Date().toISOString(), confirme_le: null, confirmation_envoyee_le: null };
 
   if (pool) {
     try {
       await pool.query('INSERT IGNORE INTO newsletter (email) VALUES (?)', [normalized]);
-      return entry;
+      const [rows] = await pool.query('SELECT email, created_at, confirme_le, confirmation_envoyee_le FROM newsletter WHERE email = ?', [normalized]);
+      return rows[0] || entry;
     } catch (err) {
       console.error('MySQL createNewsletterSubscriber failed, falling back to JSON file', err);
     }
   }
 
-  const data = JSON.parse(fs.readFileSync(NEWSLETTER_FILE, 'utf8'));
-  if (!data.some(s => s.email === normalized)) {
-    data.push(entry);
-    ecrireJson(NEWSLETTER_FILE, data);
-  }
-  return entry;
+  return majInscriptionJson(normalized, () => {});
 }
 
 // ==============================================
@@ -1283,7 +1601,9 @@ async function getOrderById(orderId) {
 // unpaid, and concludes the payment provider is broken. Normalising here fixes
 // every writer at once instead of at each call site, and also repairs rows that
 // were already stored in the wrong case the next time they are updated.
-const ORDER_STATUSES = ['Pending', 'Paid', 'ReadyForPickup', 'Shipped', 'Cancelled', 'Refunded'];
+// « PickedUp » : une commande à retirer, remise à la cliente au comptoir. Elle
+// reste payée, simplement plus rien n'est à faire.
+const ORDER_STATUSES = ['Pending', 'Paid', 'ReadyForPickup', 'PickedUp', 'Shipped', 'Cancelled', 'Refunded'];
 
 function canonicalOrderStatus(status) {
   if (typeof status !== 'string') return status;
@@ -1336,6 +1656,51 @@ async function updateOrderStatus(orderId, status) {
     return true;
   }
   return false;
+}
+
+// Retire une commande — et la garde de côté.
+//
+// Une commande est une pièce comptable : on n'en efface pas une par mégarde
+// entre deux clics. Deux garde-fous, donc, et ils ne se remplacent pas.
+//
+// Le premier est ailleurs, dans la route : seule une commande DÉJÀ annulée ou
+// remboursée peut être supprimée. Écarter d'abord, effacer ensuite — une
+// commande vivante ne peut pas disparaître d'un seul geste.
+//
+// Le second est ici : la commande est recopiée entière dans orders_supprimees
+// avant d'être retirée. Le fichier ne sert à rien tant que personne ne se
+// trompe ; le jour où quelqu'un se trompe, il est tout ce qui reste.
+async function deleteOrder(orderId) {
+  const commande = await getOrderById(orderId);
+  if (!commande) return false;
+
+  try {
+    const corbeille = fs.existsSync(CORBEILLE_COMMANDES)
+      ? JSON.parse(fs.readFileSync(CORBEILLE_COMMANDES, 'utf8'))
+      : [];
+    corbeille.push({ supprimee_le: new Date().toISOString(), commande });
+    ecrireJson(CORBEILLE_COMMANDES, corbeille);
+  } catch (err) {
+    // Sans copie de sauvegarde, on ne supprime pas : le filet passe avant le
+    // ménage.
+    console.error('Corbeille des commandes indisponible, suppression refusée', err);
+    return false;
+  }
+
+  if (pool) {
+    try {
+      await pool.query('DELETE FROM orders WHERE id = ?', [orderId]);
+      return true;
+    } catch (err) {
+      console.error('MySQL deleteOrder failed, falling back to JSON file', err);
+    }
+  }
+
+  const data = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
+  const restantes = data.filter((o) => o.id !== orderId);
+  if (restantes.length === data.length) return false;
+  ecrireJson(ORDERS_FILE, restantes);
+  return true;
 }
 
 // 10. Get All Bookings
@@ -1444,12 +1809,22 @@ async function getClients() {
 // commandes : une commande supprimée ou une facture annulée ne doit jamais
 // permettre de réattribuer un numéro déjà émis. Une numérotation qui recule est
 // un problème comptable, pas un détail.
+// Le numéro d'une facture : l'année sur deux chiffres, puis le rang de la
+// commande dans cette année-là. 26-1, 26-2… puis 27-1 au premier janvier.
+//
+// « SY-2026-0004 » était juste mais illisible au téléphone : elle voulait
+// pouvoir retrouver une facture de mémoire. Le compteur repart de 1 à chaque
+// changement d'année, tout seul — il n'y a rien à penser au 31 décembre.
 function nextInvoiceNumber() {
   const settings = getShopSettings();
-  const numero = Number(settings.invoice.nextNumber) || 1;
   const annee = new Date().getFullYear();
-  updateShopSettings({ invoice: { ...settings.invoice, nextNumber: numero + 1 } });
-  return `${settings.invoice.prefix || 'SY'}-${annee}-${String(numero).padStart(4, '0')}`;
+  // L'année du dernier numéro émis. Absente sur une boutique qui n'a pas encore
+  // facturé sous cette forme : on prend l'année en cours, et le compteur
+  // enregistré continue plutôt que de repartir à 1 au milieu d'un exercice.
+  const anneeCourante = Number(settings.invoice.annee) || annee;
+  const numero = annee === anneeCourante ? (Number(settings.invoice.nextNumber) || 1) : 1;
+  updateShopSettings({ invoice: { ...settings.invoice, nextNumber: numero + 1, annee } });
+  return `${String(annee).slice(-2)}-${numero}`;
 }
 
 // Journal articles. She asked for "un accès administrateur me permettant de
@@ -1553,7 +1928,12 @@ function deleteArticle(id) {
 //
 // The defaults reproduce what the site showed when these were hard-coded, so
 // turning the feature on changes nothing until she edits something.
+// Les saisons que la boutique sait porter. « aucune » est le défaut, et il le
+// reste : personne ne doit se réveiller avec de la neige sur son site.
+const SAISONS = ['aucune', 'hiver', 'printemps', 'ete', 'automne', 'noel'];
+
 const SHOP_DEFAULTS = {
+  saison: 'aucune',
   hours: [
     { day: 'lundi',    closed: true,  hours: '' },
     { day: 'mardi',    closed: false, hours: '11:00–13:00 / 14:00–18:30' },
@@ -1586,7 +1966,7 @@ const SHOP_DEFAULTS = {
   invoice: {
     enabled: true,
     company: 'So You Cosmetics — Boutique Soap Opera',
-    address: '3 av. Pictet-De-Rochemont, 1207 Genève',
+    address: '3 av. Pictet-de-Rochemont, 1207 Genève',
     email: 'contact@soyoucosmetics.com',
     vatNumber: '',
     vatRate: 0,
@@ -1632,12 +2012,21 @@ function getShopSettings() {
   const saved = readSettings().shop;
   if (!saved || typeof saved !== 'object') return SHOP_DEFAULTS;
   return {
+    // Une valeur inconnue retombe sur « aucune » plutôt que d'être servie telle
+    // quelle : le pire serait un attribut inventé posé sur le bandeau public.
+    saison: SAISONS.includes(saved.saison) ? saved.saison : SHOP_DEFAULTS.saison,
     hours: Array.isArray(saved.hours) && saved.hours.length ? saved.hours : SHOP_DEFAULTS.hours,
     absence: { ...SHOP_DEFAULTS.absence, ...(saved.absence || {}) },
     maintenance: { ...SHOP_DEFAULTS.maintenance, ...(saved.maintenance || {}) },
     giftWrap: { ...SHOP_DEFAULTS.giftWrap, ...(saved.giftWrap || {}) },
     alerts: { ...SHOP_DEFAULTS.alerts, ...(saved.alerts || {}) },
     invoice: { ...SHOP_DEFAULTS.invoice, ...(saved.invoice || {}) },
+    // Une fermeture d'un jour, décidée au comptoir : le site cesse de dire
+    // « ouvert » ce jour-là. Une date AAAA-MM-JJ, ou rien.
+    fermeLe: typeof saved.fermeLe === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(saved.fermeLe) ? saved.fermeLe : '',
+    // Noël : le dernier jour où un colis posté arrive à temps. C'est elle qui
+    // le fixe, d'après les délais que La Poste publie chaque année.
+    noel: { dernierEnvoi: '', ...(saved.noel || {}) },
     shipping: {
       freeFrom: saved.shipping && saved.shipping.freeFrom !== undefined
         ? saved.shipping.freeFrom : SHOP_DEFAULTS.shipping.freeFrom,
@@ -1650,12 +2039,16 @@ function getShopSettings() {
 function updateShopSettings(patch) {
   const current = getShopSettings();
   const next = {
+    saison: SAISONS.includes(patch.saison) ? patch.saison : current.saison,
     hours: Array.isArray(patch.hours) ? patch.hours : current.hours,
     absence: { ...current.absence, ...(patch.absence || {}) },
     maintenance: { ...current.maintenance, ...(patch.maintenance || {}) },
     giftWrap: { ...current.giftWrap, ...(patch.giftWrap || {}) },
     alerts: { ...current.alerts, ...(patch.alerts || {}) },
     invoice: { ...current.invoice, ...(patch.invoice || {}) },
+    fermeLe: patch.fermeLe === undefined ? current.fermeLe
+      : (typeof patch.fermeLe === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(patch.fermeLe) ? patch.fermeLe : ''),
+    noel: { ...current.noel, ...(patch.noel || {}) },
     shipping: { ...current.shipping, ...(patch.shipping || {}) },
   };
   writeSettings({ ...readSettings(), shop: next });
@@ -1730,8 +2123,52 @@ function getSumupConfig() {
   return {
     apiKey: s.SUMUP_API_KEY || process.env.SUMUP_API_KEY || '',
     merchantEmail: s.SUMUP_MERCHANT_EMAIL || process.env.SUMUP_MERCHANT_EMAIL || '',
-    webhookSecret: s.SUMUP_WEBHOOK_SECRET || process.env.SUMUP_WEBHOOK_SECRET || ''
+    webhookSecret: s.SUMUP_WEBHOOK_SECRET || process.env.SUMUP_WEBHOOK_SECRET || '',
+    // L'identifiant marchand Google Pay (console Google Pay & Wallet), distinct
+    // du code marchand SumUp. Sans lui, le module SumUp n'affiche pas Google Pay.
+    googlePayMerchantId: s.GOOGLE_PAY_MERCHANT_ID || process.env.GOOGLE_PAY_MERCHANT_ID || ''
   };
+}
+
+// Payrexx, pour TWINT seulement (server/payrexx.js). L'instance est le
+// sous-domaine du compte : « soyou » pour soyou.payrexx.com.
+function getPayrexxConfig() {
+  const s = readSettings();
+  return {
+    instance: String(s.PAYREXX_INSTANCE || process.env.PAYREXX_INSTANCE || '').trim(),
+    apiKey: s.PAYREXX_API_KEY || process.env.PAYREXX_API_KEY || '',
+  };
+}
+
+// Qui encaisse cette commande. Absent : SumUp, comme toutes les commandes
+// passées avant l'arrivée de TWINT — c'est ce qui les garde intactes.
+async function setOrderPaiement(orderId, paiement) {
+  if (pool) {
+    await pool.query('UPDATE orders SET paiement = ? WHERE id = ?', [JSON.stringify(paiement), orderId]);
+    return true;
+  }
+  const data = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
+  const order = data.find((o) => o.id === orderId);
+  if (!order) return false;
+  order.paiement = paiement;
+  ecrireJson(ORDERS_FILE, data);
+  return true;
+}
+
+// D'où venait la visite qui a mené à la commande (Google Ads, recherche,
+// infolettre…), classée par audience.classer(). Écrite à part, comme le
+// paiement, pour ne pas toucher à l'insertion de la commande.
+async function setOrderSource(orderId, source) {
+  if (pool) {
+    await pool.query('UPDATE orders SET source = ? WHERE id = ?', [JSON.stringify(source), orderId]);
+    return true;
+  }
+  const data = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
+  const order = data.find((o) => o.id === orderId);
+  if (!order) return false;
+  order.source = source;
+  ecrireJson(ORDERS_FILE, data);
+  return true;
 }
 
 // Read IMAP (inbox-read) config from admin-saved settings, fall back to env vars.
@@ -1776,10 +2213,12 @@ async function updateOrderFulfillment(orderId, patch) {
 
 module.exports = {
   getProducts,
+  getProduitsTous,
   importerMetadonnees,
   getProductById,
   createProduct,
   decrementStock,
+  incrementStock,
   updateProduct,
   deleteProduct,
   getSetting,
@@ -1797,6 +2236,9 @@ module.exports = {
   writeContent,
   updateContent,
   getSumupConfig,
+  getPayrexxConfig,
+  setOrderPaiement,
+  setOrderSource,
   getInboxConfig,
   updateOrderFulfillment,
   createOrder,
@@ -1808,8 +2250,15 @@ module.exports = {
   createBooking,
   createContact,
   createNewsletterSubscriber,
+  confirmerNewsletterSubscriber,
+  marquerConfirmationEnvoyee,
+  retirerNonConfirmees,
+  signerConfirmationNewsletter,
+  confirmationNewsletterValide,
   getNewsletterSubscribers,
   removeNewsletterSubscriber,
+  signerEmailNewsletter,
+  signatureNewsletterValide,
   // Admin DB functions
   getAdmin,
   updateAdminPassword,
@@ -1821,6 +2270,7 @@ module.exports = {
   updateOrderStatus,
   updateOrderFields,
   canonicalOrderStatus,
+  deleteOrder,
   getBookings,
   getClients,
   hashPassword,

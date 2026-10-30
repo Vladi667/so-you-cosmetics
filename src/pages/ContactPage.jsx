@@ -3,14 +3,11 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { getHours } from '../services/shop';
 import useEnvoiFormulaire from '../hooks/useEnvoiFormulaire';
 import useMetadonnees from '../hooks/useMetadonnees';
-
-// L'adresse et le téléphone de la boutique, écrits une fois. Ils apparaissaient
-// en clair dans le rendu, et la description de la page les répétait : deux
-// endroits à corriger le jour d'un déménagement, dont un qu'on oublierait.
-const ADRESSE_RUE = '3 av. Pictet-De-Rochemont';
-const ADRESSE_VILLE = '1207 Genève';
-const TELEPHONE = '022 556 69 92';
-const TELEPHONE_LIEN = '+41225566992';
+import Lien from '../components/Lien';
+import StatutBoutique from '../components/StatutBoutique';
+import { noterAction } from '../services/audience';
+// L'adresse et le téléphone, écrits une fois pour tout le site.
+import { ADRESSE_RUE, ADRESSE_VILLE, TELEPHONE, TELEPHONE_LIEN, LIEN_CARTE } from '../data/boutique';
 
 const ContactPage = () => {
   const { t } = useLanguage();
@@ -20,6 +17,9 @@ const ContactPage = () => {
     titre: t('contact.title'),
     description: `${t('contact.subtitle')} — ${ADRESSE_RUE}, ${ADRESSE_VILLE}. ${TELEPHONE}`,
   });
+
+  // La carte ne se charge qu'à la demande — voir la section en bas de page.
+  const [carteChargee, setCarteChargee] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const { etat, enCours, message, messageVisible, envoyer } = useEnvoiFormulaire();
 
@@ -73,6 +73,7 @@ const ContactPage = () => {
           <p className="text-white/90 font-serif italic text-lg sm:text-2xl md:text-3xl mt-8 max-w-3xl mx-auto opacity-80" style={{ textShadow: '0 1px 12px rgba(0,0,0,0.4)' }}>
             {t('contact.subtitle')}
           </p>
+          <StatutBoutique sombre className="justify-center mt-10" />
         </div>
       </section>
 
@@ -110,7 +111,7 @@ const ContactPage = () => {
                   </div>
                   <div>
                     <h3 className="font-sans tracking-[0.1em] sm:tracking-[0.2em] text-[9px] sm:text-xs font-bold text-slate-stone mb-1 sm:mb-2 uppercase">{t('contact.phoneLabel')}</h3>
-                    <a href={`tel:${TELEPHONE_LIEN}`} className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80 hover:text-slate-stone press">{TELEPHONE}</a>
+                    <a href={`tel:${TELEPHONE_LIEN}`} onClick={() => noterAction('appel')} className="font-serif text-[10px] sm:text-sm md:text-lg lg:text-xl text-slate-stone/80 hover:text-slate-stone press">{TELEPHONE}</a>
                   </div>
                 </div>
 
@@ -156,6 +157,29 @@ const ContactPage = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pourquoi passer en boutique. Cette page est celle où mènent les
+          recherches « boutique » et « savonnerie » à Genève, annonces
+          comprises : elle doit donner une raison de venir, pas seulement une
+          adresse. */}
+      <section className="py-16 sm:py-24 bg-white">
+        <div className="container mx-auto px-6 md:px-12 max-w-6xl">
+          <h2 className="font-serif text-3xl sm:text-5xl text-slate-stone mb-10 sm:mb-14 text-center reveal">{t('boutique.pourquoiTitre')}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            {(Array.isArray(t('boutique.pourquoi')) ? t('boutique.pourquoi') : []).map((p) => (
+              <div key={p.titre} className="reveal rounded-[20px] bg-ivory border border-slate-stone/5 p-6">
+                <h3 className="font-serif text-xl text-slate-stone mb-2">{p.titre}</h3>
+                <p className="font-sans text-sm text-stone-gray font-light leading-relaxed">{p.texte}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-10 text-center">
+            <Lien to="/workshops" className="press inline-block rounded-full border border-slate-stone/25 px-6 py-3 font-sans text-xs uppercase tracking-[0.2em] text-slate-stone hover:bg-slate-stone hover:text-white transition-colors">
+              {t('boutique.ateliers')}
+            </Lien>
           </div>
         </div>
       </section>
@@ -220,7 +244,7 @@ const ContactPage = () => {
             </div>
             <div className="flex items-center justify-between">
               <p className="font-sans text-stone-gray/50 text-xs sm:text-sm hidden md:block">
-                {t('contact.orCallPrefix')}<a href={`tel:${TELEPHONE_LIEN}`} className="text-slate-stone hover:underline press">{TELEPHONE}</a>
+                {t('contact.orCallPrefix')}<a href={`tel:${TELEPHONE_LIEN}`} onClick={() => noterAction('appel')} className="text-slate-stone hover:underline press">{TELEPHONE}</a>
               </p>
               <button
                 type="submit"
@@ -244,19 +268,51 @@ const ContactPage = () => {
         </div>
       </section>
 
-      {/* Google Maps Embed */}
+      {/* La carte Google, chargée seulement quand on la demande.
+          Une iframe Google transmet l'adresse IP du visiteur dès qu'elle se
+          charge. La poser d'emblée ferait donc partir cette donnée avant que
+          quiconque ait consenti. Un panneau tient sa place, la carte arrive au
+          clic : l'intégration reste entière, seul son moment change. Le lien
+          en dessous sert ceux qui préfèrent ouvrir Maps directement — et il
+          fonctionne aussi sans JavaScript. */}
       <section className="relative">
-        <div className="w-full h-[250px] sm:h-[400px] md:h-[500px] grayscale hover:grayscale-0 transition-all duration-700">
-          <iframe
-            src="https://maps.google.com/maps?q=3%20Avenue%20Pictet-de-Rochemont%2C%201207%20Gen%C3%A8ve&output=embed"
-            width="100%"
-            height="100%"
-            style={{ border: 0 }}
-            allowFullScreen=""
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            title={t('contact.mapTitle')}
-          ></iframe>
+        <div className="w-full h-[250px] sm:h-[400px] md:h-[500px]">
+          {carteChargee ? (
+            <div className="w-full h-full grayscale hover:grayscale-0 transition-all duration-700">
+              <iframe
+                src="https://maps.google.com/maps?q=3%20Avenue%20Pictet-de-Rochemont%2C%201207%20Gen%C3%A8ve&output=embed"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen=""
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title={t('contact.mapTitle')}
+              ></iframe>
+            </div>
+          ) : (
+            <div className="w-full h-full bg-lake-mist border-y border-alpine-silver flex flex-col items-center justify-center gap-5 px-6 text-center">
+              <p className="font-sans text-stone-gray text-xs sm:text-sm font-light max-w-md">
+                {t('contact.mapNotice')}
+              </p>
+              <button
+                type="button"
+                onClick={() => { setCarteChargee(true); noterAction('carte'); }}
+                className="press px-6 sm:px-10 py-3 sm:py-4 font-sans uppercase tracking-[0.3em] text-xs rounded-full bg-slate-stone text-ivory hover:bg-slate-stone/90 transition-colors duration-250"
+              >
+                {t('contact.mapLoad')}
+              </button>
+              <a
+                href={LIEN_CARTE}
+                onClick={() => noterAction('itineraire')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-sans text-xs font-light text-stone-gray underline underline-offset-4 hover:text-slate-stone press"
+              >
+                {t('contact.mapOpen')}
+              </a>
+            </div>
+          )}
         </div>
       </section>
     </div>

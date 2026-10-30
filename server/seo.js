@@ -17,6 +17,96 @@
 // titre d'un produit sur la page suivante.
 
 const SITE_NOM = 'So You Cosmetics';
+
+// Un titre de page, taillé pour ce qu'un résultat de recherche montre.
+//
+// « Nom du produit — So You Cosmetics » : le suffixe coûte dix-neuf
+// caractères, et un résultat en affiche une soixantaine. Sur quatre-vingt-dix
+// des cent soixante-dix-sept fiches, il poussait donc le nom du produit hors
+// du cadre — or c'est le nom qu'on cherche, et c'était lui qu'on perdait. Le
+// suffixe, lui, disparaissait de toute façon dans la troncature : il ne
+// coûtait que de la place.
+//
+// On le garde quand il tient, on le retire sinon. La marque reste lisible :
+// elle est dans le domaine affiché au-dessus du titre, dans le fil d'Ariane,
+// et dans les données structurées.
+//
+// Trente et un noms dépassent seuls la limite. Ils ne sont pas coupés ici :
+// tronquer le nom d'un produit dans un résultat de recherche se lit comme une
+// erreur, et ces noms sont ceux du catalogue — les raccourcir est une décision
+// de commerçante, pas de programme.
+const LIMITE_TITRE = 60;
+
+function titreDePage(nom) {
+  const complet = `${nom} — ${SITE_NOM}`;
+  return complet.length <= LIMITE_TITRE ? complet : nom;
+}
+
+// Un nom de fiche, débarrassé des guillemets qui entourent les noms de gamme
+// (« 'So Lumineux' », « ''Lacrème'' ») : dans un titre de recherche, ils ne
+// sont que du bruit.
+function nomPropre(nom) {
+  return String(nom || '')
+    .replace(/['’"«»]{1,2}([^'’"«»]+?)['’"«»]{1,2}(?=[\s\-–—,.]|$)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Le titre d'une fiche produit dans Google. Le nom affiché sur le site ne
+// change pas ; seul le titre des résultats est raccourci quand le nom dépasse
+// ce que Google affiche (35 fiches sur 87, en octobre 2026). On coupe à la
+// première articulation du nom (« - », « , », « ( »), qui sépare d'ordinaire
+// le produit de ses précisions, sinon au dernier mot entier.
+function titreProduit(nom) {
+  const propre = nomPropre(nom);
+  if (`${propre} — ${SITE_NOM}`.length <= LIMITE_TITRE) return `${propre} — ${SITE_NOM}`;
+  if (propre.length <= LIMITE_TITRE) return propre;
+  const coupure = propre.search(/\s[-–—]\s|,|\s\(/);
+  if (coupure >= 20 && coupure <= LIMITE_TITRE) return propre.slice(0, coupure).trim();
+  const tronque = propre.slice(0, LIMITE_TITRE - 1);
+  return tronque.slice(0, tronque.lastIndexOf(' ')).replace(/[\s,;:–—-]+$/, '') + '…';
+}
+
+// La description d'une fiche produit dans Google.
+//
+// C'était la première phrase de la fiche, telle quelle : « Pensez à toujours
+// l'avoir avec vous ! » sous le nom d'une eau d'aloe vera. Elle dit maintenant
+// ce qu'on cherche avant de cliquer : quoi, combien, où, et une phrase de la
+// fiche qui dit à quoi sert le produit.
+//
+// Pas de « fait main » : c'est vrai des savons et des soins, faux des éponges,
+// des flacons et des matières premières qu'elle revend. « Chez So You
+// Cosmetics à Genève » est vrai de tout le catalogue.
+const LIMITE_DESCRIPTION = 160;
+
+function phraseParlante(texte) {
+  const phrases = String(texte || '').split(/(?<=[.!?…])\s+/).map((p) => p.trim()).filter(Boolean);
+  // Une phrase d'accroche (« Pensez à toujours l'avoir avec vous ! ») ne dit
+  // rien du produit : on préfère une phrase assez longue, qui ne s'exclame pas.
+  return phrases.find((p) => p.length >= 40 && !p.endsWith('!')) || '';
+}
+
+function couper(texte, max) {
+  if (texte.length <= max) return texte;
+  const t = texte.slice(0, max - 1);
+  return t.slice(0, t.lastIndexOf(' ')).replace(/[\s,;:–—-]+$/, '') + '…';
+}
+
+function descriptionProduit(produit) {
+  const nom = nomPropre(produit.name);
+  const prixs = (Array.isArray(produit.variantes) && produit.variantes.length
+    ? produit.variantes.map((v) => Number(v.prix)) : [Number(produit.price)]).filter((n) => Number.isFinite(n) && n > 0);
+  const prix = prixs.length ? `${prixs.length > 1 ? 'dès ' : ''}CHF ${Math.min(...prixs).toFixed(2)}` : '';
+  const tete = `${nom}${prix ? `, ${prix}` : ''} chez So You Cosmetics à Genève.`;
+  const fin = ' Retrait gratuit en boutique.';
+  const phrase = phraseParlante(resumerTexte(produit.description, 2000));
+  const place = LIMITE_DESCRIPTION - tete.length - fin.length - 1;
+  // La phrase de la fiche, coupée s'il le faut, tant qu'il en reste assez
+  // pour dire quelque chose.
+  if (phrase && place >= 45) return `${tete} ${couper(phrase, place)}${fin}`;
+  if (`${tete}${fin}`.length <= LIMITE_DESCRIPTION) return `${tete}${fin}`;
+  return couper(tete, LIMITE_DESCRIPTION);
+}
 const TITRE_DEFAUT = 'So You Cosmetics — Cosmétiques naturels faits main à Genève';
 
 // La langue est dans l'adresse. Le français reste à la racine — aucune adresse
@@ -81,7 +171,12 @@ const BOUTIQUE = {
   // nom principal : « soap opera » désigne un genre télévisuel et ne ramènera
   // jamais personne. alternateName le dit sans en faire l'enseigne.
   autreNom: 'Boutique Soap Opera',
-  rue: '3 av. Pictet-De-Rochemont',
+  // Écrite exactement comme la fiche Google l'écrit — « Av. Pictet-de-Rochemont
+  // 3 », rue puis numéro, à la suisse. C'est ce champ-là que Google compare
+  // pour décider si ce site et cette fiche sont le même établissement ; la
+  // prose du site peut rester plus naturelle, elle n'entre pas dans la
+  // comparaison.
+  rue: 'Avenue Pictet-de-Rochemont 3',
   codePostal: '1207',
   ville: 'Genève',
   region: 'GE',
@@ -93,11 +188,19 @@ const BOUTIQUE = {
   // porte les paramètres de suivi d'un partage (?igsh=…), qui ne désignent rien
   // de durable. On la nettoie ici.
   //
-  // La page Facebook manque volontairement : le pied de page n'en connaît qu'un
-  // lien « /share/… », qui est une redirection, pas l'adresse de la page. Mieux
-  // vaut aucune entrée qu'une adresse qui changera.
+  // La page Facebook manquait faute d'adresse canonique : le pied de page n'en
+  // connaît qu'un lien « /share/… », qui est une redirection. L'adresse stable
+  // a été vérifiée depuis (200, sans redirection), elle peut donc entrer.
+  //
+  // La fiche Google elle-même y figure aussi, sous sa forme durable : l'adresse
+  // « /maps/place/… » porte le nom, la position et l'horodatage de la session,
+  // et change donc à chaque visite ; « ?cid= » désigne l'établissement et rien
+  // d'autre. C'est le lien qui dit à Google, explicitement, que ce site est
+  // celui de cette fiche — au lieu de le lui faire deviner.
   reseaux: [
     'https://www.instagram.com/soyoucosmetics.ch',
+    'https://www.facebook.com/soyoucosmeticsgeneve',
+    'https://maps.google.com/?cid=13498749115805098484',
   ],
 };
 
@@ -216,10 +319,15 @@ function schemaEtablissement(base, shop) {
       addressRegion: BOUTIQUE.region,
       addressCountry: BOUTIQUE.pays,
     },
-    // « geo » manque volontairement. Les coordonnées doivent être reprises du
-    // point posé sur la fiche Google, pas devinées depuis l'adresse : deux
-    // positions qui se contredisent valent moins qu'une seule bien placée.
-    // À renseigner le jour où la fiche est créée.
+    // Les coordonnées du point posé sur la fiche Google, relevées sur la fiche
+    // elle-même et non déduites de l'adresse : deux positions qui se
+    // contredisent valent moins qu'une seule bien placée. C'est la condition
+    // que cette ligne attendait.
+    geo: {
+      '@type': 'GeoCoordinates',
+      latitude: 46.2026459,
+      longitude: 6.1572322,
+    },
     areaServed: [
       { '@type': 'City', name: 'Genève' },
       { '@type': 'AdministrativeArea', name: 'Canton de Genève' },
@@ -338,18 +446,47 @@ function schemaProduit(produit, urlPage, base) {
     // n'est stockée nulle part : on la calcule à un an de la requête.
     const dans1An = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
       .toISOString().slice(0, 10);
-    noeud.offers = {
+    const disponibilite = produit.inStock === false || produit.stock === 0
+      ? 'https://schema.org/OutOfStock'
+      : 'https://schema.org/InStock';
+    const offre = (montant, url) => ({
       '@type': 'Offer',
-      url: urlPage,
+      url,
       priceCurrency: 'CHF',
-      price: prix.toFixed(2),
+      price: Number(montant).toFixed(2),
       priceValidUntil: dans1An,
       itemCondition: 'https://schema.org/NewCondition',
-      availability: produit.inStock === false
-        ? 'https://schema.org/OutOfStock'
-        : 'https://schema.org/InStock',
+      availability: disponibilite,
       seller: { '@id': `${base}/#boutique` },
-    };
+    });
+
+    // Une fiche à formats : un ProductGroup, et un produit par format, chacun
+    // à son prix et à son adresse (?format=…) — la forme que Google documente
+    // pour les variantes, et la seule qui accorde le prix de la page à celui
+    // du flux Merchant Center, article par article.
+    const variantes = (Array.isArray(produit.variantes) ? produit.variantes : []).filter((v) => Number(v.prix) > 0);
+    if (variantes.length) {
+      const { sku } = require('./caisse');
+      return {
+        ...noeud,
+        '@type': 'ProductGroup',
+        productGroupID: sku(produit),
+        variesBy: 'https://schema.org/size',
+        hasVariant: variantes.map((v) => {
+          const url = `${urlPage}?format=${encodeURIComponent(v.id)}`;
+          return {
+            '@type': 'Product',
+            name: `${produit.name} – ${v.libelle || v.id}`,
+            sku: sku(produit, v),
+            size: v.libelle || v.id,
+            image: images[0],
+            url,
+            offers: offre(v.prix, url),
+          };
+        }),
+      };
+    }
+    noeud.offers = offre(prix, urlPage);
   }
 
   return noeud;
@@ -509,14 +646,19 @@ const PAGES_EN = {
     image: '/botanical_flatlay.png',
   },
   '/contact': {
-    titre: 'Our natural cosmetics boutique in Geneva',
-    description: 'So You Cosmetics — 3 av. Pictet-De-Rochemont, 1207 Geneva, Eaux-Vives. Opening hours, directions, phone, and free in-store pickup.',
+    titre: 'Soap shop and natural cosmetics boutique in Geneva',
+    description: 'Handmade soaps and skincare to smell and try in Eaux-Vives, 3 av. Pictet-de-Rochemont, Geneva. Advice, workshops, opening hours, directions, free pickup.',
     image: '/boutique_exterior.png',
   },
   '/personnalisation': {
     titre: 'Personalised soaps — corporate, wedding, new baby',
     description: 'Custom soaps and cosmetics made in Geneva: corporate gifts, weddings, christenings, baby showers. By quotation, three months’ notice.',
     image: '/artisanal_soap_crafting.png',
+  },
+  '/mentions-legales': {
+    titre: 'Legal notice',
+    description: 'Publisher of soyoucosmetics.com: So You SARL, Geneva, UID CHE-131.511.202 — contact, hosting and applicable law.',
+    image: '',
   },
   '/terms': {
     titre: 'Terms and conditions of sale',
@@ -527,6 +669,41 @@ const PAGES_EN = {
     titre: 'Privacy policy',
     description: 'How So You Cosmetics collects, uses and protects your personal data, in accordance with the Swiss revised FADP.',
     image: '',
+  },
+  // Les six familles commerciales. Écrites ici comme les autres pages fixes :
+  // le serveur est en CommonJS et ne peut pas importer src/data/familles.js.
+  // Les textes ne sont pas ceux de la page — une description de résultat de
+  // recherche a 155 caractères pour donner une raison de cliquer, un chapeau
+  // de page en a le loisir.
+  '/savon-saponifie-a-froid': {
+    titre: 'Cold-process soap made in Geneva',
+    description: 'Cold-process soap handmade in our Eaux-Vives workshop: glycerin kept in, chosen superfat, four weeks of cure. Free collection in the boutique.',
+    image: '/artisanal_soap_crafting.png',
+  },
+  '/shampoing-solide': {
+    titre: 'Solid shampoo — Geneva',
+    description: 'Solid shampoo or hair soap: what separates them, the three-week adjustment nobody warns you about, and how to make a bar last four months.',
+    image: '/botanical_flatlay.png',
+  },
+  '/cosmetique-zero-dechet': {
+    titre: 'Zero-waste cosmetics and refills in Geneva',
+    description: 'Refill your bottles in our Eaux-Vives boutique, or switch to solid. What it actually removes, and which product to start with.',
+    image: '/premium_product_stone.png',
+  },
+  '/soins-peaux-sensibles': {
+    titre: 'Face care for sensitive skin — Geneva',
+    description: 'Short formulas, full INCI readable before you buy, fragrance-free options. What reactive skin gains from knowing before trying anything new.',
+    image: '/workshop_ingredients.png',
+  },
+  '/cadeaux-cosmetiques-naturels': {
+    titre: 'Natural cosmetic gifts and sets in Geneva',
+    description: 'What is hard to get wrong, a gift card valid for a year, wrapping on the spot and free collection in Eaux-Vives.',
+    image: '/premium_product_stone.png',
+  },
+  '/matieres-premieres-cosmetiques': {
+    titre: 'Cosmetic raw materials by the unit — Geneva',
+    description: 'Clays, powders, oils, containers and DIY kits in small quantities. The same materials we use in our own workshop, from the same batches.',
+    image: '/workshop_ingredients.png',
   },
 };
 
@@ -552,14 +729,19 @@ const PAGES_DE = {
     image: '/botanical_flatlay.png',
   },
   '/contact': {
-    titre: 'Unsere Naturkosmetik-Boutique in Genf',
-    description: 'So You Cosmetics — 3 av. Pictet-De-Rochemont, 1207 Genf, Eaux-Vives. Öffnungszeiten, Anfahrt, Telefon und kostenlose Abholung.',
+    titre: 'Seifenmanufaktur und Naturkosmetik-Boutique in Genf',
+    description: 'Handgemachte Seifen und Pflege zum Riechen und Testen in Eaux-Vives, Genf. Beratung, Workshops, Öffnungszeiten, Anfahrt und kostenlose Abholung.',
     image: '/boutique_exterior.png',
   },
   '/personnalisation': {
     titre: 'Personalisierte Seifen — Firma, Hochzeit, Geburt',
     description: 'Individuelle Seifen und Kosmetik aus Genf: Firmengeschenke, Hochzeiten, Taufen, Baby-Partys. Auf Anfrage, drei Monate Vorlauf.',
     image: '/artisanal_soap_crafting.png',
+  },
+  '/mentions-legales': {
+    titre: 'Impressum',
+    description: 'Betreiberin von soyoucosmetics.com: So You SARL, Genf, UID CHE-131.511.202 — Kontakt, Hosting und anwendbares Recht.',
+    image: '',
   },
   '/terms': {
     titre: 'Allgemeine Geschäftsbedingungen',
@@ -570,6 +752,36 @@ const PAGES_DE = {
     titre: 'Datenschutzerklärung',
     description: 'Wie So You Cosmetics Ihre personenbezogenen Daten erhebt, verwendet und schützt, gemäss dem revidierten Schweizer DSG.',
     image: '',
+  },
+  '/savon-saponifie-a-froid': {
+    titre: 'Kaltgerührte Seife aus Genf',
+    description: 'Kaltgerührte Seife, handgemacht in Genf: Glycerin bleibt erhalten, gewählte Überfettung, vier Wochen Reifezeit. Kostenlose Abholung.',
+    image: '/artisanal_soap_crafting.png',
+  },
+  '/shampoing-solide': {
+    titre: 'Festes Shampoo — Genf',
+    description: 'Festes Shampoo oder Haarseife: der Unterschied, die drei Wochen Umstellung und wie ein Stück vier Monate hält.',
+    image: '/botanical_flatlay.png',
+  },
+  '/cosmetique-zero-dechet': {
+    titre: 'Zero-Waste-Kosmetik und Nachfüllen in Genf',
+    description: 'Flaschen in der Boutique nachfüllen oder auf feste Produkte umsteigen. Was das wirklich einspart und womit man anfängt.',
+    image: '/premium_product_stone.png',
+  },
+  '/soins-peaux-sensibles': {
+    titre: 'Gesichtspflege für empfindliche Haut — Genf',
+    description: 'Kurze Rezepturen, vollständige INCI vor dem Kauf lesbar, Produkte ohne Duft. Was empfindliche Haut vorher wissen sollte.',
+    image: '/workshop_ingredients.png',
+  },
+  '/cadeaux-cosmetiques-naturels': {
+    titre: 'Geschenke und Sets aus Naturkosmetik — Genf',
+    description: 'Was selten danebengeht, ein Gutschein mit einem Jahr Gültigkeit, Verpackung vor Ort und kostenlose Abholung in Eaux-Vives.',
+    image: '/premium_product_stone.png',
+  },
+  '/matieres-premieres-cosmetiques': {
+    titre: 'Kosmetische Rohstoffe in kleinen Mengen — Genf',
+    description: 'Tonerden, Pulver, Öle, Gefässe und DIY-Sets in kleinen Mengen. Dieselben Rohstoffe wie in unserem Atelier, aus denselben Chargen.',
+    image: '/workshop_ingredients.png',
   },
 };
 
@@ -595,14 +807,19 @@ const PAGES = {
     image: '/botanical_flatlay.png',
   },
   '/contact': {
-    titre: 'Notre boutique de cosmétiques naturels à Genève',
-    description: 'So You Cosmetics — 3 av. Pictet-De-Rochemont, 1207 Genève, quartier des Eaux-Vives. Horaires, plan d’accès, téléphone et retrait gratuit en boutique.',
+    titre: 'Savonnerie et cosmétiques naturels à Genève — la boutique',
+    description: 'Savons et soins faits main à sentir et tester aux Eaux-Vives, 3 av. Pictet-de-Rochemont, Genève. Conseils, ateliers, horaires, itinéraire et retrait gratuit.',
     image: '/boutique_exterior.png',
   },
   '/personnalisation': {
     titre: 'Savons personnalisés — entreprise, mariage, naissance',
     description: 'Savons et cosmétiques personnalisés fabriqués à Genève : cadeaux d’entreprise, mariage, baptême, baby shower. Sur devis, prévoir trois mois.',
     image: '/artisanal_soap_crafting.png',
+  },
+  '/mentions-legales': {
+    titre: 'Mentions légales',
+    description: 'Éditeur de soyoucosmetics.com : So You SARL, Genève, IDE CHE-131.511.202 — contact, hébergement et droit applicable.',
+    image: '',
   },
   '/terms': {
     titre: 'Conditions générales de vente',
@@ -613,6 +830,36 @@ const PAGES = {
     titre: 'Politique de confidentialité',
     description: 'Comment So You Cosmetics collecte, utilise et protège vos données personnelles, conformément à la nLPD suisse.',
     image: '',
+  },
+  '/savon-saponifie-a-froid': {
+    titre: 'Savon saponifié à froid fabriqué à Genève',
+    description: 'Savons saponifiés à froid, faits main aux Eaux-Vives : glycérine conservée, surgras choisi, quatre semaines de cure. Retrait gratuit en boutique.',
+    image: '/artisanal_soap_crafting.png',
+  },
+  '/shampoing-solide': {
+    titre: 'Shampoing solide — Genève',
+    description: 'Shampoing solide ou savon à cheveux : ce qui les sépare, les trois semaines d’adaptation dont personne ne prévient, et comment faire durer un pain.',
+    image: '/botanical_flatlay.png',
+  },
+  '/cosmetique-zero-dechet': {
+    titre: 'Cosmétique zéro déchet et recharge à Genève',
+    description: 'Rechargez vos flacons à la boutique des Eaux-Vives, ou passez au solide. Ce que cela supprime réellement, et par quel produit commencer.',
+    image: '/premium_product_stone.png',
+  },
+  '/soins-peaux-sensibles': {
+    titre: 'Soins visage pour peaux sensibles — Genève',
+    description: 'Formules courtes, INCI lisible avant l’achat, produits sans parfum. Ce qu’une peau réactive gagne à savoir avant d’essayer un nouveau soin.',
+    image: '/workshop_ingredients.png',
+  },
+  '/cadeaux-cosmetiques-naturels': {
+    titre: 'Cadeaux et coffrets cosmétiques à Genève',
+    description: 'Ce qui se choisit sans se tromper, le bon cadeau valable un an, l’emballage sur place et le retrait gratuit aux Eaux-Vives.',
+    image: '/premium_product_stone.png',
+  },
+  '/matieres-premieres-cosmetiques': {
+    titre: 'Matières premières cosmétiques au détail à Genève',
+    description: 'Argiles, poudres, huiles, contenants et kits DIY en petites quantités. Les mêmes matières que celles de notre atelier, prélevées sur les mêmes lots.',
+    image: '/workshop_ingredients.png',
   },
 };
 
@@ -694,7 +941,7 @@ const RUBRIQUES = {
   },
   'Soin des cheveux': {
     titre: 'Soins capillaires naturels et coloration végétale — Genève',
-    description: 'Henné, cassia, indigo, rhassoul et soins capillaires naturels, disponibles à Genève. Conseils en boutique au 3 av. Pictet-De-Rochemont.',
+    description: 'Henné, cassia, indigo, rhassoul et soins capillaires naturels, disponibles à Genève. Conseils en boutique au 3 av. Pictet-de-Rochemont.',
   },
   'Shampoings': {
     titre: 'Shampoings solides et naturels — Genève',
@@ -780,6 +1027,12 @@ function routeConnue(cheminComplet) {
   if (Object.prototype.hasOwnProperty.call(PAGES, chemin)) return true;
   if (chemin === '/workshops' || chemin === '/journal') return true;
   if (chemin === '/admin' || chemin.startsWith('/admin/')) return true;
+  // Le compte de la cliente. Connu, mais tenu hors des moteurs comme
+  // l'administration : il n'y a rien à indexer sur une page de connexion, et
+  // moins encore derrière.
+  if (chemin === '/compte' || chemin.startsWith('/compte/')) return true;
+  if (chemin === '/desabonnement') return true;
+  if (chemin === '/confirmer-infolettre') return true;
   return ROUTES_DYNAMIQUES.some((r) => r.test(chemin));
 }
 
@@ -799,6 +1052,9 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
   // L'administration et la recherche : connues, volontairement muettes.
   // public/robots.txt les interdit déjà, il n'y a rien à leur écrire.
   if (chemin === '/admin' || chemin.startsWith('/admin/')) return undefined;
+  if (chemin === '/compte' || chemin.startsWith('/compte/')) return undefined;
+  if (chemin === '/desabonnement') return undefined;
+  if (chemin === '/confirmer-infolettre') return undefined;
   if (/^\/search\//.test(chemin)) return undefined;
 
   const fixe = pagesPourLangue(langue)[chemin];
@@ -834,7 +1090,8 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
     const description = resumerTexte(produit.description);
     const rubrique = Array.isArray(produit.collections) && produit.collections[0];
     const jsonLd = [schemaEtablissement(base, shop)];
-    const noeud = schemaProduit(produit, urlPage, base);
+    // L’adresse française, la seule canonique : les formats y renvoient.
+    const noeud = schemaProduit(produit, `${base}/product/${slugProduit(produit)}`, base);
     if (noeud) jsonLd.push(noeud);
     jsonLd.push(schemaFilAriane(base, [
       { nom: 'Accueil', chemin: '/' },
@@ -843,8 +1100,16 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
     ], langue));
     return {
       ...commun,
-      titre: `${produit.name} — ${SITE_NOM}`,
-      description,
+      // Une fiche produit n'existe qu'en français : nom, description et
+      // composition viennent du catalogue et ne sont pas traduits. Les
+      // adresses /en/ et /de/ servent la même fiche avec un menu traduit —
+      // pour Google, ce sont des doublons de la française. Leur adresse
+      // canonique est donc la française, et elles ne se déclarent pas comme
+      // des versions en d'autres langues (pas de hreflang).
+      alternatives: [],
+      canonique: `${base}/product/${slugProduit(produit)}`,
+      titre: titreProduit(produit.name),
+      description: descriptionProduit(produit) || description,
       image: absolutiser((produit.images || [])[0], base),
       type: 'product',
       jsonLd,
@@ -864,7 +1129,7 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
     const textes = rubriquePourLangue(nom, langue);
     return {
       ...commun,
-      titre: `${textes.titre} — ${SITE_NOM}`,
+      titre: titreDePage(textes.titre),
       description: textes.description,
       image: absolutiser('/premium_product_stone.png', base),
       type: 'website',
@@ -887,7 +1152,7 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
     const suffixe = { fr: 'Atelier à Genève', en: 'Workshop in Geneva', de: 'Kurs in Genf' }[langue];
     return {
       ...commun,
-      titre: `${trouve.title} — ${suffixe} — ${SITE_NOM}`,
+      titre: titreDePage(`${trouve.title} — ${suffixe}`),
       description: resumerTexte(trouve.description),
       image: absolutiser(trouve.image_url, base),
       type: 'article',
@@ -910,7 +1175,7 @@ async function metadonneesDeRoute(cheminComplet, urlPage, base, db, shop) {
     if (!trouve || !trouve.published) return null;
     return {
       ...commun,
-      titre: `${trouve.title} — Journal — ${SITE_NOM}`,
+      titre: titreDePage(`${trouve.title} — Journal`),
       description: resumerTexte(trouve.excerpt || trouve.body),
       image: absolutiser(trouve.image_url, base),
       type: 'article',
@@ -954,7 +1219,7 @@ function baliseshtml(meta, urlPage, nonce) {
     // navigateur la pose, mais seulement après React. Elle est donnée sans
     // paramètres — une même page partagée avec un ?utm_source ne doit pas
     // devenir un doublon.
-    `<link rel="canonical" href="${escapeHtml(urlPage)}" data-pose="app">`,
+    `<link rel="canonical" href="${escapeHtml(meta.canonique || urlPage)}" data-pose="app">`,
     // hreflang : ce qui dit à un moteur que ces trois adresses sont la même
     // page en trois langues, et non trois pages qui se ressemblent. Sans elles,
     // les versions se cannibalisent au lieu d'être servies chacune à son public.
@@ -984,6 +1249,22 @@ function baliseshtml(meta, urlPage, nonce) {
 // Le plan du site
 // ---------------------------------------------------------------------------
 
+// Les slugs des six familles commerciales.
+//
+// Réécrits ici plutôt qu'importés de src/data/familles.js : ce fichier est un
+// module ES chargé par le navigateur, et le serveur est en CommonJS — la même
+// contrainte que pour les routes et les rubriques. La duplication est donc
+// assumée, et la suite de vérification compare les deux listes : une famille
+// ajoutée d'un côté seulement arrête la construction.
+const SLUGS_FAMILLES = [
+  'savon-saponifie-a-froid',
+  'shampoing-solide',
+  'cosmetique-zero-dechet',
+  'soins-peaux-sensibles',
+  'cadeaux-cosmetiques-naturels',
+  'matieres-premieres-cosmetiques',
+];
+
 // Construit à la demande depuis la base : elle ajoute un produit, il y est. Un
 // fichier écrit au build serait faux le jour même.
 //
@@ -1004,6 +1285,10 @@ async function construireSitemap(base, db) {
   // porter cela sans alourdir chaque page de trois balises supplémentaires —
   // sauf qu'on les pose aussi dans le <head>, parce que les autres moteurs ne
   // lisent que celui-là.
+  // Une page qui n'existe qu'en français (les fiches produit) : une seule
+  // entrée, sans versions en d'autres langues.
+  const urlFr = (chemin, priorite, frequence) =>
+    `<url><loc>${esc(`${base}${chemin}`)}</loc><changefreq>${frequence}</changefreq><priority>${priorite}</priority></url>`;
   const url = (chemin, priorite, frequence) => {
     const groupe = alternatives(chemin, base);
     const liens = groupe
@@ -1032,7 +1317,7 @@ async function construireSitemap(base, db) {
     ...rubriques.map((c) => url(`/category/${encodeURIComponent(c)}`, '0.8', 'weekly')),
     ...listeProduits
       .filter((p) => p && p.id)
-      .map((p) => url(`/product/${slugProduit(p)}`, '0.7', 'weekly')),
+      .map((p) => urlFr(`/product/${slugProduit(p)}`, '0.7', 'weekly')),
     url('/workshops', '0.8', 'monthly'),
     ...(Array.isArray(ateliers) ? ateliers : [])
       .filter((w) => w && w.id)
@@ -1044,6 +1329,11 @@ async function construireSitemap(base, db) {
     ...(Array.isArray(articles) ? articles : [])
       .filter((a) => a && a.slug)
       .map((a) => url(`/journal/${encodeURIComponent(a.slug)}`, '0.5', 'monthly')),
+    // Les six familles commerciales, au même rang que les rubriques : ce sont
+    // elles qu'on atteint en cherchant un besoin plutôt qu'une marque, et
+    // elles suivent le rythme du catalogue qu'elles présentent.
+    ...SLUGS_FAMILLES.map((s) => url(`/${s}`, '0.8', 'monthly')),
+    url('/mentions-legales', '0.2', 'yearly'),
     url('/terms', '0.2', 'yearly'),
     url('/privacy', '0.2', 'yearly'),
   ].join('');
@@ -1101,12 +1391,28 @@ function trouverProduit(parametre, produits) {
   const direct = produits.find((p) => p.id === brut);
   if (direct) return direct;
   const emp = brut.slice(-LONGUEUR_EMPREINTE).toLowerCase();
-  return produits.find((p) => empreinte(p.id) === emp) || null;
+  const parEmpreinte = produits.find((p) => empreinte(p.id) === emp);
+  if (parEmpreinte) return parEmpreinte;
+
+  // Les fiches absorbées par une autre.
+  //
+  // Fondre trois contenances en une seule fiche supprime deux enregistrements,
+  // donc deux adresses qui existent aujourd'hui : elles sont dans le plan du
+  // site, dans les résultats de Google, peut-être dans un message envoyé la
+  // semaine dernière. Sans cette recherche, elles répondraient 404 et tout ce
+  // qu'elles avaient accumulé serait perdu.
+  //
+  // La fiche survivante garde les identifiants de celles qu'elle remplace ;
+  // l'appelant redirige ensuite en 301 vers son adresse canonique.
+  return produits.find((p) => Array.isArray(p.anciensIds) && p.anciensIds.some(
+    (ancien) => ancien === brut || empreinte(ancien) === emp
+  )) || null;
 }
 
 module.exports = {
   SITE_NOM,
   TITRE_DEFAUT,
+  SLUGS_FAMILLES,
   LANGUES,
   LANGUE_DEFAUT,
   LOCALES,
@@ -1116,6 +1422,8 @@ module.exports = {
   separerLangue,
   avecLangue,
   alternatives,
+  titreProduit,
+  descriptionProduit,
   BOUTIQUE,
   escapeHtml,
   resumerTexte,

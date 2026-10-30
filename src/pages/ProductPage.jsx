@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
+import StatutBoutique from '../components/StatutBoutique';
 import Lien from '../components/Lien';
-import { useParams } from 'react-router-dom';
-import { getProducts, imageUrl } from '../services/products';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { getProducts, imageUrl, catalogueInitial } from '../services/products';
 import { useLanguage } from '../i18n/LanguageContext';
 import ProductPlaceholder from '../components/ProductPlaceholder';
 import ProductBadge from '../components/ProductBadge';
@@ -71,24 +72,174 @@ const SqueletteFiche = () => (
   </div>
 );
 
+// Tout ce qu'une fiche déduit du catalogue, en une fonction pure.
+//
+// Ce calcul vivait dans un effet. Or un effet ne s'exécute pas pendant
+// renderToString : le serveur rendait donc les cent soixante-dix-huit fiches
+// vides — le gabarit de chargement, sans nom, sans prix, sans photo, sans
+// titre de niveau un. Mille caractères de menu et de pied de page, et rien
+// d'autre. C'était la part du site la plus mal lue par les robots, alors que
+// c'est celle qu'on cherche quand on cherche un savon.
+//
+// Sortie de l'effet, la même logique sert deux fois : pour l'état de départ,
+// calculé sur le catalogue que le serveur a posé dans la page, et pour l'effet
+// qui suit les changements d'adresse. Les deux passent par ici, donc ils ne
+// peuvent pas diverger — et le rendu serveur reste identique au premier rendu
+// du navigateur, ce que l'hydratation exige.
+const FICHE_VIDE = {
+  product: null, introuvable: false, varianteId: null,
+  rituel: [], senteurs: [], relatedProducts: [],
+};
+
+function etatDeLaFiche(id, productsList, formatDemande = null) {
+  // L'adresse porte un slug lisible ; l'empreinte de huit caractères qui
+  // le termine désigne la fiche. Les anciennes adresses, faites de
+  // l'identifiant Wix entier, restent reconnues — le serveur les redirige
+  // vers la nouvelle forme, mais la résolution doit tenir sans lui, par
+  // exemple en navigation interne depuis un lien ancien.
+  const foundProduct = trouverProduit(id, productsList);
+
+  if (!foundProduct) {
+    // Une référence inconnue renvoyait à l'accueil sans un mot. Quelqu'un
+    // qui ouvre un lien reçu par message se retrouvait sur la page
+    // d'accueil et en concluait qu'il s'était trompé de lien — alors que
+    // le produit avait simplement quitté le catalogue. Les liens de
+    // produits vivent longtemps dans les messageries et les publications.
+    return { ...FICHE_VIDE, introuvable: true };
+  }
+
+  // On ouvre sur la contenance la moins chère, et non sur la première de
+  // la liste : c'est ce montant que la grille vient d'annoncer, et voir le
+  // prix grimper en arrivant sur la fiche se lit comme un piège.
+  //
+  // Sauf si l'adresse en demande une (« ?format=30-ml ») : c'est le lien des
+  // annonces Google Shopping, un par format, et la page doit s'ouvrir au prix
+  // que l'annonce vient d'afficher.
+  const formats = Array.isArray(foundProduct.variantes) ? foundProduct.variantes : [];
+  const demande = formatDemande && formats.find((v) => String(v.id) === String(formatDemande));
+  const varianteId = demande ? demande.id : formats.length > 0
+    ? formats.reduce((a, b) => (Number(b.prix) < Number(a.prix) ? b : a)).id
+    : null;
+
+  // Le rituel auquel ce produit appartient. Les étapes sont triées par
+  // leur numéro, et un rituel d'un seul produit n'en est pas un.
+  const idRituel = foundProduct.rituel && foundProduct.rituel.id;
+  let rituel = [];
+  if (idRituel) {
+    const etapes = productsList
+      .filter((p) => p.rituel && p.rituel.id === idRituel)
+      .sort((a, b) => (parseInt(a.rituel.etape, 10) || 0) - (parseInt(b.rituel.etape, 10) || 0));
+    rituel = etapes.length > 1 ? etapes : [];
+  }
+
+  // Les autres senteurs de la même recette. Dérivées du nom, comme au
+  // catalogue : rien n'est écrit, et une fiche renommée suit d'elle-même.
+  const recette = lireRecette(foundProduct.name);
+  let senteurs = [];
+  if (recette) {
+    const memeRecette = productsList
+      .filter((p) => {
+        const r = lireRecette(p.name);
+        return r && r.cle === recette.cle;
+      })
+      .sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+    // Une senteur seule n'est pas un choix : on n'affiche le sélecteur
+    // que s'il y a réellement de quoi choisir.
+    senteurs = memeRecette.length > 1
+      ? memeRecette.map((p) => ({ ...p, senteur: lireRecette(p.name).senteur }))
+      : [];
+  }
+
+  // Ce qu'elle a choisi elle-même passe avant tout calcul : « dans la
+  // section Vous aimerez aussi, j'aimerais pouvoir choisir moi-même les
+  // produits qui apparaissent, plutôt que de laisser une sélection
+  // automatique ». Elle connaît ses clients mieux qu'un score de
+  // catégories communes.
+  //
+  // Les identifiants absents du catalogue sont ignorés : un produit
+  // supprimé ne doit pas laisser un trou dans la rangée.
+  const choisis = (foundProduct.related || [])
+    .map((rid) => productsList.find((p) => p.id === rid))
+    .filter(Boolean);
+  if (choisis.length > 0) {
+    return { product: foundProduct, introuvable: false, varianteId, rituel, senteurs,
+             relatedProducts: choisis.slice(0, 4) };
+  }
+
+  // Sinon, la sélection automatique d'origine : classer les autres
+  // produits par nombre de catégories partagées, pour qu'un savon suggère
+  // des savons et un hydrolat des hydrolats.
+  const currentCols = foundProduct.collections || [];
+  const scored = productsList
+    .filter((p) => p.id !== id)
+    .map((p) => ({
+      product: p,
+      shared: (p.collections || []).filter((c) => currentCols.includes(c)).length,
+    }))
+    .filter((x) => x.shared > 0)
+    .sort((a, b) => b.shared - a.shared);
+
+  let related = scored.slice(0, 4).map((x) => x.product);
+
+  // Fallback: if too few share a category, top up with other products so
+  // the section is never awkwardly empty.
+  if (related.length < 4) {
+    const taken = new Set([id, ...related.map((r) => r.id)]);
+    const fillers = productsList.filter((p) => !taken.has(p.id)).slice(0, 4 - related.length);
+    related = related.concat(fillers);
+  }
+
+  return { product: foundProduct, introuvable: false, varianteId, rituel, senteurs,
+           relatedProducts: related };
+}
+
+
 const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   const { t, tCategory } = useLanguage();
   const { id } = useParams();
-  const [product, setProduct] = useState(null);
-  const [introuvable, setIntrouvable] = useState(false);
+  const [parametres] = useSearchParams();
+  const formatDemande = parametres.get('format');
+
+  // L'état de départ, calculé sans rien attendre.
+  //
+  // Le catalogue est déjà dans la page : le serveur l'y pose avant de rendre,
+  // et le navigateur le retrouve au même endroit en reprenant la main. C'est le
+  // même objet des deux côtés, donc le rendu serveur et le premier rendu client
+  // sont identiques — condition de l'hydratation, et raison pour laquelle on ne
+  // peut pas se contenter d'un effet.
+  //
+  // Sans catalogue posé — navigation interne, ou repli sur l'API — on repart de
+  // rien et l'effet plus bas fait le travail comme avant. « introuvable » reste
+  // faux dans ce cas : on n'annonce pas un produit disparu alors qu'on ne l'a
+  // simplement pas encore chargé.
+  //
+  // Calculé une fois, au montage seulement : les changements d'adresse sont
+  // l'affaire de l'effet.
+  const depart = useMemo(() => {
+    const liste = catalogueInitial();
+    return liste ? etatDeLaFiche(id, liste, formatDemande) : FICHE_VIDE;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [product, setProduct] = useState(depart.product);
+  const [introuvable, setIntrouvable] = useState(depart.introuvable);
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [relatedProducts, setRelatedProducts] = useState(depart.relatedProducts);
   // La seule confirmation d'un ajout etait un chiffre qui changeait dans
   // l'en-tete — souvent hors du champ de vision sur mobile, ou l'on regarde le
   // bouton qu'on vient de toucher.
   const [ajoute, setAjoute] = useState(false);
   const [visionneuseOuverte, setVisionneuseOuverte] = useState(false);
-  const [senteurs, setSenteurs] = useState([]);
-  const [rituel, setRituel] = useState([]);
+  const [senteurs, setSenteurs] = useState(depart.senteurs);
+  const [rituel, setRituel] = useState(depart.rituel);
   // Faux par défaut : on n'engage pas quelqu'un à rapporter un flacon qu'il
   // n'a peut-être pas.
   const [enRecharge, setEnRecharge] = useState(false);
+  // La contenance choisie. Nul au montage : on la fixe sur la première quand la
+  // fiche arrive, pour qu'un prix soit toujours affiché et qu'un ajout immédiat
+  // ne parte pas sans format.
+  const [varianteId, setVarianteId] = useState(depart.varianteId);
   // La barre d'achat collante ne paraît que lorsque le vrai bouton a quitté
   // l'écran. L'afficher en permanence doublerait un bouton déjà visible et
   // mangerait le bas de la fiche pour rien.
@@ -100,99 +251,21 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
     // d'une fiche à l'autre, donc sans cette ligne un seul lien mort suffisait
     // à faire passer pour supprimés tous les produits consultés ensuite.
     setIntrouvable(false);
-    getProducts().then(data => handleProductsLoaded(data));
-
-    function handleProductsLoaded(productsList) {
-      // L'adresse porte un slug lisible ; l'empreinte de huit caractères qui
-      // le termine désigne la fiche. Les anciennes adresses, faites de
-      // l'identifiant Wix entier, restent reconnues — le serveur les redirige
-      // vers la nouvelle forme, mais la résolution doit tenir sans lui, par
-      // exemple en navigation interne depuis un lien ancien.
-      const foundProduct = trouverProduit(id, productsList);
-      
-      if (foundProduct) {
-        setProduct(foundProduct);
-        setActiveImage(0);
-        setQuantity(1);
-        
-        // Ce qu'elle a choisi elle-même passe avant tout calcul : « dans la
-        // section Vous aimerez aussi, j'aimerais pouvoir choisir moi-même les
-        // produits qui apparaissent, plutôt que de laisser une sélection
-        // automatique ». Elle connaît ses clients mieux qu'un score de
-        // catégories communes.
-        //
-        // Les identifiants absents du catalogue sont ignorés : un produit
-        // supprimé ne doit pas laisser un trou dans la rangée.
-        // Le rituel auquel ce produit appartient. Les étapes sont triées par
-        // leur numéro, et un rituel d'un seul produit n'en est pas un.
-        const idRituel = foundProduct.rituel && foundProduct.rituel.id;
-        if (idRituel) {
-          const etapes = productsList
-            .filter((p) => p.rituel && p.rituel.id === idRituel)
-            .sort((a, b) => (parseInt(a.rituel.etape, 10) || 0) - (parseInt(b.rituel.etape, 10) || 0));
-          setRituel(etapes.length > 1 ? etapes : []);
-        } else {
-          setRituel([]);
-        }
-
-        // Les autres senteurs de la même recette. Dérivées du nom, comme au
-        // catalogue : rien n'est écrit, et une fiche renommée suit d'elle-même.
-        const recette = lireRecette(foundProduct.name);
-        if (recette) {
-          const memeRecette = productsList
-            .filter((p) => {
-              const r = lireRecette(p.name);
-              return r && r.cle === recette.cle;
-            })
-            .sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
-          // Une senteur seule n'est pas un choix : on n'affiche le sélecteur
-          // que s'il y a réellement de quoi choisir.
-          setSenteurs(memeRecette.length > 1 ? memeRecette.map((p) => ({ ...p, senteur: lireRecette(p.name).senteur })) : []);
-        } else {
-          setSenteurs([]);
-        }
-
-        const choisis = (foundProduct.related || [])
-          .map((rid) => productsList.find((p) => p.id === rid))
-          .filter(Boolean);
-        if (choisis.length > 0) {
-          setRelatedProducts(choisis.slice(0, 4));
-          return;
-        }
-
-        // Sinon, la sélection automatique d'origine : classer les autres
-        // produits par nombre de catégories partagées, pour qu'un savon suggère
-        // des savons et un hydrolat des hydrolats.
-        const currentCols = foundProduct.collections || [];
-        const scored = productsList
-          .filter(p => p.id !== id)
-          .map(p => ({
-            product: p,
-            shared: (p.collections || []).filter(c => currentCols.includes(c)).length
-          }))
-          .filter(x => x.shared > 0)
-          .sort((a, b) => b.shared - a.shared);
-
-        let related = scored.slice(0, 4).map(x => x.product);
-
-        // Fallback: if too few share a category, top up with other products so
-        // the section is never awkwardly empty.
-        if (related.length < 4) {
-          const taken = new Set([id, ...related.map(r => r.id)]);
-          const fillers = productsList.filter(p => !taken.has(p.id)).slice(0, 4 - related.length);
-          related = related.concat(fillers);
-        }
-        setRelatedProducts(related);
-      } else {
-        // Une référence inconnue renvoyait à l'accueil sans un mot. Quelqu'un
-        // qui ouvre un lien reçu par message se retrouvait sur la page
-        // d'accueil et en concluait qu'il s'était trompé de lien — alors que
-        // le produit avait simplement quitté le catalogue. Les liens de
-        // produits vivent longtemps dans les messageries et les publications.
-        setIntrouvable(true);
-      }
-    }
-  }, [id]);
+    getProducts().then((productsList) => {
+      // Même fonction que pour l'état de départ : c'est ce qui garantit qu'un
+      // rafraîchissement du catalogue ne fasse pas apparaître autre chose que
+      // ce que le serveur avait rendu.
+      const etat = etatDeLaFiche(id, productsList, formatDemande);
+      setProduct(etat.product);
+      setIntrouvable(etat.introuvable);
+      setVarianteId(etat.varianteId);
+      setRituel(etat.rituel);
+      setSenteurs(etat.senteurs);
+      setRelatedProducts(etat.relatedProducts);
+      setActiveImage(0);
+      setQuantity(1);
+    });
+  }, [id, formatDemande]);
 
   useEffect(() => {
     const cible = blocAchatRef.current;
@@ -253,7 +326,18 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
   // Le prix qu'on lit à l'écran. Quand la recharge est choisie, c'est celui de
   // la recharge — le même que le serveur facturera pour cette ligne.
   const rechargePossible = Number(product.rechargePrix) > 0;
-  const prixCourant = enRecharge && rechargePossible ? Number(product.rechargePrix) : Number(product.price);
+
+  // Les contenances. Un même soin existe en 15, 50 et 75 ml : trois prix, trois
+  // poids, une seule fiche. Tant que la cliente n'en a saisi aucune, la liste
+  // est vide et rien ne s'affiche — la fiche garde son prix unique.
+  const variantes = Array.isArray(product.variantes) ? product.variantes : [];
+  const varianteChoisie = variantes.length > 0
+    ? variantes.find((v) => String(v.id) === String(varianteId)) || variantes[0]
+    : null;
+
+  const prixCourant = enRecharge && rechargePossible
+    ? Number(product.rechargePrix)
+    : (varianteChoisie ? Number(varianteChoisie.prix) : Number(product.price));
   
   // Use real images if available, otherwise fallback
   const images = product.images && product.images.length > 0 
@@ -266,7 +350,17 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
     // identiques que d'unités, et chacune relançait l'animation du panier.
     // Le drapeau voyage avec la ligne : c'est lui qui dira au serveur quel
     // prix facturer, et c'est le serveur qui décidera si la fiche le permet.
-    addToCart({ ...product, recharge: enRecharge, price: prixCourant }, quantity);
+    addToCart({
+      ...product,
+      recharge: enRecharge,
+      price: prixCourant,
+      // L'identifiant seul voyage ; le libellé et le poids ne servent qu'à
+      // l'affichage du tiroir. Le serveur, lui, relira les trois dans le
+      // catalogue — c'est lui qui facture et qui pèse le colis.
+      varianteId: varianteChoisie ? varianteChoisie.id : null,
+      contenance: varianteChoisie ? varianteChoisie.libelle : product.contenance,
+      poids: varianteChoisie && varianteChoisie.poids ? varianteChoisie.poids : product.poids,
+    }, quantity);
     setAjoute(true);
   };
 
@@ -370,9 +464,14 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                     {Number(product.price) > 0 ? `CHF ${prixCourant.toFixed(2)}` : t('catalog.onQuote')}
                   </p>
                   {/* La contenance appartient au prix : « CHF 24.00 » ne veut
-                      rien dire tant qu'on ignore si c'est pour 30 ml ou 200. */}
-                  {product.contenance && (
-                    <span className="font-sans text-sm text-stone-gray/70">· {product.contenance}</span>
+                      rien dire tant qu'on ignore si c'est pour 30 ml ou 200.
+                      Quand la fiche propose des formats, c'est celui qui est
+                      choisi qui s'affiche — sinon le prix changerait sous une
+                      contenance restée fixe, ce qui se lit comme une erreur. */}
+                  {(varianteChoisie ? varianteChoisie.libelle : product.contenance) && (
+                    <span className="font-sans text-sm text-stone-gray/70">
+                      · {varianteChoisie ? varianteChoisie.libelle : product.contenance}
+                    </span>
                   )}
                   {product.inStock === false && (
                     <span className="inline-block bg-red-100 text-red-700 text-xs tracking-widest uppercase px-3 py-1 rounded-full font-medium">
@@ -381,6 +480,52 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   )}
                 </div>
               </div>
+
+              {/* La barre des contenances.
+
+                  Un même soin en 15, 50 et 75 ml occupait trois fiches : trois
+                  photos identiques, trois descriptions à tenir à jour, et une
+                  cliente qui tombe sur le 15 ml sans savoir que le 75 existe.
+                  Une fiche, trois formats.
+
+                  Elle n'apparaît que si la cliente a saisi des contenances dans
+                  l'admin. Un savon qui n'existe qu'en un format garde sa fiche
+                  d'avant, sans barre à choix unique.
+
+                  Comme la recharge : le bouton porte un identifiant, pas un
+                  montant. Le serveur relit le prix et le poids de la contenance
+                  dans le catalogue — c'est ce poids qui décide ensuite si le
+                  colis passe sous les deux kilos. */}
+              {variantes.length > 1 && !enRecharge && (
+                <div className="mb-8">
+                  <div className="mb-2 font-sans text-xs uppercase tracking-widest text-stone-gray">
+                    {t('product.sizeLabel')}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {variantes.map((v) => {
+                      const actif = varianteChoisie && String(v.id) === String(varianteChoisie.id);
+                      return (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => setVarianteId(v.id)}
+                          aria-pressed={actif}
+                          className={`press rounded-full border px-5 py-2 font-sans text-xs transition-colors ${
+                            actif
+                              ? 'border-slate-stone bg-slate-stone text-white'
+                              : 'border-slate-stone/20 bg-ivory text-slate-stone hover:border-slate-stone/40'
+                          }`}
+                        >
+                          {v.libelle}
+                          <span className={`ml-2 tabular-nums ${actif ? 'text-white/70' : 'text-stone-gray/60'}`}>
+                            CHF {Number(v.prix).toFixed(2)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* « Je rapporte mon flacon ».
                   Elle le fait déjà en boutique — son propre texte le dit : on
@@ -407,7 +552,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                       >
                         {mode ? t('product.refillMine') : t('product.refillNew')}
                         <span className={`ml-2 tabular-nums ${enRecharge === mode ? 'text-white/70' : 'text-stone-gray/60'}`}>
-                          {(mode ? Number(product.rechargePrix) : Number(product.price)).toFixed(2)}
+                          CHF {(mode ? Number(product.rechargePrix) : Number(product.price)).toFixed(2)}
                         </span>
                       </button>
                     ))}
@@ -447,7 +592,7 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                         >
                           {v.senteur}
                           <span className={`ml-2 tabular-nums ${active ? 'text-white/70' : 'text-stone-gray/60'}`}>
-                            {Number(v.price).toFixed(2)}
+                            CHF {Number(v.price).toFixed(2)}
                           </span>
                         </Lien>
                       );
@@ -558,6 +703,51 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                 </p>
               )}
 
+              {/* À qui ça s'adresse, juste sous le bouton.
+                  Ces étiquettes se trouvaient tout en bas, après la
+                  description — c'est-à-dire après le moment où l'on décide de
+                  lire ou non. Or elles répondent à la seule question qu'on se
+                  pose devant une crème : est-ce que c'est pour moi ? Y
+                  répondre avant le texte long, c'est donner une raison de le
+                  lire.
+
+                  Les deux familles sont nommées plutôt que fondues en une
+                  rangée : « Mature » et « Hydratation » ne disent pas la même
+                  chose, et sans intitulé le lecteur doit deviner laquelle est
+                  laquelle. */}
+              {((product.typePeau || []).length > 0 || (product.besoins || []).length > 0) && (
+                <div className="mt-7 flex flex-col gap-3">
+                  {[
+                    { titre: t('product.forSkin'), valeurs: product.typePeau || [] },
+                    { titre: t('product.actsOn'), valeurs: product.besoins || [] },
+                  ].filter((g) => g.valeurs.length > 0).map((g) => (
+                    <div key={g.titre} className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+                      <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-stone-gray/70 shrink-0">
+                        {g.titre}
+                      </span>
+                      <span className="flex flex-wrap gap-2">
+                        {g.valeurs.map((v, i) => (
+                          <span key={i} className="rounded-full bg-ivory border border-slate-stone/10 px-3 py-1 font-sans text-[10px] uppercase tracking-[0.14em] text-stone-gray">
+                            {v}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* La boutique, sous le bouton d'achat. Une fiche produit est
+                  souvent la page d'arrivée d'une recherche locale : dire que le
+                  produit se sent et s'essaie aux Eaux-Vives, si c'est ouvert,
+                  et comment y aller, c'est offrir l'autre façon de l'acheter. */}
+              {product.inStock !== false && (
+                <div className="mt-7 rounded-2xl border border-slate-stone/10 bg-ivory p-4 sm:p-5">
+                  <p className="font-sans text-xs sm:text-sm text-stone-gray mb-3">{t('boutique.produit')}</p>
+                  <StatutBoutique />
+                </div>
+              )}
+
               <div className="h-px w-full bg-slate-stone/10 my-8"></div>
 
               {/* HTML Description */}
@@ -571,7 +761,8 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                              prose-headings:font-serif prose-headings:text-slate-stone prose-headings:font-normal
                              prose-h2:text-xl prose-h3:text-lg prose-h4:text-base
                              prose-strong:text-slate-stone prose-strong:font-medium
-                             prose-p:mb-4 prose-ul:my-4 prose-li:marker:text-stone-gray/50"
+                             prose-p:mb-4 prose-ul:my-4 prose-li:marker:text-stone-gray/50
+                             prose-a:text-slate-stone prose-a:font-normal prose-a:underline-offset-2 hover:prose-a:text-mist-blue"
                   dangerouslySetInnerHTML={{ __html: descriptionToHtml(product.description) }}
                 />
               ) : (
@@ -587,17 +778,8 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                   suggestions hors de l'écran.
                   Rien ne s'affiche tant qu'elle n'a rien saisi : un intitulé
                   vide vaudrait moins que son absence. */}
-              {(product.ingredients || product.inci || (product.typePeau || []).length > 0 || (product.besoins || []).length > 0) && (
+              {(product.ingredients || product.inci) && (
                 <div className="mb-10 border-t border-slate-stone/10 pt-6">
-                  {((product.typePeau || []).length > 0 || (product.besoins || []).length > 0) && (
-                    <div className="mb-5 flex flex-wrap gap-2">
-                      {[...(product.typePeau || []), ...(product.besoins || [])].map((etiquette, i) => (
-                        <span key={i} className="rounded-full bg-ivory border border-slate-stone/10 px-3 py-1 font-sans text-[10px] uppercase tracking-[0.14em] text-stone-gray">
-                          {etiquette}
-                        </span>
-                      ))}
-                    </div>
-                  )}
 
                   {product.ingredients && (
                     <details className="group border-b border-slate-stone/10 pb-3 mb-3">
@@ -731,8 +913,16 @@ const ProductPage = ({ addToCart, toggleFavorite, favorites }) => {
                     <div className="p-3 sm:p-6 flex flex-col flex-grow">
                       <Lien to={cheminProduit(p)} className="block">
                         <p className="font-sans text-[9px] sm:text-[10px] tracking-[0.2em] uppercase text-stone-gray mb-1 sm:mb-2">{p.collections[0] ? tCategory(p.collections[0]) : 'So You'}</p>
-                        <h3 className="font-serif text-sm sm:text-xl text-slate-stone mb-2 sm:mb-3 line-clamp-2 group-hover:text-stone-gray transition-colors">{p.name}</h3>
+                        <h3 className="font-serif text-sm sm:text-xl text-slate-stone mb-1 sm:mb-2 line-clamp-2 group-hover:text-stone-gray transition-colors">{p.name}</h3>
                       </Lien>
+                      {/* La contenance, comme sur la grille, la bande et le
+                          panier. C'est ici qu'on la voit le plus : « Vous
+                          aimerez aussi » propose volontiers les autres formats
+                          du produit qu'on regarde, et un titre tronqué à deux
+                          lignes ne dit pas lequel. */}
+                      {p.contenance && (
+                        <p className="font-sans text-[10px] sm:text-xs text-stone-gray/80 mb-2 sm:mb-3">{p.contenance}</p>
+                      )}
                       <div className="mt-auto flex items-center justify-between pt-2 sm:pt-4 border-t border-slate-stone/10">
                         <span className="font-sans text-xs sm:text-sm text-stone-gray">CHF {p.price.toFixed(2)}</span>
                         <div className="flex gap-1.5 sm:gap-2">

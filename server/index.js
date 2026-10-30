@@ -15,6 +15,55 @@ const flux = require('./flux');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Une seule adresse pour un seul site : www renvoie au domaine nu.
+//
+// Aujourd'hui `www.soyoucosmetics.com` ne résout pas du tout — qui le tape
+// tombe sur une erreur DNS. Le jour où l'enregistrement sera posé chez
+// l'hébergeur, le site répondrait sur deux noms servant le même contenu, et un
+// moteur devrait deviner lequel garder. C'est précisément le contenu dupliqué
+// que le plan du site, les adresses canoniques et les redirections de fiches
+// s'emploient à éviter ailleurs.
+//
+// La règle est étroite à dessein : on ne redirige que l'exact préfixe « www. »
+// du domaine annoncé par PUBLIC_BASE_URL. Rien d'autre — ni localhost, ni une
+// adresse IP, ni l'hôte de recette, ni un nom inconnu. Une redirection d'hôte
+// trop large est une des rares fautes qui rendent un site entièrement
+// inaccessible, en boucle, sans qu'on puisse s'y reconnecter pour la défaire.
+//
+// Les défis ACME sont exclus : l'hébergeur doit pouvoir prouver la possession
+// de `www` pour lui délivrer un certificat, et cette preuve se fait justement
+// sur ce nom-là.
+// La règle ne consulte aucune configuration, et c'est délibéré.
+//
+// Une première version comparait l'hôte reçu à celui de PUBLIC_BASE_URL. Elle
+// est restée muette en production, et j'en ai conclu que la variable ne valait
+// pas ce qu'on croyait. C'était faux : elle n'est pas définie du tout, le
+// défaut s'appliquait, et cette version aurait marché. Ce qui ne marchait pas,
+// c'est le redémarrage — le bouton du Manager ouvre une fenêtre de
+// confirmation, et sans la case cochée le processus continue de servir
+// l'ancien code. Les requêtes que je voyais traverser l'application sans être
+// redirigées l'étaient par une version qui n'avait pas d'intercepteur.
+//
+// La version sans configuration reste, parce qu'elle est meilleure et non
+// parce que l'autre était fautive : retirer un préfixe « www. » ne demande pas
+// de savoir quel est le domaine, c'est vrai de n'importe lequel. Une règle qui
+// ne dépend de rien ne peut pas se désaccorder d'avec sa configuration, ni
+// faire soupçonner une configuration innocente.
+app.use((req, res, next) => {
+  if (req.path.startsWith('/.well-known/')) return next();
+  // Le port est retiré : en développement l'hôte porte « :5199 ».
+  const hote = String(req.headers.host || '').split(':')[0].toLowerCase();
+  if (!hote.startsWith('www.')) return next();
+  const nu = hote.slice(4);
+  // « www. » seul, ou suivi d'un nom sans point : on ne fabrique pas un hôte
+  // qui n'existe pas, on laisse passer.
+  if (!nu.includes('.')) return next();
+  // Le schéma annoncé par le proxy, à défaut celui de la connexion : sans
+  // « trust proxy », req.protocol dit « http » derrière le terminateur TLS.
+  const schema = req.get('x-forwarded-proto') || req.protocol || 'https';
+  return res.redirect(301, `${schema}://${nu}${req.originalUrl}`);
+});
+
 // Les en-têtes de sécurité, posés avant tout le reste pour couvrir aussi bien
 // les pages que les fichiers servis en statique.
 //
@@ -84,14 +133,20 @@ app.use((req, res, next) => {
       `script-src 'self' 'nonce-${res.locals.cspNonce}' https://gateway.sumup.com${ajout(orig.script)}`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
-      `img-src 'self' data: blob: https://static.wixstatic.com https://gateway.sumup.com${ajout(orig.img)}`,
+      // Le joker sur sumup.com est conservé volontairement. La branche
+      // référencement nommait gateway et api ; c'est exactement ce que le
+      // correctif « la politique aurait cassé le paiement » avait dû élargir,
+      // SumUp servant depuis plusieurs sous-domaines. Les origines de mesure
+      // s'ajoutent par-dessus, comme partout ailleurs dans cette politique.
+      `img-src 'self' data: blob: https://static.wixstatic.com https://*.sumup.com${ajout(orig.img)}`,
       "media-src 'self'",
-      `connect-src 'self' https://gateway.sumup.com https://api.sumup.com${ajout(orig.connect)}`,
+      `connect-src 'self' https://*.sumup.com${ajout(orig.connect)}`,
       // Le plan d'acces de la page « Nous trouver » : maps.google.com
       // redirige vers www.google.com, il faut donc les deux. Trouve par la
       // mise en observation — imposee, la politique aurait fait disparaitre
       // la carte de la page dont c'est toute la raison d'etre.
-      "frame-src https://gateway.sumup.com https://*.sumup.com https://maps.google.com https://www.google.com",
+      // *.payrexx.com : la fenetre de paiement TWINT, ouverte dans le panier.
+      "frame-src https://gateway.sumup.com https://*.sumup.com https://*.payrexx.com https://maps.google.com https://www.google.com",
       "form-action 'self'",
       "base-uri 'self'",
       "object-src 'none'",
@@ -227,16 +282,19 @@ app.get('/sitemap.xml', async (req, res) => {
 // Même emplacement et même raison que le plan du site : avant le catch-all,
 // pour qu'une panne réponde une erreur franche plutôt que du HTML sous un nom
 // de fichier XML.
-app.get('/flux-produits.xml', async (req, res) => {
+// Deux adresses : le catalogue entier, et les seuls produits mis en avant —
+// celle-ci est le flux déclaré dans Merchant Center.
+const FLUX = { '/flux-produits.xml': {}, '/flux-mises-en-avant.xml': { seulementMisEnAvant: true } };
+app.get(Object.keys(FLUX), async (req, res) => {
   try {
     const schema = req.get('x-forwarded-proto') || req.protocol || 'https';
     const base = `${schema}://${req.get('host')}`;
-    const { xml, retenus, total, ecartes } = await flux.construireFlux(base, db);
+    const { xml, retenus, total, ecartes } = await flux.construireFlux(base, db, FLUX[req.path]);
     // Ce qui est écarté est dit, et compté. Un catalogue de 177 fiches dont 7
     // n'entrent pas dans le flux doit pouvoir s'expliquer en une ligne — sinon
     // on cherche des semaines pourquoi un produit n'apparaît pas sur Shopping.
     const motifs = Object.entries(ecartes).map(([r, n]) => `${n} ${r}`).join(', ');
-    console.log(`flux-produits.xml : ${retenus}/${total} articles${motifs ? ` (écartés : ${motifs})` : ''}`);
+    console.log(`${req.path.slice(1)} : ${retenus}/${total} articles${motifs ? ` (écartés : ${motifs})` : ''}`);
     res.type('application/xml').send(xml);
   } catch (err) {
     // Un flux tronqué est pire qu'un flux absent : Merchant Center prendrait la
@@ -301,15 +359,27 @@ function escapeHtml(str) {
 //
 // Liste blanche plutôt que liste noire : le prochain réglage ajouté sera privé
 // par défaut, ce qui est le bon sens de l'erreur.
-function reglagesPublics(shop) {
+const SAISONS = ['aucune', 'hiver', 'printemps', 'ete', 'automne', 'noel'];
+
+function reglagesPublics(shop, apercu) {
   return {
     hours: shop.hours,
     absence: shop.absence,
+    // La fermeture exceptionnelle du jour : le site ne dit plus « ouvert ».
+    fermeLe: shop.fermeLe || '',
     shipping: shop.shipping,
     // Le prix de l'emballage cadeau est public : il s'affiche a la caisse. Ce
     // qui reste prive, c'est tout le reste — l'adresse d'alerte, le compteur de
     // factures, le numero de TVA. La liste est blanche, jamais noire.
     giftWrap: shop.giftWrap,
+    // L'habillage saisonnier. Il part d'ici plutôt que du navigateur pour deux
+    // raisons : le site s'afficherait sinon nu puis se couvrirait de neige une
+    // fraction de seconde plus tard, et le rendu serveur différerait du premier
+    // rendu client — ce que React signale comme une divergence d'hydratation.
+    //
+    // « ?saison= » ne sert qu'à prévisualiser, sans rien enregistrer : c'est ce
+    // que l'aperçu de l'administration utilisera.
+    saison: SAISONS.includes(apercu) ? apercu : (SAISONS.includes(shop.saison) ? shop.saison : 'aucune'),
   };
 }
 
@@ -378,10 +448,10 @@ function allegerCatalogue(produits, cheminNu) {
 // Jamais d'exception vers l'appelant : une page servie sans son corps rendu
 // reste une page qui marche, tandis qu'une erreur ici priverait la boutique de
 // tout affichage. Le filet est le point entier de la mise en place.
-function rendreCorps(url, contenu, reglages, catalogue, seoClient) {
+function rendreCorps(url, contenu, reglages, catalogue, seoClient, journal, ateliers) {
   if (!moteur || typeof moteur.rendre !== 'function') return '';
   try {
-    return moteur.rendre({ url, contenu, reglages, catalogue, seo: seoClient }) || '';
+    return moteur.rendre({ url, contenu, reglages, catalogue, seo: seoClient, journal, ateliers }) || '';
   } catch (err) {
     console.error('Rendu serveur échoué pour', url, ':', err.message);
     return '';
@@ -581,15 +651,70 @@ app.get('*', async (req, res, next) => {
       }
     }
 
+    // Le journal, pour les mêmes raisons que le catalogue.
+    //
+    // La page du journal partait d'un état « chargement » et n'allait chercher
+    // ses articles que par un effet : le serveur rendait donc trois points de
+    // suspension, et rien d'autre — ni titre, ni chapô, ni liste. Un article
+    // entier tenait dans ce même point de suspension. C'est le contenu qui
+    // pourrait répondre à une question posée à un moteur, et c'était celui
+    // qu'aucun moteur ne lisait.
+    //
+    // Chargé seulement pour les routes du journal : injecter les articles dans
+    // chaque fiche produit alourdirait cent soixante-dix-sept pages pour rien.
+    // Les ateliers, même histoire : la fiche d'un atelier partait de
+    // « chargement » et le serveur n'en rendait qu'un cadre vide. « Atelier
+    // cosmétique Genève » est pourtant une des rares requêtes où cette
+    // boutique part avec une longueur d'avance.
+    let ateliers = null;
+    if (rendable && /^\/workshops(\/|$)/.test(cheminNu)) {
+      try {
+        ateliers = await db.getWorkshops();
+      } catch {
+        ateliers = null;
+      }
+    }
+
+    let journal = null;
+    if (rendable && /^\/journal(\/|$)/.test(cheminNu)) {
+      try {
+        const article = cheminNu.match(/^\/journal\/(.+)$/);
+        if (article) {
+          const trouve = db.getArticleBySlug(decodeURIComponent(article[1]));
+          // Un brouillon reste invisible : non listé n'est pas privé, et cette
+          // règle vaut ici autant que sur la route publique.
+          journal = { liste: null, article: trouve && trouve.published ? trouve : null };
+        } else {
+          journal = { liste: db.getArticles({ publishedOnly: true }), article: null };
+        }
+      } catch {
+        journal = null;
+      }
+    }
+
     tag += `<script nonce="${res.locals.cspNonce}">window.__CONTENT__=${serialiseContent(content)};` +
-           `window.__SHOP__=${serialiseContent(reglagesPublics(shop))};` +
+           `window.__SHOP__=${serialiseContent(reglagesPublics(shop, req.query.saison))};` +
            `window.__CATALOGUE__=${serialiseContent(catalogue)};` +
+           `window.__JOURNAL__=${serialiseContent(journal)};` +
+           `window.__ATELIERS__=${serialiseContent(ateliers)};` +
            `window.__SEO__=${serialiseContent(seoClient)}</script>`;
 
     let page = html.replace('</head>', `${tag}</head>`);
 
     if (rendable) {
-      const corps = rendreCorps(req.path, content, reglagesPublics(shop), catalogue, seoClient);
+      // L'adresse complète, chaîne de requête comprise — et non « req.path ».
+      //
+      // La grille lit sa page, son tri et ses fourchettes de prix dans les
+      // paramètres, par le routeur. Privé d'eux, le rendu serveur répondait
+      // toujours la première page : « ?page=2 » à « ?page=7 » servaient les
+      // vingt-quatre mêmes fiches que « ?page=1 ». Six pages identiques pour un
+      // robot qui les explore une à une, et cent cinquante-quatre fiches
+      // qu'aucun lien n'atteignait — le plan du site restait leur seul chemin.
+      //
+      // C'était aussi une divergence d'hydratation à chaque visite paginée : le
+      // navigateur, lui, voyait bien le paramètre, et rendait autre chose que
+      // ce que le serveur venait d'envoyer.
+      const corps = rendreCorps(req.originalUrl, content, reglagesPublics(shop, req.query.saison), catalogue, seoClient, journal, ateliers);
       // Une chaîne vide veut dire que le rendu a échoué ou n'est pas
       // disponible : on sert alors la coquille, exactement comme avant cette
       // étape. Le site ne doit jamais tomber pour une optimisation.

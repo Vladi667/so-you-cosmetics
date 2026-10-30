@@ -2,21 +2,55 @@ import React, { useState, useEffect, useRef, useId } from 'react';
 import { cheminProduit } from '../data/slug';
 import Lien from './Lien';
 import { useLanguage } from '../i18n/LanguageContext';
+import { getAbsenceNotice } from '../services/shop';
 import { getShipping, shippingCostFor, exigeAdresse, getGiftWrap, modeAutorise } from '../services/shop';
 import { totalPanier, nombreArticles } from '../services/panier';
-
+import { lireCaisse, ecrireCaisse, oublierCaisse } from '../services/caisse';
+import MoyensPaiement from './MoyensPaiement';
+import { chargerMoyens } from '../services/paiement';
+import { sourceVisite } from '../services/audience';
+import StatutBoutique from './StatutBoutique';
 import useVerrouDefilement from '../hooks/useVerrouDefilement';
 
 const CHAMP_CAISSE = 'w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40';
 
 const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, onAddToCart }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const title = type === 'cart' ? t('drawer.cartTitle') : t('drawer.favTitle');
+
+  // Le message d'absence, là où la question se pose vraiment.
+  //
+  // Il existait déjà, en bandeau au-dessus du site — mais on décide d'acheter
+  // dans le panier, pas dans l'en-tête, et « je pars deux semaines » se lit
+  // autrement juste avant de payer. Le même réglage, la même case à cocher :
+  // rien de nouveau à tenir à jour, et rien ne s'affiche le reste de l'année.
+  const messageAbsence = getAbsenceNotice(language);
   const [isCheckoutMode, setIsCheckoutMode] = useState(false);
-  const [checkoutForm, setCheckoutForm] = useState({ name: '', email: '' });
+  // Repris de ce qui a deja ete tape : le tiroir se demonte en se fermant,
+  // et repartir du vide effacait le nom et l'adresse des qu'on retournait
+  // chercher un article de plus.
+  const [checkoutForm, setCheckoutForm] = useState(() => {
+    const garde = lireCaisse();
+    return {
+      name: garde.name,
+      email: garde.email,
+      // Le telephone sert au transporteur pour un colis signe ; la societe
+      // figure sur la facture quand l'achat est professionnel. Les deux sont
+      // facultatifs : les exiger ferait abandonner des paniers.
+      phone: garde.phone || '',
+      company: garde.company || '',
+    };
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [sumupCheckoutId, setSumupCheckoutId] = useState(null);
+  const [googlePayId, setGooglePayId] = useState(null);
+  // TWINT, par Payrexx : proposé seulement quand il est réglé, et payé dans le
+  // panier même, sans quitter la page.
+  const [twintDispo, setTwintDispo] = useState(false);
+  const [moyen, setMoyen] = useState('carte');
+  const [twintLien, setTwintLien] = useState(null);
+  const twintRef = useRef(null);
   const [orderId, setOrderId] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
   const shipping = getShipping();
@@ -24,7 +58,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
   // L'adresse de livraison n'etait demandee nulle part, alors que huit des neuf
   // modes d'expedition sont postaux : elle devait ecrire a chaque cliente apres
   // paiement pour savoir ou envoyer le colis.
-  const [adresse, setAdresse] = useState({ line1: '', line2: '', zip: '', city: '', country: 'CH' });
+  const [adresse, setAdresse] = useState(() => lireCaisse().adresse);
   // Decochee par defaut, et bloquante : une acceptation pre-cochee n'en est pas
   // une, et c'est le seul bouton du site qui declenche un paiement.
   const [cgvAcceptees, setCgvAcceptees] = useState(false);
@@ -99,15 +133,35 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
       setCheckoutSuccess(false);
       setCheckoutError(null);
       setSumupCheckoutId(null);
+      setTwintLien(null);
       setOrderId(null);
-      setCheckoutForm({ name: '', email: '' });
-      setAdresse({ line1: '', line2: '', zip: '', city: '', country: 'CH' });
+      // Le nom, l'e-mail et l'adresse ne sont PLUS effaces ici. C'est cette
+      // remise a zero qui faisait perdre la saisie quand on retournait a la
+      // boutique chercher un article de plus : le geste meme qu'une boutique
+      // veut encourager. Ils sont gardes dans le navigateur, et repris au
+      // remontage du tiroir.
+      //
+      // L'acceptation des conditions, elle, retombe : une case deja cochee en
+      // revenant n'est pas une acceptation.
       setCgvAcceptees(false);
       setTentativeSansCgv(false);
       setCadeau({ destinataire: '', email: '', message: '', date: '', emballage: false });
     }, 500); // le temps de la transition de fermeture
     return () => clearTimeout(id);
   }, [isOpen]);
+
+  // Garde ce qui est tape, au fil de la frappe. Ecrire a chaque touche est sans
+  // consequence : localStorage est synchrone et le volume tient en quelques
+  // centaines d'octets.
+  useEffect(() => {
+    ecrireCaisse({
+      name: checkoutForm.name,
+      email: checkoutForm.email,
+      phone: checkoutForm.phone,
+      company: checkoutForm.company,
+      adresse,
+    });
+  }, [checkoutForm.name, checkoutForm.email, checkoutForm.phone, checkoutForm.company, adresse]);
 
   const getImageUrl = (product) => {
     if (product.imageUrl) return product.imageUrl;
@@ -121,11 +175,18 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
       window.SumUpCard.mount({
         id: 'sumup-card',
         checkoutId: sumupCheckoutId,
+        // Sans cet objet, le module n'affiche jamais Google Pay, même activé
+        // chez SumUp. L'identifiant se règle dans l'administration.
+        ...(googlePayId ? { googlePay: { merchantId: googlePayId, merchantName: 'So You Cosmetics' } } : {}),
         onResponse: function (type, body) {
           console.log('SumUp Response:', type, body);
           if (type === 'success') {
             setCheckoutSuccess(true);
             setSumupCheckoutId(null);
+            // La commande est enregistree cote serveur : garder nom, e-mail et
+            // adresse dans le navigateur n'a plus d'utilite, et ce sont des
+            // donnees personnelles.
+            oublierCaisse();
             // Tell the shop straight away rather than waiting on SumUp's
             // webhook. The server does not take our word for it — it asks
             // SumUp — so this only shortens the delay, it cannot fake a
@@ -138,7 +199,61 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
         },
       });
     }
-  }, [sumupCheckoutId, orderId]);
+  }, [sumupCheckoutId, orderId, googlePayId]);
+
+  useEffect(() => {
+    let actif = true;
+    chargerMoyens().then((m) => { if (actif) setTwintDispo(m.twint); });
+    return () => { actif = false; };
+  }, []);
+
+  // Le paiement TWINT ouvert : on attend que Payrexx le dise payé.
+  //
+  // Deux signaux, comme pour SumUp. La fenêtre Payrexx annonce la transaction
+  // par postMessage ; et, parce qu'un téléphone qui bascule vers l'app TWINT
+  // peut revenir sans que ce message parte, le serveur est interrogé toutes
+  // les quatre secondes. Ni l'un ni l'autre ne décide : /confirm demande à
+  // Payrexx, et le webhook confirme de toute façon si l'onglet est fermé.
+  useEffect(() => {
+    if (!twintLien || !orderId) return;
+    let fini = false;
+    const terminer = () => {
+      if (fini) return;
+      fini = true;
+      setTwintLien(null);
+      setCheckoutSuccess(true);
+      oublierCaisse();
+    };
+    const verifier = () =>
+      fetch(`/api/orders/${orderId}/confirm`, { method: 'POST' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d && d.paid) terminer(); })
+        .catch(() => {});
+    const surMessage = (e) => {
+      if (!/\.payrexx\.com$/.test(new URL(e.origin, window.location.href).hostname)) return;
+      let msg = e.data;
+      try { if (typeof msg === 'string') msg = JSON.parse(msg); } catch { return; }
+      const p = msg && msg.payrexx;
+      if (!p) return;
+      if (p.height && twintRef.current) twintRef.current.style.height = `${Math.max(420, Number(p.height))}px`;
+      if (p.transaction && p.transaction.status === 'confirmed') verifier();
+    };
+    window.addEventListener('message', surMessage);
+    const minuterie = setInterval(verifier, 4000);
+    const limite = setTimeout(() => clearInterval(minuterie), 15 * 60 * 1000);
+    return () => {
+      fini = true;
+      window.removeEventListener('message', surMessage);
+      clearInterval(minuterie);
+      clearTimeout(limite);
+    };
+  }, [twintLien, orderId]);
+
+  // Payrexx n'envoie ses messages qu'à une page qui s'est présentée.
+  const presenterOrigine = () => {
+    const f = twintRef.current;
+    if (f && f.contentWindow) f.contentWindow.postMessage(JSON.stringify({ origin: window.location.origin }), twintLien);
+  };
 
   const getPrice = (product) => {
     return product.price || product['Variant Price'] || 0;
@@ -195,6 +310,8 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
     const orderPayload = {
       name: checkoutForm.name,
       email: checkoutForm.email,
+      phone: checkoutForm.phone,
+      company: checkoutForm.company,
       shippingId,
       // Nulle pour un retrait : il n'y a rien a expedier. Le serveur refait le
       // meme controle — le navigateur ne decide pas de ce qui est exigible.
@@ -203,6 +320,11 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
       // Le serveur refait le contrôle et date l'acceptation dans la commande :
       // la case ci-dessus bloque le bouton, elle ne prouve rien à elle seule.
       cgvAcceptees: true,
+      moyen: twintDispo && moyen === 'twint' ? 'twint' : 'carte',
+      langue: language,
+      // D'où venait la visite (annonce, recherche, infolettre…), pour savoir ce
+      // que chaque canal rapporte. Aucun identifiant : voir services/audience.js.
+      source: sourceVisite(),
       items: items.map(item => ({
         id: item.id,
         name: getName(item),
@@ -210,7 +332,9 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
         price: getPrice(item),
         // Le drapeau, pas le prix : le serveur lira le tarif de recharge dans
         // le catalogue. Le navigateur demande une variante, il ne la chiffre pas.
-        recharge: Boolean(item.recharge)
+        recharge: Boolean(item.recharge),
+        // Même règle pour la contenance : on envoie laquelle, pas combien.
+        varianteId: item.varianteId || null
       }))
     };
 
@@ -235,7 +359,10 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
       .then(data => {
         setIsSubmitting(false);
         setOrderId(data.orderId);
-        if (data.checkoutId && !data.checkoutId.startsWith('mock_')) {
+        if (data.twint && data.twint.lien) {
+          setTwintLien(data.twint.lien);
+        } else if (data.checkoutId && !data.checkoutId.startsWith('mock_')) {
+          setGooglePayId(data.googlePayMerchantId || null);
           setSumupCheckoutId(data.checkoutId);
         } else {
           setCheckoutSuccess(true);
@@ -329,6 +456,32 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                 {t('drawer.close')}
               </button>
             </div>
+          ) : twintLien ? (
+            /* Payrexx, restreint à TWINT */
+            <div className="pt-4">
+              <h3 className="font-serif text-xl text-slate-stone mb-2 text-center">{t('drawer.twintTitle')}</h3>
+              <p className="font-sans text-xs text-stone-gray text-center mb-4">{t('drawer.twintHint')}</p>
+              <iframe
+                ref={twintRef}
+                src={twintLien}
+                title={t('drawer.twintTitle')}
+                allow="payment *"
+                onLoad={presenterOrigine}
+                className="w-full rounded-2xl border border-slate-stone/10 bg-white"
+                style={{ height: 620 }}
+              />
+              <a href={twintLien} target="_blank" rel="noopener"
+                className="block mt-3 text-center font-sans text-[11px] text-stone-gray underline underline-offset-2 hover:text-slate-stone">
+                {t('drawer.twintNewTab')}
+              </a>
+              <button
+                type="button"
+                onClick={() => setTwintLien(null)}
+                className="mt-4 w-full py-3 bg-transparent text-stone-gray/60 font-sans uppercase tracking-[0.2em] text-[10px] rounded-full hover:text-slate-stone transition-all"
+              >
+                {t('drawer.cancel')}
+              </button>
+            </div>
           ) : sumupCheckoutId ? (
             /* SumUp Payment Widget */
             <div className="pt-4">
@@ -365,6 +518,11 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
             )}
 
             <form onSubmit={handleCheckoutSubmit} className="space-y-6 pt-4">
+              {messageAbsence && (
+                <p className="rounded-2xl border border-[#C8A96B]/40 bg-[#FBF6EC] px-4 py-3 font-sans text-xs leading-relaxed text-[#7A5C2E]">
+                  {messageAbsence}
+                </p>
+              )}
               {contientRecharge && (
                 <p className="rounded-2xl bg-mist-white px-4 py-3 font-sans text-xs leading-relaxed text-stone-gray">
                   {t('drawer.refillPickupOnly')}
@@ -392,10 +550,19 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                           />
                           <span className="flex-1 min-w-0">
                             <span className="block font-sans text-sm text-slate-stone">{o.label}</span>
-                            {o.note && <span className="block font-sans text-[11px] text-stone-gray/80">{o.note}</span>}
+                            {o.note && o.id !== 'pickup' && <span className="block font-sans text-[11px] text-stone-gray/80">{o.note}</span>}
+                            {/* Le retrait fait venir en boutique, où l'on
+                                achète souvent autre chose : il dit où, quand
+                                c'est prêt, et si c'est ouvert. */}
+                            {o.id === 'pickup' && (
+                              <>
+                                <span className="block font-sans text-[11px] text-stone-gray/80">{t('boutique.retrait')}</span>
+                                <StatutBoutique boutons={false} className="mt-1" />
+                              </>
+                            )}
                           </span>
                           <span className="font-sans text-sm text-slate-stone whitespace-nowrap">
-                            {cout === 0 ? (offert ? t('drawer.shippingFree') : t('drawer.shippingIncluded')) : `CHF ${cout.toFixed(2)}`}
+                            {cout === 0 ? (offert || o.id === 'pickup' ? t('drawer.shippingFree') : t('drawer.shippingIncluded')) : `CHF ${cout.toFixed(2)}`}
                           </span>
                         </label>
                       );
@@ -428,6 +595,39 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                   value={checkoutForm.email}
                   onChange={(e) => setCheckoutForm({ ...checkoutForm, email: e.target.value })}
                   placeholder="votre@email.com"
+                  className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40 transition-all"
+                />
+              </div>
+
+              {/* Facultatifs tous les deux, et marques comme tels. Le telephone
+                  n'existe que parce que La Poste le reclame pour un envoi
+                  signe ; la societe sert a etablir la facture au bon nom. Les
+                  rendre obligatoires ferait perdre des commandes pour une
+                  donnee dont on n'a pas toujours l'usage. */}
+              <div>
+                <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">
+                  {t('drawer.phone')}{' '}
+                  <span className="font-normal normal-case tracking-normal text-stone-gray/60">{t('drawer.optional')}</span>
+                </label>
+                <input
+                  type="tel"
+                  value={checkoutForm.phone}
+                  onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })}
+                  placeholder={t('drawer.phonePlaceholder')}
+                  className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">
+                  {t('drawer.company')}{' '}
+                  <span className="font-normal normal-case tracking-normal text-stone-gray/60">{t('drawer.optional')}</span>
+                </label>
+                <input
+                  type="text"
+                  value={checkoutForm.company}
+                  onChange={(e) => setCheckoutForm({ ...checkoutForm, company: e.target.value })}
+                  placeholder={t('drawer.companyPlaceholder')}
                   className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40 transition-all"
                 />
               </div>
@@ -599,6 +799,20 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                 <p role="alert" className="font-sans text-xs text-red-600">{t('drawer.termsRequired')}</p>
               )}
 
+              {twintDispo && (
+                <fieldset className="pt-2">
+                  <legend className="font-sans text-[10px] uppercase tracking-[0.2em] text-stone-gray mb-2">{t('drawer.payWith')}</legend>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {[['carte', t('drawer.payByCard')], ['twint', t('drawer.payByTwint')]].map(([v, libelle]) => (
+                      <label key={v}
+                        className={`flex items-center gap-2 px-4 py-3 rounded-2xl border cursor-pointer font-sans text-xs ${moyen === v ? 'border-slate-stone bg-mist-white text-slate-stone' : 'border-slate-stone/15 text-stone-gray'}`}>
+                        <input type="radio" name="moyen" value={v} checked={moyen === v} onChange={() => setMoyen(v)} className="accent-slate-stone" />
+                        {libelle}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
               <div className="pt-4 flex flex-col gap-3">
                 <button 
                   type="submit"
@@ -619,6 +833,7 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                     avant de payer : qui prend ma carte, quand j'aurai le colis,
                     a qui je m'adresse si ca tourne mal. Elles ne disent que ce
                     que le site affirme deja ailleurs. */}
+                <MoyensPaiement className="mt-2" libelle={t('drawer.paymentMethods')} />
                 <ul className="mt-2 space-y-1.5 font-sans text-[11px] leading-relaxed text-stone-gray/80">
                   <li>{t('drawer.trustPayment')}</li>
                   <li>{t('drawer.trustMade')}</li>
@@ -677,6 +892,16 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
                       </Lien>
                     ) : (
                       <h4 className="font-sans text-sm font-medium text-slate-stone truncate">{getName(item)}</h4>
+                    )}
+
+                    {/* La contenance, dans le panier aussi.
+                        Le nom d'une ligne est tronqué, et c'est justement en fin
+                        de nom que se trouve « 15 ml » ou « 50 ml ». Deux
+                        contenances de la même crème arrivaient donc au paiement
+                        sous un libellé identique, à des prix différents : c'est
+                        le pire endroit où laisser un doute. */}
+                    {item.contenance && (
+                      <p className="font-sans text-xs text-stone-gray/70 mt-0.5">{item.contenance}</p>
                     )}
 
                     {/* Le prix de ligne en clair. « CHF 12.90 » sur une ligne de
@@ -774,6 +999,17 @@ const SideDrawer = ({ isOpen, onClose, items, type, onRemove, onQuantityChange, 
               className="press w-full py-4 bg-slate-stone text-white font-sans uppercase tracking-[0.3em] text-xs rounded-full hover:bg-slate-stone/90 shadow-lg hover:shadow-xl"
             >
               {t('drawer.order')}
+            </button>
+            {/* Demande par la cliente : depuis le panier, rien ne ramenait a la
+                boutique. Fermer le tiroir suffit — on est deja sur le site —
+                encore fallait-il qu'un bouton le dise. En retrait par rapport a
+                « Commander », qui reste l'action principale. */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="press w-full mt-3 py-3 font-sans uppercase tracking-[0.2em] text-[11px] text-stone-gray hover:text-slate-stone transition-colors"
+            >
+              {t('drawer.continueShopping')}
             </button>
           </div>
         )}

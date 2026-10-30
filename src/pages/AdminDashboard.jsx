@@ -3,12 +3,25 @@ import ContentEditor from './admin/ContentEditor';
 import ShopSettings from './admin/ShopSettings';
 import RichTextEditor from './admin/RichTextEditor';
 import JournalEditor from './admin/JournalEditor';
+import InfolettreEditor from './admin/InfolettreEditor';
+import PaniersAbandonnes from './admin/PaniersAbandonnes';
+import Marketing from './admin/Marketing';
+import Accueil from './admin/Accueil';
+import FichierClients from './admin/FichierClients';
+import Caisse from './admin/Caisse';
+import Comptoir from './admin/Comptoir';
+import ApercuFiche from './ApercuFiche';
+import { imageUrl } from '../services/products';
 import { SHOP_CATEGORIES } from '../data/categories';
 
 // Order status has been written in mixed case over the life of the shop
 // ('paid' from the payment paths, 'Paid' from the admin dropdown). Compare on
 // a folded key so a paid order is never displayed as "En attente".
 const statusKey = (s) => String(s || '').toLowerCase();
+
+// La référence d'un produit dans la caisse SumUp. Même règle que
+// server/caisse.js (sku) : tirée de l'identifiant, qui ne change jamais.
+const skuProduit = (id) => `SY-${String(id || '').replace(/^product_/, '').replace(/[^a-z0-9]/gi, '').slice(0, 8).toUpperCase()}`;
 
 // Le marqueur qui remonte un produit en page d'accueil. Ce n'est pas une
 // rubrique — il se range avec les catégories parce qu'il se saisit au même
@@ -40,27 +53,103 @@ const basculerCategorie = (texte, nom) => {
   return liste.join(', ');
 };
 
+// Les produits proposables en « Vous aimerez aussi », filtrés et rangés.
+// Renvoie des groupes [titre, produits] : un seul sans titre en ordre
+// alphabétique, un par rubrique sinon. La rubrique est la première de la fiche
+// qui n'est pas le marqueur « Coup de cœur ».
+const groupesLies = (products, form, recherche, classement) => {
+  const cle = plier(recherche);
+  const deja = new Set([form.id, ...(form.related || [])]);
+  const alpha = (a, b) => String(a).localeCompare(String(b), 'fr', { sensitivity: 'base' });
+  const liste = products
+    .filter((p) => !deja.has(p.id))
+    .filter((p) => !cle || plier(`${p.name} ${p.contenance || ''}`).includes(cle))
+    .sort((a, b) => alpha(a.name, b.name));
+  if (classement !== 'categorie') return liste.length ? [['', liste]] : [];
+  const groupes = new Map();
+  for (const p of liste) {
+    const rubrique = (p.collections || []).find((c) => plier(c) !== plier(COUP_DE_COEUR)) || 'Sans catégorie';
+    if (!groupes.has(rubrique)) groupes.set(rubrique, []);
+    groupes.get(rubrique).push(p);
+  }
+  return [...groupes].sort(([a], [b]) => alpha(a, b));
+};
+
+// Les sections de la fiche, et ce qui compte comme rempli dans chacune.
+//
+// Le compteur n'est pas une note : il dit ce qui reste, pour qu'une section
+// repliée dans le défilement ne se fasse pas oublier. Seuls les champs qui
+// pèsent vraiment sur la boutique ou sur le référencement sont comptés — un
+// champ facultatif absent du compte n'est pas un reproche.
+const remplie = (v) => String(v == null ? '' : v).trim() !== '';
+
+const SECTIONS_FICHE = [
+  { id: 'identite', titre: 'Identité', total: 5, remplis: (f) =>
+      [remplie(f.name), remplie(f.price), remplie(f.ordre), remplie(f.ribbon), remplie(f.collectionsText)].filter(Boolean).length },
+  { id: 'photos', titre: 'Photos', total: 1, remplis: (f) => ((f.images || []).length ? 1 : 0) },
+  { id: 'format', titre: 'Format et poids', total: 1, remplis: (f) => {
+      const formats = (f.variantes || []).filter((v) => remplie(v.libelle) && Number(v.prix) > 0);
+      return (formats.length > 1 || remplie(f.contenance)) ? 1 : 0;
+    } },
+  { id: 'texte', titre: 'Texte', total: 3, remplis: (f) =>
+      [remplie(String(f.description || '').replace(/<[^>]*>/g, '')), remplie(f.ingredients), remplie(f.inci)].filter(Boolean).length },
+  { id: 'decouverte', titre: 'Découverte', total: 4, remplis: (f) =>
+      [remplie(f.typePeauText), remplie(f.besoinsText), remplie(f.etiquettesText), remplie(f.rechargePrix)].filter(Boolean).length },
+  { id: 'liens', titre: 'Liens', total: 4, remplis: (f) =>
+      [(f.related || []).length > 0, remplie(f.rituelId), remplie(f.rituelEtape), remplie(f.rituelGeste)].filter(Boolean).length },
+];
+
+function EnteteSection({ section, form, chapeau }) {
+  const n = section.remplis(form);
+  return (
+    <>
+      <header className="flex items-baseline gap-3 mb-1">
+        <h3 className="font-serif text-2xl text-slate-stone font-light">{section.titre}</h3>
+        <span className={`ml-auto font-sans text-[11px] tabular-nums ${
+          n === section.total ? 'text-slate-stone font-medium' : 'text-stone-gray/50'
+        }`}>{n}/{section.total}</span>
+      </header>
+      <p className="text-[12px] text-stone-gray mb-5 max-w-[62ch]">{chapeau}</p>
+    </>
+  );
+}
+
 const AdminDashboard = ({ onLogout }) => {
-  const [activeTab, setActiveTab] = useState('orders');
+  const [activeTab, setActiveTab] = useState('accueil');
+  // Sur téléphone, le menu se replie : il remplissait tout le premier écran,
+  // et le contenu commençait sous quinze boutons.
+  const [menuOuvert, setMenuOuvert] = useState(false);
   // Les inscrites a l'infolettre. Elles etaient collectees depuis le debut sans
   // qu'aucun ecran ne permette de les relire.
   const [abonnees, setAbonnees] = useState([]);
   const [orders, setOrders] = useState([]);
   const [bookings, setBookings] = useState([]);
-  const [clients, setClients] = useState([]);
+  const [, setClients] = useState([]);
   const [workshops, setWorkshops] = useState([]);
   const [workshopForm, setWorkshopForm] = useState({ id: null, title: '', description: '', price: '', duration: '', image_url: '', starts_at: '' });
   const [products, setProducts] = useState([]);
   const [productForm, setProductForm] = useState({ id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [] });
   const [productSearch, setProductSearch] = useState('');
+  // Le choix des « Vous aimerez aussi » : sa propre recherche et son classement.
+  const [rechercheLies, setRechercheLies] = useState('');
+  const [classementLies, setClassementLies] = useState('alpha');
   const [productsPage, setProductsPage] = useState(1);
+  // La cliente dont on regarde l'historique. Une seule à la fois : déplier tout
+  // le fichier donnerait un mur qu'on ne lit pas.
+  // Cent soixante-dix-huit fiches dans l'ordre de l'export Wix : pour retrouver
+  // un savon, il fallait le chercher au nom ou tourner sept pages.
+  const [triProduits, setTriProduits] = useState('alpha');
+  // « Stock bas » : seulement les produits à leur seuil d'alerte ou dessous.
+  // Le seuil général vient des réglages de la boutique.
+  const [stockBasSeul, setStockBasSeul] = useState(false);
+  const [seuilGeneral, setSeuilGeneral] = useState(3);
   const [imageUploading, setImageUploading] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState('');
   // true when the badge is free text rather than one of the two presets
   const [customBadge, setCustomBadge] = useState(false);
   const [workshopImageUploading, setWorkshopImageUploading] = useState(false);
   const PRODUCTS_PER_PAGE = 25;
-  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', inStock: true, related: [], ordre: '', poids: '', contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '', rechargePrix: '' };
+  const emptyProductForm = { id: null, name: '', price: '', ribbon: '', collectionsText: '', images: [], description: '', stock: '', seuilAlerte: '', sumupNom: '', annonces: false, inStock: true, related: [], ordre: '', poids: '', contenance: '', ingredients: '', inci: '', typePeauText: '', besoinsText: '', etiquettesText: '', bonCadeau: false, rituelId: '', rituelEtape: '', rituelGeste: '', rechargePrix: '', variantes: [], enLigne: true };
   // Charger un produit dans le formulaire.
   //
   // Les deux entrées — « Modifier » et « Dupliquer » — construisaient chacune
@@ -71,14 +160,24 @@ const AdminDashboard = ({ onLogout }) => {
   const chargerProduitDansFormulaire = (p, { copie = false } = {}) => ({
     ...emptyProductForm,
     id: copie ? null : p.id,
-    name: copie ? `${p.name} (copie)` : (p.name || ''),
+    // « (copie) » ne s'empile pas. Dupliquer une copie donnait « (copie)
+    // (copie) », et une troisième fois en aurait mis trois — trois fiches dont
+    // le nom ne disait plus rien de ce qui les distingue. Une seule mention
+    // suffit à signaler qu'il reste un nom à écrire.
+    name: copie
+      ? (/\(copie\)\s*$/i.test(p.name || '') ? p.name : `${p.name} (copie)`)
+      : (p.name || ''),
     price: p.price ?? '',
     ribbon: p.ribbon || '',
     collectionsText: (p.collections || []).join(', '),
     images: Array.isArray(p.images) ? [...p.images] : [],
     description: p.description || '',
     stock: p.stock == null ? '' : String(p.stock),
+    seuilAlerte: p.seuilAlerte == null ? '' : String(p.seuilAlerte),
+    sumupNom: p.sumupNom || '',
+    annonces: p.annonces === true,
     inStock: p.inStock !== false,
+    enLigne: p.enLigne !== false,
     related: Array.isArray(p.related) ? [...p.related] : [],
     contenance: p.contenance || '',
     poids: p.poids ?? '',
@@ -95,7 +194,63 @@ const AdminDashboard = ({ onLogout }) => {
     rituelEtape: (p.rituel && p.rituel.etape) || '',
     rituelGeste: (p.rituel && p.rituel.geste) || '',
     rechargePrix: p.rechargePrix == null ? '' : String(p.rechargePrix),
+    // Tout en texte dans le formulaire : un champ nombre vidé rendrait NaN, et
+    // NaN dans une valeur d'input fait perdre le focus à chaque frappe.
+    variantes: (p.variantes || []).map((v) => ({
+      libelle: v.libelle || '',
+      prix: v.prix == null ? '' : String(v.prix),
+      poids: v.poids == null ? '' : String(v.poids),
+    })),
   });
+
+  // L'empreinte de la fiche telle qu'elle a été ouverte.
+  //
+  // C'est elle qui dit à la barre d'action s'il reste quelque chose à
+  // enregistrer. Comparer deux sérialisations coûte moins cher que de poser un
+  // drapeau dans chacun des vingt-cinq gestionnaires de saisie — et surtout,
+  // aucun ne peut l'oublier.
+  const [empreinteOuverture, setEmpreinteOuverture] = useState(() => JSON.stringify(emptyProductForm));
+  const ficheModifiee = JSON.stringify(productForm) !== empreinteOuverture;
+
+  // La section qu'on est en train de lire, pour l'éclairer dans le sommaire.
+  const [sectionActive, setSectionActive] = useState('identite');
+
+  useEffect(() => {
+    const cibles = SECTIONS_FICHE
+      .map((s) => document.getElementById('fiche-' + s.id))
+      .filter(Boolean);
+    if (cibles.length === 0) return undefined;
+    const observateur = new IntersectionObserver((entrees) => {
+      entrees.forEach((e) => {
+        if (e.isIntersecting) setSectionActive(e.target.id.replace('fiche-', ''));
+      });
+    }, { rootMargin: '-10% 0px -70% 0px' });
+    cibles.forEach((c) => observateur.observe(c));
+    return () => observateur.disconnect();
+    // Les sections n'existent que sur l'onglet des produits : l'observateur se
+    // repose quand on en change, sinon il surveillerait des nœuds détachés.
+  }, [activeTab]);
+
+  // La liste des fiches, filtrée et rangée. Elle était recalculée à trois
+  // endroits — le compte, le tableau, la pagination — et rien ne garantissait
+  // que les trois disent la même chose.
+  const produitsListes = React.useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    const filtres = products.filter((p) => (!q || (p.name || '').toLowerCase().includes(q))
+      && (!stockBasSeul || (p.stock != null && Number(p.stock) <= (p.seuilAlerte ?? seuilGeneral))));
+    const parNom = (a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'fr', { sensitivity: 'base' });
+    if (triProduits === 'alpha') return [...filtres].sort(parNom);
+    if (triProduits === 'rubrique') {
+      return [...filtres].sort((a, b) => {
+        // Une fiche sans rubrique se range en fin de liste plutôt qu'en tête :
+        // c'est un oubli à corriger, pas une catégorie.
+        const ra = (a.collections || [])[0] || '\uffff';
+        const rb = (b.collections || [])[0] || '\uffff';
+        return ra.localeCompare(rb, 'fr', { sensitivity: 'base' }) || parNom(a, b);
+      });
+    }
+    return filtres;
+  }, [products, productSearch, triProduits, stockBasSeul, seuilGeneral]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -163,12 +318,64 @@ const AdminDashboard = ({ onLogout }) => {
     'Content-Type': 'application/json'
   };
 
+  // Le seuil d'alerte général, pour colorer et filtrer le stock des produits
+  // qui n'ont pas de seuil propre.
+  useEffect(() => {
+    fetch('/api/admin/settings/shop', { headers: fetchHeaders })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => { const n = Number(s && s.alerts && s.alerts.lowStockThreshold); if (Number.isFinite(n)) setSeuilGeneral(n); })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Invalidate the session server-side, then clear local state.
   const handleLogout = () => {
     fetch('/api/admin/logout', { method: 'POST', headers: fetchHeaders })
       .catch(() => {})
       .finally(() => onLogout());
   };
+
+  // Réduit une photo avant de l'envoyer.
+  //
+  // Les dix photos téléversées depuis l'atelier pèsent de 900 Ko à 4,5 Mo :
+  // elles sortent d'un téléphone, en 4000 px, et partaient telles quelles. Une
+  // fiche produit en chargeait onze mégaoctets — c'est la lenteur qu'elle
+  // signale, et c'est aussi ce que Google mesure pour classer la page.
+  //
+  // 1600 px suffit : c'est la plus grande taille que la boutique demande, sur
+  // un écran de bureau en pleine largeur. Le travail se fait dans son
+  // navigateur, donc rien à installer sur le serveur.
+  const reduirePhoto = (file) => new Promise((resolve, reject) => {
+    // Un format que le canvas ne sait pas décoder (HEIC, un TIFF) passe
+    // inchangé plutôt que d'échouer : mieux vaut une photo lourde qu'aucune.
+    if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
+      const brut = new FileReader();
+      brut.onload = () => resolve(brut.result);
+      brut.onerror = reject;
+      brut.readAsDataURL(file);
+      return;
+    }
+    const lecteur = new FileReader();
+    lecteur.onerror = reject;
+    lecteur.onload = () => {
+      const img = new Image();
+      img.onerror = () => resolve(lecteur.result);
+      img.onload = () => {
+        const MAX = 1600;
+        const ratio = Math.min(1, MAX / Math.max(img.width, img.height));
+        if (ratio === 1 && file.size < 400 * 1024) return resolve(lecteur.result);
+        const toile = document.createElement('canvas');
+        toile.width = Math.round(img.width * ratio);
+        toile.height = Math.round(img.height * ratio);
+        const ctx = toile.getContext('2d');
+        ctx.drawImage(img, 0, 0, toile.width, toile.height);
+        // 0,82 : au-delà le fichier grossit sans que l'œil y gagne.
+        const reduite = toile.toDataURL('image/jpeg', 0.82);
+        resolve(reduite.length < lecteur.result.length ? reduite : lecteur.result);
+      };
+      img.src = lecteur.result;
+    };
+    lecteur.readAsDataURL(file);
+  });
 
   // Upload one or more image files from the admin's computer; append the
   // resulting public URLs to the product form's image list.
@@ -179,12 +386,7 @@ const AdminDashboard = ({ onLogout }) => {
     try {
       const urls = [];
       for (const file of files) {
-        const dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+        const dataUrl = await reduirePhoto(file);
         const resp = await fetch('/api/admin/products/upload-image', {
           method: 'POST',
           headers: fetchHeaders,
@@ -281,6 +483,14 @@ const AdminDashboard = ({ onLogout }) => {
             .then((r) => (r.ok ? r.json() : []))
             .then((l) => setAbonnees(Array.isArray(l) ? l : []))
             .catch(() => setAbonnees([]));
+          // Les commandes aussi : le fichier clients ne donne qu'un compte et
+          // un total. « Trois commandes » ne dit pas lesquelles, ni quand, ni
+          // ce qu'il y avait dedans — c'est pourtant ce qu'on cherche quand on
+          // ouvre la fiche de quelqu'un.
+          fetch('/api/admin/orders', { headers: fetchHeaders })
+            .then((r) => (r.ok ? r.json() : []))
+            .then((l) => setOrders(Array.isArray(l) ? l : []))
+            .catch(() => { /* le tableau reste utilisable sans l'historique */ });
         }
         if (activeTab === 'workshops') setWorkshops(data);
         if (activeTab === 'products') setProducts(data);
@@ -295,6 +505,7 @@ const AdminDashboard = ({ onLogout }) => {
   useEffect(() => {
     if (activeTab === 'sumup') {
       loadSumupSettings();
+      chargerPayrexx();
       return;
     }
     if (activeTab === 'inbox') {
@@ -455,7 +666,7 @@ const AdminDashboard = ({ onLogout }) => {
       })
       .then(data => {
         setSumupSettings(data);
-        setSumupForm({ apiKey: '', merchantEmail: data.merchantEmail || '', webhookSecret: '' });
+        setSumupForm({ apiKey: '', merchantEmail: data.merchantEmail || '', webhookSecret: '', googlePayMerchantId: data.googlePayMerchantId || '' });
       })
       .catch(err => setSumupStatus({ success: '', error: err.message }));
   };
@@ -468,7 +679,7 @@ const AdminDashboard = ({ onLogout }) => {
     // Only send fields the user actually filled in. Empty apiKey/webhookSecret
     // means "leave as is" rather than "clear" — clearing is done via the
     // dedicated Effacer buttons.
-    const patch = { merchantEmail: sumupForm.merchantEmail };
+    const patch = { merchantEmail: sumupForm.merchantEmail, googlePayMerchantId: sumupForm.googlePayMerchantId || '' };
     if (sumupForm.apiKey) patch.apiKey = sumupForm.apiKey;
     if (sumupForm.webhookSecret) patch.webhookSecret = sumupForm.webhookSecret;
 
@@ -482,13 +693,53 @@ const AdminDashboard = ({ onLogout }) => {
         setSumupSaving(false);
         if (!ok) throw new Error(data.error || 'Erreur lors de la sauvegarde');
         setSumupSettings(data);
-        setSumupForm({ apiKey: '', merchantEmail: data.merchantEmail || '', webhookSecret: '' });
+        setSumupForm({ apiKey: '', merchantEmail: data.merchantEmail || '', webhookSecret: '', googlePayMerchantId: data.googlePayMerchantId || '' });
         setSumupStatus({ success: 'Paramètres SumUp mis à jour. Redémarrage du serveur non nécessaire.', error: '' });
       })
       .catch(err => {
         setSumupSaving(false);
         setSumupStatus({ success: '', error: err.message });
       });
+  };
+
+  // Ce que SumUp propose réellement pour un paiement en CHF — voir
+  // /api/admin/sumup/moyens dans server/routes.js.
+  const [diagMoyens, setDiagMoyens] = useState(null);
+  const verifierMoyens = () => {
+    setDiagMoyens({ chargement: true });
+    fetch('/api/admin/sumup/moyens', { headers: fetchHeaders })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => setDiagMoyens(ok ? data : { ...data, erreur: data.error || 'Erreur' }))
+      .catch((err) => setDiagMoyens({ erreur: err.message }));
+  };
+
+  // Payrexx, pour TWINT.
+  const [payrexx, setPayrexx] = useState({ instance: '', apiKeyConfigured: false, apiKeyLast4: null });
+  const [payrexxForm, setPayrexxForm] = useState({ instance: '', apiKey: '' });
+  const [payrexxStatut, setPayrexxStatut] = useState(null);
+  const chargerPayrexx = () => {
+    fetch('/api/admin/settings/payrexx', { headers: fetchHeaders })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Lecture des réglages Payrexx impossible'))))
+      .then((data) => { setPayrexx(data); setPayrexxForm({ instance: data.instance || '', apiKey: '' }); })
+      .catch((err) => setPayrexxStatut({ erreur: err.message }));
+  };
+  const envoyerPayrexx = (patch, message) => {
+    setPayrexxStatut(null);
+    fetch('/api/admin/settings/payrexx', { method: 'PUT', headers: fetchHeaders, body: JSON.stringify(patch) })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) throw new Error(data.error || 'Erreur lors de la sauvegarde');
+        setPayrexx(data);
+        setPayrexxForm({ instance: data.instance || '', apiKey: '' });
+        setPayrexxStatut({ ok: message });
+      })
+      .catch((err) => setPayrexxStatut({ erreur: err.message }));
+  };
+  const enregistrerPayrexx = (e) => {
+    e.preventDefault();
+    const patch = { instance: payrexxForm.instance };
+    if (payrexxForm.apiKey) patch.apiKey = payrexxForm.apiKey;
+    envoyerPayrexx(patch, 'Réglages Payrexx enregistrés.');
   };
 
   const clearSumupField = (field) => {
@@ -502,7 +753,7 @@ const AdminDashboard = ({ onLogout }) => {
       .then(res => res.json())
       .then(data => {
         setSumupSettings(data);
-        setSumupForm({ apiKey: '', merchantEmail: data.merchantEmail || '', webhookSecret: '' });
+        setSumupForm({ apiKey: '', merchantEmail: data.merchantEmail || '', webhookSecret: '', googlePayMerchantId: data.googlePayMerchantId || '' });
         setSumupStatus({ success: 'Champ effacé.', error: '' });
       })
       .catch(err => setSumupStatus({ success: '', error: err.message }));
@@ -525,6 +776,41 @@ const AdminDashboard = ({ onLogout }) => {
         }
       })
       .catch(err => alert(err.message));
+  };
+
+  // Supprimer une commande définitivement.
+  //
+  // Le serveur exige qu'elle ait d'abord été annulée ou remboursée ; ici on
+  // demande de RECOPIER son numéro. Ni l'un ni l'autre n'est une formalité :
+  // le premier sépare la décision d'écarter de celle d'effacer, le second
+  // empêche qu'un clic de trop parte tout seul. Le numéro n'est pas rappelé
+  // dans la demande — il est à l'écran, il faut aller le lire.
+  const handleDeleteOrder = (order) => {
+    const statut = String(order.status || '');
+    if (!['Cancelled', 'Refunded'].includes(statut)) {
+      alert("Passez d'abord cette commande en « Annulée » ou « Remboursée ».\n\n"
+        + 'On ne supprime que ce qui a déjà été écarté : une vraie commande ne '
+        + "doit pas pouvoir disparaître d'un seul geste.");
+      return;
+    }
+    const saisi = window.prompt(
+      'Suppression définitive.\n\n'
+      + 'Recopiez le numéro de la commande, tel qu\'il est affiché au-dessus, '
+      + 'pour confirmer.'
+    );
+    if (saisi === null) return;
+    if (saisi.trim() !== order.id) {
+      alert('Le numéro ne correspond pas. Rien n\'a été supprimé.');
+      return;
+    }
+    fetch(`/api/admin/orders/${order.id}`, { method: 'DELETE', headers: fetchHeaders })
+      .then(async (res) => {
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(d.error || 'La suppression a échoué');
+        setOrders((prev) => prev.filter((o) => o.id !== order.id));
+        setSelectedOrder(null);
+      })
+      .catch((err) => alert(err.message));
   };
 
   const handleChangePassword = (e) => {
@@ -594,16 +880,27 @@ const AdminDashboard = ({ onLogout }) => {
     <div className="pt-20 min-h-screen bg-mist-white flex flex-col md:flex-row font-sans">
       
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-white border-r border-slate-stone/5 p-6 flex flex-col justify-between shrink-0">
+      <aside className="w-full md:w-64 bg-white border-r border-slate-stone/5 px-6 py-4 md:p-6 flex flex-col justify-between shrink-0">
         <div>
-          <div className="mb-8 pt-4">
-            <h2 className="font-serif text-2xl text-slate-stone">Dashboard</h2>
-            <p className="text-[10px] text-stone-gray/60 uppercase tracking-widest mt-1">Session : {username}</p>
+          <div className="md:mb-8 md:pt-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-serif text-2xl text-slate-stone">Dashboard</h2>
+              <p className="text-[10px] text-stone-gray/60 uppercase tracking-widest mt-1">Session : {username}</p>
+            </div>
+            <button type="button" className="md:hidden px-4 py-2 rounded-xl border border-slate-stone/15 text-sm text-slate-stone"
+              aria-expanded={menuOuvert} onClick={() => setMenuOuvert(!menuOuvert)}>
+              {menuOuvert ? 'Fermer ✕' : 'Menu ☰'}
+            </button>
           </div>
           
-          <nav className="space-y-2">
+          <nav className={`space-y-2 mt-4 md:mt-0 ${menuOuvert ? 'block' : 'hidden'} md:block`}>
             {[
+              { id: 'accueil', label: 'Accueil', icon: '🏠' },
+              { id: 'comptoir', label: 'Comptoir', icon: '🛍️' },
               { id: 'orders', label: 'Commandes', icon: '🛒' },
+              { id: 'caisse', label: 'Ventes en boutique', icon: '🧾' },
+              { id: 'paniers', label: 'Paniers abandonnés', icon: '🛒' },
+              { id: 'marketing', label: 'Marketing', icon: '📈' },
               { id: 'products', label: 'Gestion des produits', icon: '🧴' },
               { id: 'workshops', label: 'Gestion des ateliers', icon: '🎨' },
               { id: 'clients', label: 'Fichier clients', icon: '👤' },
@@ -611,6 +908,7 @@ const AdminDashboard = ({ onLogout }) => {
               { id: 'sumup', label: 'API SumUp', icon: '💳' },
               { id: 'content', label: 'Textes du site', icon: '✏️' },
               { id: 'journal', label: 'Journal', icon: '📝' },
+              { id: 'infolettre', label: 'Infolettres', icon: '📬' },
               { id: 'shop', label: 'Horaires & absences', icon: '🕓' },
               { id: 'settings', label: 'Configuration et mot de passe', icon: '⚙️' }
             ].map(tab => (
@@ -619,6 +917,7 @@ const AdminDashboard = ({ onLogout }) => {
                 onClick={() => {
                   setActiveTab(tab.id);
                   setSelectedOrder(null);
+                  setMenuOuvert(false);
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium tracking-wide transition-all ${activeTab === tab.id ? 'bg-slate-stone text-white shadow-md' : 'text-stone-gray hover:bg-mist-white hover:text-slate-stone'}`}
               >
@@ -631,7 +930,7 @@ const AdminDashboard = ({ onLogout }) => {
 
         <button
           onClick={handleLogout}
-          className="mt-12 w-full py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-xs uppercase tracking-widest font-bold hover:bg-red-100 transition-colors"
+          className={`${menuOuvert ? 'block' : 'hidden'} md:block mt-12 w-full py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-xs uppercase tracking-widest font-bold hover:bg-red-100 transition-colors`}
         >
           Déconnexion 🚪
         </button>
@@ -709,8 +1008,8 @@ const AdminDashboard = ({ onLogout }) => {
                         </td>
                         <td className="p-6 text-right font-medium">CHF {order.total.toFixed(2)}</td>
                         <td className="p-6 text-center">
-                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusKey(order.status) === 'paid' ? 'bg-green-100 text-green-700' : statusKey(order.status) === 'shipped' ? 'bg-blue-100 text-blue-700' : statusKey(order.status) === 'readyforpickup' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
-                            {statusKey(order.status) === 'paid' ? 'Payé' : statusKey(order.status) === 'shipped' ? 'Envoyé' : statusKey(order.status) === 'readyforpickup' ? 'À retirer' : 'En attente'}
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusKey(order.status) === 'paid' ? 'bg-green-100 text-green-700' : statusKey(order.status) === 'shipped' ? 'bg-blue-100 text-blue-700' : statusKey(order.status) === 'readyforpickup' ? 'bg-purple-100 text-purple-700' : statusKey(order.status) === 'pickedup' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {statusKey(order.status) === 'paid' ? 'Payé' : statusKey(order.status) === 'shipped' ? 'Envoyé' : statusKey(order.status) === 'readyforpickup' ? 'À retirer' : statusKey(order.status) === 'pickedup' ? 'Remise' : 'En attente'}
                           </span>
                         </td>
                         <td className="p-6 text-center">
@@ -804,45 +1103,13 @@ const AdminDashboard = ({ onLogout }) => {
               <button onClick={loadData} className="px-4 py-2 bg-white rounded-lg border border-slate-stone/10 text-xs text-stone-gray hover:bg-slate-stone/5 transition-all">Rafraîchir 🔄</button>
             </div>
 
-            {loading ? (
-              <div className="py-24 text-center text-stone-gray/60">Chargement...</div>
-            ) : clients.length === 0 ? (
-              <div className="py-24 text-center bg-white rounded-3xl border border-slate-stone/5 text-stone-gray">Aucun client répertorié.</div>
-            ) : (
-              <div className="bg-white rounded-3xl border border-slate-stone/5 overflow-x-auto shadow-sm">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-stone/5 text-xs text-stone-gray tracking-wider uppercase font-bold bg-mist-white/30">
-                      <th className="p-6">Nom</th>
-                      <th className="p-6">Email</th>
-                      <th className="p-6 text-center">Commandes</th>
-                      <th className="p-6 text-center">Ateliers</th>
-                      <th className="p-6 text-right">Total dépensé</th>
-                      <th className="p-6 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {clients.map((client, idx) => (
-                      <tr key={idx} className="border-b border-slate-stone/5 hover:bg-mist-white/20 transition-colors text-sm text-slate-stone font-light">
-                        <td className="p-6 font-medium">{client.name || 'Client Anonyme'}</td>
-                        <td className="p-6 font-mono text-xs text-stone-gray">{client.email}</td>
-                        <td className="p-6 text-center font-bold text-slate-stone/60">{client.order_count}</td>
-                        <td className="p-6 text-center font-bold text-slate-stone/60">{client.booking_count}</td>
-                        <td className="p-6 text-right font-medium text-slate-stone">CHF {client.total_spent.toFixed(2)}</td>
-                        <td className="p-6 text-center">
-                          <button 
-                            onClick={() => setEmailModal({ isOpen: true, to: client.email, subject: 'So You Cosmetics - Message client', message: `Bonjour ${client.name || ''},\n\n` })}
-                            className="px-3 py-1.5 bg-mist-white hover:bg-slate-stone hover:text-white rounded-lg text-xs tracking-wider uppercase transition-all"
-                          >
-                            ✉️ Écrire
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            {/* Les fiches : historique, notes et tags, recherche, filtres,
+                export — voir admin/FichierClients.jsx. */}
+            <FichierClients
+              fetchHeaders={fetchHeaders}
+              onEcrire={(email, nom) => setEmailModal({ isOpen: true, to: email, subject: 'So You Cosmetics - Message client', message: `Bonjour ${nom || ''},\n\n` })}
+              onOuvrirCommande={(id) => { const o = orders.find((x) => x.id === id); if (o) setSelectedOrder(o); }}
+            />
 
             {/* Les inscriptions a l'infolettre.
                 Le formulaire du pied de page les enregistrait depuis le debut,
@@ -856,9 +1123,37 @@ const AdminDashboard = ({ onLogout }) => {
                   <p className="text-xs text-stone-gray mt-1">
                     {abonnees.length === 0
                       ? "Personne ne s'est encore inscrit depuis le pied de page."
-                      : `${abonnees.length} inscription${abonnees.length > 1 ? 's' : ''} depuis le pied de page du site.`}
+                      : `${abonnees.filter((a) => a.confirme_le).length} confirmée(s) — elles seules reçoivent l'infolettre. ${abonnees.filter((a) => !a.confirme_le).length} non confirmée(s).`}
                   </p>
+                  {/* Les non confirmées : en grande partie des robots, qui ont
+                      inscrit des centaines d'adresses en août et septembre 2026.
+                      Elles ne reçoivent rien ; ce bouton les retire de la liste. */}
+                  {abonnees.some((a) => !a.confirme_le) && (
+                    <p className="text-[11px] text-stone-gray mt-1 max-w-[70ch]">
+                      Une inscription non confirmée n'a pas cliqué le lien reçu par e-mail : c'est le plus
+                      souvent un robot qui a inscrit l'adresse de quelqu'un d'autre.
+                    </p>
+                  )}
                 </div>
+                {abonnees.some((a) => !a.confirme_le) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!window.confirm("Retirer de la liste toutes les inscriptions non confirmées de plus de 7 jours ?")) return;
+                      fetch('/api/admin/newsletter/non-confirmees', { method: 'DELETE', headers: fetchHeaders, body: JSON.stringify({ jours: 7 }) })
+                        .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+                        .then((d) => {
+                          const limite = Date.now() - 7 * 86400000;
+                          setAbonnees((prev) => prev.filter((x) => x.confirme_le || (x.created_at && new Date(x.created_at).getTime() >= limite)));
+                          window.alert(`${d.retirees} inscription(s) retirée(s).`);
+                        })
+                        .catch(() => window.alert("Le nettoyage n'a pas pu être effectué."));
+                    }}
+                    className="px-4 py-2 border border-slate-stone/20 text-slate-stone rounded-full text-[11px] uppercase tracking-widest hover:bg-mist-white transition-colors"
+                  >
+                    Retirer les non confirmées
+                  </button>
+                )}
                 {abonnees.length > 0 && (
                   <a
                     href="/api/admin/newsletter/export"
@@ -872,7 +1167,10 @@ const AdminDashboard = ({ onLogout }) => {
                 <div className="max-h-64 overflow-y-auto divide-y divide-slate-stone/5">
                   {abonnees.map((a, i) => (
                     <div key={i} className="flex items-baseline justify-between gap-4 py-2 text-sm">
-                      <span className="font-mono text-xs text-slate-stone truncate">{a.email}</span>
+                      <span className={`font-mono text-xs truncate ${a.confirme_le ? 'text-slate-stone' : 'text-stone-gray/60'}`}>
+                        {a.email}
+                        {!a.confirme_le && <span className="ml-2 font-sans text-[9px] uppercase tracking-widest">non confirmée</span>}
+                      </span>
                       <span className="flex items-baseline gap-3 whitespace-nowrap">
                         <span className="text-[11px] text-stone-gray">
                           {a.created_at ? new Date(a.created_at).toLocaleDateString('fr-CH') : '—'}
@@ -929,8 +1227,12 @@ const AdminDashboard = ({ onLogout }) => {
                   // product's images; the server ignores an empty list otherwise.
                   clearImages: productForm.images.length === 0,
                   stock: productForm.stock === '' ? null : productForm.stock,
+                  seuilAlerte: productForm.seuilAlerte === '' ? null : productForm.seuilAlerte,
+                  sumupNom: productForm.sumupNom || '',
+                  annonces: !!productForm.annonces,
                   related: productForm.related || [],
                   inStock: !!productForm.inStock,
+                  enLigne: productForm.enLigne !== false,
                   // Le quatrième endroit. La liste blanche du serveur est
                   // stricte : un champ absent d'ici est saisi, paraît accepté,
                   // et s'évapore au rechargement sans qu'aucune erreur ne le
@@ -948,7 +1250,11 @@ const AdminDashboard = ({ onLogout }) => {
                   rituel: productForm.rituelId
                     ? { id: productForm.rituelId, etape: productForm.rituelEtape, geste: productForm.rituelGeste }
                     : null,
-                  rechargePrix: productForm.rechargePrix === '' ? null : productForm.rechargePrix
+                  rechargePrix: productForm.rechargePrix === '' ? null : productForm.rechargePrix,
+                  // Les lignes à moitié remplies partent quand même : c'est le
+                  // serveur qui tranche ce qui est une contenance et ce qui est
+                  // une ligne oubliée, pour que la règle soit la même partout.
+                  variantes: productForm.variantes || []
                 };
                 fetch(url, { method, headers: fetchHeaders, body: JSON.stringify(payload) })
                   .then(res => {
@@ -958,346 +1264,740 @@ const AdminDashboard = ({ onLogout }) => {
                   })
                   .then(() => {
                     setProductForm(emptyProductForm);
+                    setEmpreinteOuverture(JSON.stringify(emptyProductForm));
                     setCustomBadge(false);
                     loadData();
                   })
                   .catch(err => alert(err.message));
-              }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" required placeholder="Nom du produit" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="px-4 py-2 border rounded" />
-                <input type="number" step="0.01" min="0" required placeholder="Prix (CHF)" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="px-4 py-2 border rounded" />
-                <div>
-                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Badge sur l'image</label>
-                  <select
-                    value={customBadge ? '__custom__' : productForm.ribbon}
-                    onChange={e => {
-                      const v = e.target.value;
-                      if (v === '__custom__') {
-                        setCustomBadge(true);
-                        setProductForm({ ...productForm, ribbon: '' });
-                      } else {
-                        setCustomBadge(false);
-                        setProductForm({ ...productForm, ribbon: v });
-                      }
-                    }}
-                    className="px-4 py-2 border rounded w-full"
-                  >
-                    <option value="">Aucun badge</option>
-                    <option value="coming-soon">Coming Soon / Bientôt disponible</option>
-                    <option value="best-seller">Best Seller / Meilleure vente</option>
-                    <option value="__custom__">Texte personnalisé…</option>
-                  </select>
-                  {customBadge && (
-                    <input
-                      type="text"
-                      autoFocus
-                      placeholder="ex : Hydrolat"
-                      value={productForm.ribbon}
-                      onChange={e => setProductForm({ ...productForm, ribbon: e.target.value })}
-                      className="px-4 py-2 border rounded w-full mt-2"
-                    />
-                  )}
-                  <p className="text-xs text-stone-gray mt-1">« Épuisé » s'affiche automatiquement via la case ci-dessous.</p>
-                </div>
-                <div>
-                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Catégories</label>
-                  {/* Le champ était libre, sans aucune liste sous les yeux :
-                      « maquillage » au lieu de « Maquillage » créait une
-                      rubrique distincte, non traduite, rangée en fin de menu
-                      au lieu de sa place — sans erreur ni avertissement.
-                      Les boutons écrivent la forme exacte ; le champ reste
-                      ouvert pour les rubriques qu'elle invente. */}
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {SHOP_CATEGORIES.map((cat) => {
-                      const active = aLaCategorie(productForm.collectionsText, cat);
+              }} className="xl:grid xl:grid-cols-[minmax(0,1fr)_312px] 2xl:grid-cols-[184px_minmax(0,1fr)_336px] xl:gap-6 2xl:gap-8 xl:items-start">
+
+                {/* Le sommaire.
+
+                    Des onglets auraient caché des champs qu'on oublie ensuite
+                    de remplir. Les ancres gardent tout à l'écran et donnent
+                    quand même une carte du territoire — plus, par section, le
+                    nombre de champs déjà remplis. */}
+                <nav className="hidden 2xl:block sticky top-6" aria-label="Sections de la fiche">
+                  <p className="font-sans text-[10px] uppercase tracking-[0.26em] text-stone-gray/70 mb-3 ml-3">La fiche</p>
+                  <ol className="flex flex-col gap-0.5">
+                    {SECTIONS_FICHE.map((s) => {
+                      const n = s.remplis(productForm);
+                      const actif = sectionActive === s.id;
                       return (
-                        <button
-                          key={cat}
-                          type="button"
-                          aria-pressed={active}
-                          onClick={() => setProductForm({ ...productForm, collectionsText: basculerCategorie(productForm.collectionsText, cat) })}
-                          className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
-                            active
-                              ? 'bg-slate-stone text-white border-slate-stone'
-                              : 'bg-white text-stone-gray border-gray-300 hover:border-slate-stone'
-                          }`}
-                        >
-                          {cat}
-                        </button>
+                        <li key={s.id}>
+                          <a
+                            href={`#fiche-${s.id}`}
+                            className={`grid grid-cols-[1fr_auto] items-center gap-2 px-3.5 py-2 rounded-lg text-sm transition-colors border-l-2 ${
+                              actif
+                                ? 'bg-white text-slate-stone border-mist-blue shadow-sm'
+                                : 'text-stone-gray border-transparent hover:bg-white/70 hover:text-slate-stone'
+                            }`}
+                          >
+                            <span>{s.titre}</span>
+                            <span className={`font-sans text-[11px] tabular-nums ${
+                              n === s.total ? 'text-slate-stone font-medium' : 'text-stone-gray/50'
+                            }`}>{n}/{s.total}</span>
+                          </a>
+                        </li>
                       );
                     })}
-                    <button
-                      type="button"
-                      aria-pressed={aLaCategorie(productForm.collectionsText, COUP_DE_COEUR)}
-                      onClick={() => setProductForm({ ...productForm, collectionsText: basculerCategorie(productForm.collectionsText, COUP_DE_COEUR) })}
-                      className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
-                        aLaCategorie(productForm.collectionsText, COUP_DE_COEUR)
-                          ? 'bg-amber-600 text-white border-amber-600'
-                          : 'bg-white text-amber-700 border-amber-300 hover:border-amber-600'
-                      }`}
-                    >
-                      ♥ {COUP_DE_COEUR}
-                    </button>
-                  </div>
-                  <input type="text" placeholder="Séparées par des virgules" value={productForm.collectionsText} onChange={e => setProductForm({...productForm, collectionsText: e.target.value})} className="px-4 py-2 border rounded w-full" />
-                  <p className="text-xs text-stone-gray mt-1">Cliquez une rubrique pour l’ajouter ou la retirer. <strong>{COUP_DE_COEUR}</strong> affiche le produit sur la page d’accueil. Vous pouvez aussi taper une rubrique à vous : elle apparaîtra dans le menu.</p>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Images</label>
-                  <div className="flex items-center gap-3 mb-2">
-                    <label className={`inline-flex items-center gap-2 px-4 py-2 rounded cursor-pointer text-sm font-medium ${imageUploading ? 'bg-gray-200 text-stone-gray cursor-wait' : 'bg-slate-stone text-white hover:opacity-90'}`}>
-                      {imageUploading ? 'Téléversement…' : '📤 Téléverser depuis mon ordinateur'}
-                      <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple disabled={imageUploading} onChange={handleImageUpload} className="hidden" />
-                    </label>
-                    <span className="text-xs text-stone-gray">PNG, JPG, WEBP · plusieurs fichiers possibles</span>
-                  </div>
-                  {productForm.images.length > 0 ? (
-                    <div className="flex flex-wrap gap-3 mb-3">
-                      {productForm.images.map((url, idx) => (
-                        <div key={`${url}-${idx}`} className="relative group">
-                          <img
-                            src={url}
-                            alt={`Image ${idx + 1}`}
-                            className="w-24 h-24 object-cover rounded border border-slate-stone/10 bg-mist-white"
-                            onError={e => { e.currentTarget.style.opacity = '0.25'; }}
+                  </ol>
+                </nav>
+
+                {/* La colonne des sections. `pb-28` laisse la place à la barre
+                    d'action, qui flotte au-dessus du bas de l'écran. */}
+                <div className="flex flex-col gap-4 pb-28">
+
+                  {/* ── Identité ─────────────────────────────────────────── */}
+                  <section id="fiche-identite" className="scroll-mt-6 bg-white rounded-2xl border border-slate-stone/10 p-5 sm:p-6 shadow-sm">
+                    <EnteteSection section={SECTIONS_FICHE[0]} form={productForm}
+                      chapeau="Ce qu'on lit en premier, sur la grille comme dans l'onglet du navigateur." />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Nom du produit</label>
+                        <input type="text" required placeholder="Nom du produit" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Prix (CHF)</label>
+                        <input type="number" step="0.01" min="0" required placeholder="Prix (CHF)" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Rang dans la boutique</label>
+                        <input type="number" step="1" placeholder="ex : 1" value={productForm.ordre}
+                          onChange={e => setProductForm({...productForm, ordre: e.target.value})}
+                          className="px-4 py-2 border rounded w-full" />
+                        <p className="text-[11px] text-stone-gray mt-1 leading-snug">
+                          Plus le nombre est petit, plus la fiche paraît tôt. Laissé vide, elle garde sa
+                          place actuelle, derrière celles qui portent un rang.
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Badge sur l'image</label>
+                        <select
+                          value={customBadge ? '__custom__' : productForm.ribbon}
+                          onChange={e => {
+                            const v = e.target.value;
+                            if (v === '__custom__') {
+                              setCustomBadge(true);
+                              setProductForm({ ...productForm, ribbon: '' });
+                            } else {
+                              setCustomBadge(false);
+                              setProductForm({ ...productForm, ribbon: v });
+                            }
+                          }}
+                          className="px-4 py-2 border rounded w-full"
+                        >
+                          <option value="">Aucun badge</option>
+                          <option value="coming-soon">Coming Soon / Bientôt disponible</option>
+                          <option value="best-seller">Best Seller / Meilleure vente</option>
+                          <option value="__custom__">Texte personnalisé…</option>
+                        </select>
+                        {customBadge && (
+                          <input
+                            type="text"
+                            autoFocus
+                            placeholder="ex : Hydrolat"
+                            value={productForm.ribbon}
+                            onChange={e => setProductForm({ ...productForm, ribbon: e.target.value })}
+                            className="px-4 py-2 border rounded w-full mt-2"
                           />
-                          {idx === 0 && (
-                            <span className="absolute bottom-1 left-1 bg-slate-stone/90 text-white text-[9px] tracking-wider uppercase px-1.5 py-0.5 rounded">Principale</span>
-                          )}
+                        )}
+                        <p className="text-xs text-stone-gray mt-1">« Épuisé » s'affiche automatiquement via la case ci-dessous.</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Stock (interne, non affiché)</label>
+                        <input type="number" min="0" step="1" placeholder="ex: 12" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                        {/* Elle demandait à quel format ce nombre correspond. À
+                            aucun en particulier : server/db.js décrémente ce
+                            compteur unique pour toute vente, quel qu'en soit le
+                            format. Autant le dire là où on le saisit. */}
+                        {(productForm.variantes || []).length > 1 && (
+                          <p className="text-[11px] text-stone-gray mt-1">
+                            Un seul stock pour tous les formats : saisissez le total. Chaque vente, quel que soit le format, le diminue.
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Seuil d’alerte</label>
+                        <input type="number" min="0" step="1" placeholder={`général : ${seuilGeneral}`} value={productForm.seuilAlerte} onChange={e => setProductForm({...productForm, seuilAlerte: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                        <p className="text-[11px] text-stone-gray mt-1">Alerte quand le stock descend à ce nombre. Vide : le seuil général de « Horaires & absences ».</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Nom dans la caisse SumUp</label>
+                        <input type="text" placeholder="si différent du nom de la fiche" value={productForm.sumupNom} onChange={e => setProductForm({...productForm, sumupNom: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                        <p className="text-[11px] text-stone-gray mt-1">Sert à reconnaître les ventes faites au comptoir (onglet « Ventes en boutique »).</p>
+                        <label className="flex items-start gap-2 mt-4 text-sm text-slate-stone cursor-pointer">
+                          <input type="checkbox" className="mt-1" checked={!!productForm.annonces} onChange={e => setProductForm({...productForm, annonces: e.target.checked})} />
+                          <span>
+                            Mis en avant dans Google Ads
+                            <span className="block text-[11px] text-stone-gray">Ces produits reçoivent leur propre budget d’annonces Shopping (étiquette « mise-en-avant » du flux Google). Rien ne change sur le site.</span>
+                          </span>
+                        </label>
+                        {productForm.id && (
+                          <p className="text-[11px] text-stone-gray mt-1">
+                            Référence SumUp (SKU) : <span className="font-mono text-slate-stone">{skuProduit(productForm.id)}</span>
+                            {(productForm.variantes || []).length > 0 && ' — chaque format ajoute son suffixe'}
+                          </p>
+                        )}
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Catégories</label>
+                        {/* Le champ était libre, sans aucune liste sous les yeux :
+                            « maquillage » au lieu de « Maquillage » créait une
+                            rubrique distincte, non traduite, rangée en fin de menu
+                            au lieu de sa place — sans erreur ni avertissement.
+                            Les boutons écrivent la forme exacte ; le champ reste
+                            ouvert pour les rubriques qu'elle invente. */}
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {SHOP_CATEGORIES.map((cat) => {
+                            const active = aLaCategorie(productForm.collectionsText, cat);
+                            return (
+                              <button
+                                key={cat}
+                                type="button"
+                                aria-pressed={active}
+                                onClick={() => setProductForm({ ...productForm, collectionsText: basculerCategorie(productForm.collectionsText, cat) })}
+                                className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                                  active
+                                    ? 'bg-slate-stone text-white border-slate-stone'
+                                    : 'bg-white text-stone-gray border-gray-300 hover:border-slate-stone'
+                                }`}
+                              >
+                                {cat}
+                              </button>
+                            );
+                          })}
                           <button
                             type="button"
-                            title="Retirer cette image"
-                            onClick={() => setProductForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }))}
-                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 text-white text-xs leading-none shadow hover:bg-red-700"
+                            aria-pressed={aLaCategorie(productForm.collectionsText, COUP_DE_COEUR)}
+                            onClick={() => setProductForm({ ...productForm, collectionsText: basculerCategorie(productForm.collectionsText, COUP_DE_COEUR) })}
+                            className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                              aLaCategorie(productForm.collectionsText, COUP_DE_COEUR)
+                                ? 'bg-amber-600 text-white border-amber-600'
+                                : 'bg-white text-amber-700 border-amber-300 hover:border-amber-600'
+                            }`}
                           >
-                            ✕
+                            ♥ {COUP_DE_COEUR}
                           </button>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">
-                      Aucune image. Si vous enregistrez ainsi, le produit s'affichera sans photo.
-                    </p>
-                  )}
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      placeholder="…ou collez une URL d'image / un lien Google Drive"
-                      value={imageUrlInput}
-                      onChange={e => setImageUrlInput(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key !== 'Enter') return;
-                        e.preventDefault();
-                        const v = imageUrlInput.trim();
-                        if (!v) return;
-                        setProductForm(f => ({ ...f, images: [...f.images, v] }));
-                        setImageUrlInput('');
-                      }}
-                      className="px-4 py-2 border rounded flex-1"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const v = imageUrlInput.trim();
-                        if (!v) return;
-                        setProductForm(f => ({ ...f, images: [...f.images, v] }));
-                        setImageUrlInput('');
-                      }}
-                      className="px-4 py-2 bg-gray-200 rounded text-sm whitespace-nowrap"
-                    >
-                      Ajouter l'URL
-                    </button>
-                  </div>
-                  <p className="text-xs text-stone-gray mt-1">La première image est celle affichée sur la boutique. Cliquez sur ✕ pour retirer une image ; les autres champs peuvent être modifiés sans y toucher.</p>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Description (HTML accepté)</label>
-                  <RichTextEditor
-                    value={productForm.description}
-                    onChange={(html) => setProductForm({ ...productForm, description: html })}
-                    placeholder="Description du produit — utilisez les boutons ci-dessus pour les sous-titres et le gras"
-                  />
-                </div>
-                <div>
-                  <div className="md:col-span-2 mb-4">
-                    <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">
-                      « Vous aimerez aussi » — jusqu'à 4 produits
-                    </label>
-                    <p className="text-[11px] text-stone-gray mb-2">
-                      Laissé vide, le site propose automatiquement des produits de la même catégorie.
-                    </p>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {(productForm.related || []).map((rid) => {
-                        const p = products.find((x) => x.id === rid);
-                        return (
-                          <span key={rid} className="inline-flex items-center gap-2 bg-mist-white border border-slate-stone/15 rounded-full px-3 py-1 text-xs text-slate-stone">
-                            {p ? p.name.slice(0, 40) : rid}
-                            <button type="button" aria-label="Retirer"
-                              onClick={() => setProductForm({ ...productForm, related: productForm.related.filter((x) => x !== rid) })}
-                              className="text-red-500 hover:text-red-700">×</button>
-                          </span>
-                        );
-                      })}
-                      {(productForm.related || []).length === 0 && (
-                        <span className="text-xs text-stone-gray/70">Sélection automatique</span>
-                      )}
-                    </div>
-                    <select
-                      value=""
-                      disabled={(productForm.related || []).length >= 4}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (!v || (productForm.related || []).includes(v)) return;
-                        setProductForm({ ...productForm, related: [...(productForm.related || []), v] });
-                      }}
-                      className="px-4 py-2 border rounded w-full text-sm disabled:opacity-40"
-                    >
-                      <option value="">{(productForm.related || []).length >= 4 ? 'Maximum atteint (4)' : 'Ajouter un produit…'}</option>
-                      {products.filter((p) => p.id !== productForm.id).map((p) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Stock (interne, non affiché)</label>
-                  <input type="number" min="0" step="1" placeholder="ex: 12" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} className="px-4 py-2 border rounded w-full" />
-                </div>
-
-                {/* Ce qu'il y a dans le flacon.
-                    Ces renseignements existent déjà pour une bonne part dans
-                    l'export Wix — 104 contenances et 101 listes d'ingrédients —
-                    et se relisent plutôt qu'ils ne se ressaisissent. Rien n'est
-                    obligatoire : un champ vide ne s'affiche simplement pas sur
-                    la fiche. */}
-                <div className="md:col-span-2 border-t pt-5 mt-2">
-                  <h4 className="text-xs uppercase tracking-widest text-stone-gray mb-4">Ce qu'il y a dans le flacon</h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">
-                      <label className="flex items-center gap-2 text-sm text-slate-stone">
-                        <input type="checkbox" checked={!!productForm.bonCadeau}
-                          onChange={e => setProductForm({...productForm, bonCadeau: e.target.checked})} />
-                        Ce produit est un bon cadeau
-                      </label>
-                      <p className="text-[11px] text-stone-gray mt-1">
-                        La caisse demandera alors le destinataire, un message et une date. Créez un produit par
+                        <input type="text" placeholder="Séparées par des virgules" value={productForm.collectionsText} onChange={e => setProductForm({...productForm, collectionsText: e.target.value})} className="px-4 py-2 border rounded w-full" />
+                        <p className="text-xs text-stone-gray mt-1">Cliquez une rubrique pour l’ajouter ou la retirer. <strong>{COUP_DE_COEUR}</strong> affiche le produit sur la page d’accueil. Vous pouvez aussi taper une rubrique à vous : elle apparaîtra dans le menu.</p>
+                      </div>
+                      <div className="md:col-span-2 flex flex-col sm:flex-row gap-4 sm:items-center">
+                        <label className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-red-50 border border-red-200 rounded">
+                          <input type="checkbox" checked={!productForm.inStock} onChange={e => setProductForm({...productForm, inStock: !e.target.checked})} className="w-4 h-4 accent-red-600" />
+                          <span className="text-sm text-red-700 font-medium">Marquer le produit comme épuisé</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-slate-stone">
+                          <input type="checkbox" checked={!!productForm.bonCadeau}
+                            onChange={e => setProductForm({...productForm, bonCadeau: e.target.checked})} />
+                          Ce produit est un bon cadeau
+                        </label>
+                        {/* « En attente » n'est pas « épuisé » : épuisé
+                            s'affiche en boutique avec sa pastille rouge, en
+                            attente n'y existe pas du tout. */}
+                        <label className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-amber-50 border border-amber-200 rounded">
+                          <input type="checkbox" checked={productForm.enLigne === false}
+                            onChange={e => setProductForm({...productForm, enLigne: !e.target.checked})}
+                            className="w-4 h-4 accent-amber-600" />
+                          <span className="text-sm text-amber-800 font-medium">Garder en attente (hors ligne)</span>
+                        </label>
+                      </div>
+                      <p className="md:col-span-2 text-[11px] text-stone-gray -mt-2">
+                        Un bon cadeau : la caisse demandera le destinataire, un message et une date. Créez un produit par
                         montant (25, 50, 100, 150, 295) : le serveur facture toujours le prix de la fiche, jamais
                         celui que le navigateur envoie.
                       </p>
                     </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Contenance</label>
-                      <input type="text" placeholder="ex : 100 ml, ou 50 g" value={productForm.contenance}
-                        onChange={e => setProductForm({...productForm, contenance: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Rang dans la boutique</label>
-                      <input type="number" step="1" placeholder="ex : 1" value={productForm.ordre}
-                        onChange={e => setProductForm({...productForm, ordre: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
-                      <p className="text-[11px] text-stone-gray mt-1 leading-snug">
-                        Plus le nombre est petit, plus la fiche paraît tôt. Laissé vide, elle garde sa
-                        place actuelle, derrière celles qui portent un rang.
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Poids expédié (g)</label>
-                      <input type="number" min="1" step="1" placeholder="ex : 140" value={productForm.poids}
-                        onChange={e => setProductForm({...productForm, poids: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
-                      {/* La contenance est ce qu'il y a dedans, le poids ce que
-                          la Poste pèse : emballage compris. Un savon de 90 g
-                          part souvent à 140 g une fois emballé. */}
-                      <p className="text-[11px] text-stone-gray mt-1 leading-snug">
-                        Emballage compris. Renseigné sur tous les produits d'une commande, il choisit
-                        le tarif postal au lieu du forfait. Laissé vide, rien ne change.
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Étiquettes libres</label>
-                      <input type="text" placeholder="une par ligne, ou séparées par des virgules" value={productForm.etiquettesText}
-                        onChange={e => setProductForm({...productForm, etiquettesText: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Types de peau</label>
-                      <input type="text" placeholder="ex : sèche, sensible" value={productForm.typePeauText}
-                        onChange={e => setProductForm({...productForm, typePeauText: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Besoins</label>
-                      <input type="text" placeholder="ex : hydratation, apaisement" value={productForm.besoinsText}
-                        onChange={e => setProductForm({...productForm, besoinsText: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Ingrédients (en français)</label>
-                      <textarea rows={3} placeholder="Tels que vous les diriez à une cliente." value={productForm.ingredients}
-                        onChange={e => setProductForm({...productForm, ingredients: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
-                    </div>
-                    <div className="md:col-span-2 border-t pt-4 mt-2">
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Prix en recharge (CHF)</label>
-                      <p className="text-[11px] text-stone-gray mb-2">
-                        Si la cliente rapporte son flacon. Laissé vide, aucune recharge n'est proposée.
-                        Une recharge se retire <strong>à la boutique</strong> — le serveur refuse de
-                        l'expédier, et facture bien ce prix-là, pas le prix plein.
-                      </p>
-                      <input type="number" step="0.05" min="0" placeholder="ex : 15.00"
-                        value={productForm.rechargePrix}
-                        onChange={e => setProductForm({...productForm, rechargePrix: e.target.value})}
-                        className="px-4 py-2 border rounded w-full max-w-[200px]" />
-                    </div>
+                  </section>
 
-                    <div className="md:col-span-2 border-t pt-4 mt-2">
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Rituel</label>
-                      <p className="text-[11px] text-stone-gray mb-2">
-                        Donnez le même identifiant à tous les produits d'un même rituel — par exemple
-                        <em> rituel-visage</em> — puis numérotez les étapes. Le bloc « Le rituel complet »
-                        apparaît alors sur chacune de leurs fiches. Laissé vide, rien ne s'affiche.
+                  {/* ── Photos ───────────────────────────────────────────── */}
+                  <section id="fiche-photos" className="scroll-mt-6 bg-white rounded-2xl border border-slate-stone/10 p-5 sm:p-6 shadow-sm">
+                    <EnteteSection section={SECTIONS_FICHE[1]} form={productForm}
+                      chapeau="La première est celle de la grille. Les autres se voient sur la fiche." />
+                    <div className="flex items-center gap-3 mb-2">
+                      <label className={`inline-flex items-center gap-2 px-4 py-2 rounded cursor-pointer text-sm font-medium ${imageUploading ? 'bg-gray-200 text-stone-gray cursor-wait' : 'bg-slate-stone text-white hover:opacity-90'}`}>
+                        {imageUploading ? 'Téléversement…' : '📤 Téléverser depuis mon ordinateur'}
+                        <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple disabled={imageUploading} onChange={handleImageUpload} className="hidden" />
+                      </label>
+                      <span className="text-xs text-stone-gray">PNG, JPG, WEBP · plusieurs fichiers possibles</span>
+                    </div>
+                    {productForm.images.length > 0 ? (
+                      <div className="flex flex-wrap gap-3 mb-3">
+                        {productForm.images.map((url, idx) => (
+                          <div key={`${url}-${idx}`} className="relative group">
+                            <img
+                              src={url}
+                              alt={`Image ${idx + 1}`}
+                              className="w-24 h-24 object-cover rounded border border-slate-stone/10 bg-mist-white"
+                              onError={e => { e.currentTarget.style.opacity = '0.25'; }}
+                            />
+                            {idx === 0 ? (
+                              <span className="absolute bottom-1 left-1 bg-slate-stone/90 text-white text-[9px] tracking-wider uppercase px-1.5 py-0.5 rounded">Principale</span>
+                            ) : (
+                              /* Changer de photo principale demandait de retirer
+                                 les précédentes puis de tout recharger. Un clic
+                                 suffit, et l'aperçu suit. */
+                              <button
+                                type="button"
+                                title="Mettre cette photo en première"
+                                onClick={() => setProductForm(f => ({
+                                  ...f,
+                                  images: [f.images[idx], ...f.images.filter((_, i) => i !== idx)],
+                                }))}
+                                className="absolute inset-x-1 bottom-1 bg-white/90 text-slate-stone text-[9px] tracking-wider uppercase py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                Mettre en 1re
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              title="Retirer cette image"
+                              onClick={() => setProductForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }))}
+                              className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 text-white text-xs leading-none shadow hover:bg-red-700"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">
+                        Aucune image. Si vous enregistrez ainsi, le produit s'affichera sans photo.
                       </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <input type="text" placeholder="Identifiant du rituel" value={productForm.rituelId}
-                          onChange={e => setProductForm({...productForm, rituelId: e.target.value})}
-                          className="px-4 py-2 border rounded w-full" />
-                        <input type="text" inputMode="numeric" placeholder="N° d'étape" value={productForm.rituelEtape}
-                          onChange={e => setProductForm({...productForm, rituelEtape: e.target.value})}
-                          className="px-4 py-2 border rounded w-full" />
-                        <input type="text" placeholder="Le geste, en une phrase" value={productForm.rituelGeste}
-                          onChange={e => setProductForm({...productForm, rituelGeste: e.target.value})}
+                    )}
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        placeholder="…ou collez une URL d'image / un lien Google Drive"
+                        value={imageUrlInput}
+                        onChange={e => setImageUrlInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key !== 'Enter') return;
+                          e.preventDefault();
+                          const v = imageUrlInput.trim();
+                          if (!v) return;
+                          setProductForm(f => ({ ...f, images: [...f.images, v] }));
+                          setImageUrlInput('');
+                        }}
+                        className="px-4 py-2 border rounded flex-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const v = imageUrlInput.trim();
+                          if (!v) return;
+                          setProductForm(f => ({ ...f, images: [...f.images, v] }));
+                          setImageUrlInput('');
+                        }}
+                        className="px-4 py-2 bg-gray-200 rounded text-sm whitespace-nowrap"
+                      >
+                        Ajouter l'URL
+                      </button>
+                    </div>
+                    <p className="text-xs text-stone-gray mt-1">La première image est celle affichée sur la boutique. Cliquez sur ✕ pour retirer une image ; les autres champs peuvent être modifiés sans y toucher.</p>
+                  </section>
+
+                  {/* ── Format et poids ──────────────────────────────────── */}
+                  <section id="fiche-format" className="scroll-mt-6 bg-white rounded-2xl border border-slate-stone/10 p-5 sm:p-6 shadow-sm">
+                    <EnteteSection section={SECTIONS_FICHE[2]} form={productForm}
+                      chapeau="Ce produit existe-t-il en un seul format, ou en plusieurs — 15, 30, 50 ml ?" />
+        {/* Format et poids.
+
+            Ces deux champs étaient seuls dans la grille, et le bloc
+            des formats multiples se trouvait huit champs plus bas :
+            rien ne disait qu'on pouvait en déclarer plusieurs, ni
+            que les deux se remplacent l'un l'autre. On pose donc la
+            question d'abord — un format, ou plusieurs — et on ne
+            montre que les champs de la réponse. */}
+        <div className="md:col-span-2 rounded-xl border border-slate-stone/15 bg-ivory/40 p-4">
+          <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Format et poids</label>
+          <p className="text-[11px] text-stone-gray mb-3">
+            Ce produit existe-t-il en un seul format, ou en plusieurs — 15, 30, 50 ml ?
+          </p>
+
+          <div className="inline-flex rounded-full border border-slate-stone/20 bg-white p-1 mb-4">
+            {[false, true].map((multi) => {
+              const enPlusieurs = (productForm.variantes || []).length > 0;
+              const actif = enPlusieurs === multi;
+              return (
+                <button
+                  key={String(multi)}
+                  type="button"
+                  onClick={() => {
+                    if (multi) {
+                      // Deux lignes d'emblée : une liste à une seule
+                      // ligne se lit comme un champ, pas comme une liste.
+                      if (!enPlusieurs) {
+                        setProductForm({ ...productForm, variantes: [
+                          { libelle: '', prix: '', poids: '' },
+                          { libelle: '', prix: '', poids: '' },
+                        ] });
+                      }
+                      return;
+                    }
+                    const remplies = (productForm.variantes || []).filter((v) => v.libelle || v.prix || v.poids);
+                    if (remplies.length > 0 && !window.confirm(
+                      'Revenir à un format unique effacera les ' + remplies.length + ' format(s) saisi(s). Continuer ?'
+                    )) return;
+                    setProductForm({ ...productForm, variantes: [] });
+                  }}
+                  aria-pressed={actif}
+                  className={'press rounded-full px-4 py-2 text-xs ' + (actif ? 'bg-slate-stone text-white' : 'text-slate-stone')}
+                >
+                  {multi ? 'Plusieurs formats' : 'Un seul format'}
+                </button>
+              );
+            })}
+          </div>
+
+          {(productForm.variantes || []).length === 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Contenance</label>
+                <input type="text" placeholder="ex : 100 ml, ou 50 g" value={productForm.contenance}
+                  onChange={e => setProductForm({...productForm, contenance: e.target.value})}
+                  className="px-4 py-2 border rounded w-full" />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Poids expédié (g)</label>
+                <input type="number" min="1" step="1" placeholder="ex : 140" value={productForm.poids}
+                  onChange={e => setProductForm({...productForm, poids: e.target.value})}
+                  className="px-4 py-2 border rounded w-full" />
+                {/* La contenance est ce qu'il y a dedans, le poids ce que
+                    la Poste pèse : emballage compris. Un savon de 90 g
+                    part souvent à 140 g une fois emballé. */}
+                <p className="text-[11px] text-stone-gray mt-1 leading-snug">
+                  Emballage compris. Renseigné sur tous les produits d'une commande, il choisit
+                  le tarif postal au lieu du forfait. Laissé vide, rien ne change.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="text-[11px] text-stone-gray mb-3 leading-snug">
+                Une seule fiche, et une barre de choix sur le site. Chaque format porte son
+                prix et son <strong>poids</strong> — c'est le poids qui décide de l'envoi
+                possible : au-delà de 2 kg, la Poste refuse le colis, et le site refusera de
+                le proposer. Emballage compris, là aussi.
+              </p>
+              {/* L'en-tête ne paraît qu'à partir du moment où les
+                  colonnes s'alignent. En dessous, chaque champ
+                  porte son propre libellé : sur un téléphone, la
+                  ligne se plie, et trois nombres sans étiquette ne
+                  se distinguent plus une fois saisis. */}
+              <div className="hidden sm:grid grid-cols-[1fr_110px_110px_36px] gap-2 mb-1 text-[11px] uppercase tracking-widest text-stone-gray">
+                <span>Format</span><span>Prix (CHF)</span><span>Poids (g)</span><span />
+              </div>
+              {(productForm.variantes || []).map((v, i) => (
+                <div key={i} className="grid grid-cols-2 sm:grid-cols-[1fr_110px_110px_36px] gap-2 mb-3 sm:mb-2 pb-3 sm:pb-0 border-b sm:border-0 border-slate-stone/10 last:border-0">
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="sm:hidden block text-[10px] uppercase tracking-widest text-stone-gray mb-1">Format</span>
+                    <input type="text" placeholder="ex : 50 ml" value={v.libelle} aria-label="Format"
+                      onChange={e => setProductForm({
+                        ...productForm,
+                        variantes: productForm.variantes.map((x, k) => k === i ? { ...x, libelle: e.target.value } : x)
+                      })}
+                      className="px-4 py-2 border rounded w-full" />
+                  </div>
+                  <div>
+                    <span className="sm:hidden block text-[10px] uppercase tracking-widest text-stone-gray mb-1">Prix (CHF)</span>
+                    <input type="number" step="0.05" min="0" placeholder="45.00" value={v.prix} aria-label="Prix en francs"
+                      onChange={e => setProductForm({
+                        ...productForm,
+                        variantes: productForm.variantes.map((x, k) => k === i ? { ...x, prix: e.target.value } : x)
+                      })}
+                      className="px-4 py-2 border rounded w-full" />
+                  </div>
+                  <div>
+                    <span className="sm:hidden block text-[10px] uppercase tracking-widest text-stone-gray mb-1">Poids (g)</span>
+                    <input type="number" step="1" min="0" placeholder="120" value={v.poids} aria-label="Poids en grammes"
+                      onChange={e => setProductForm({
+                        ...productForm,
+                        variantes: productForm.variantes.map((x, k) => k === i ? { ...x, poids: e.target.value } : x)
+                      })}
+                      className="px-4 py-2 border rounded w-full" />
+                  </div>
+                  {/* Une croix de 36 px se vise mal au pouce, et le
+                      mot dit ce qu'elle fait. À l'écran large, la
+                      colonne est trop étroite pour le mot. */}
+                  <button type="button" title="Retirer ce format"
+                    onClick={() => setProductForm({
+                      ...productForm,
+                      variantes: productForm.variantes.filter((_, k) => k !== i)
+                    })}
+                    className="press col-span-2 sm:col-span-1 rounded border px-4 py-2 sm:px-0 sm:py-0 sm:self-end sm:h-[42px] text-xs text-stone-gray hover:text-red-600 hover:border-red-300">
+                    <span className="sm:hidden">Retirer ce format</span>
+                    <span className="hidden sm:inline">×</span>
+                  </button>
+                </div>
+              ))}
+              <button type="button"
+                onClick={() => setProductForm({
+                  ...productForm,
+                  variantes: [...(productForm.variantes || []), { libelle: '', prix: '', poids: '' }]
+                })}
+                className="press mt-1 rounded-full border px-4 py-2 text-xs uppercase tracking-widest">
+                + Ajouter un format
+              </button>
+
+              {/* Ce que la boutique montrera, calculé sous ses yeux :
+                  le prix de la fiche et la contenance de la carte
+                  viennent des formats, pas des deux champs que ce
+                  mode a masqués. Autant le dire ici plutôt que de la
+                  laisser le découvrir en ligne. */}
+              {(() => {
+                const remplies = (productForm.variantes || [])
+                  .filter((v) => String(v.libelle).trim() && Number(v.prix) > 0);
+                if (remplies.length === 0) return null;
+                if (remplies.length === 1) return (
+                  <p className="mt-3 text-[11px] text-amber-700 leading-snug">
+                    Un seul format rempli : la barre de choix ne s'affichera pas, il n'y aurait
+                    rien à choisir. Ajoutez-en un second, ou revenez à « Un seul format ».
+                  </p>
+                );
+                const mini = Math.min(...remplies.map((v) => Number(v.prix)));
+                // La même règle que le serveur, sinon l'aperçu
+                // promettrait autre chose que ce qui s'affichera.
+                const libelles = remplies.map((v) => String(v.libelle).trim());
+                const unites = libelles.map((l) => (l.match(/[a-zA-Z]+\.?$/) || [''])[0].toLowerCase());
+                const memeUnite = unites[0] && unites.every((u) => u === unites[0]);
+                const resume = memeUnite
+                  ? libelles.map((l) => l.replace(/\s*[a-zA-Z]+\.?$/, '').trim()).join(' · ') + ' ' + unites[0]
+                  : libelles.join(' · ');
+                return (
+                  <p className="mt-3 text-[11px] text-stone-gray leading-snug">
+                    Sur la grille, la carte annoncera <strong>dès CHF {mini.toFixed(2)}</strong>,
+                    et sous le nom : <strong>{resume}</strong>.
+                    La fiche s'ouvrira sur le format le moins cher.
+                  </p>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+                  </section>
+
+                  {/* ── Texte ────────────────────────────────────────────── */}
+                  <section id="fiche-texte" className="scroll-mt-6 bg-white rounded-2xl border border-slate-stone/10 p-5 sm:p-6 shadow-sm">
+                    <EnteteSection section={SECTIONS_FICHE[3]} form={productForm}
+                      chapeau="Ce que Google lit, et ce qu'une cliente lit avant d'acheter. Ce sont les mêmes mots." />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Description (HTML accepté)</label>
+                        <RichTextEditor
+                          value={productForm.description}
+                          onChange={(html) => setProductForm({ ...productForm, description: html })}
+                          placeholder="Description du produit — utilisez les boutons ci-dessus pour les sous-titres et le gras"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Ingrédients (en français)</label>
+                        <textarea rows={4} placeholder="Tels que vous les diriez à une cliente." value={productForm.ingredients}
+                          onChange={e => setProductForm({...productForm, ingredients: e.target.value})}
                           className="px-4 py-2 border rounded w-full" />
                       </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Liste INCI</label>
+                        <textarea rows={4} placeholder="La nomenclature réglementaire, telle qu'elle figure sur l'étiquette." value={productForm.inci}
+                          onChange={e => setProductForm({...productForm, inci: e.target.value})}
+                          className="px-4 py-2 border rounded w-full" />
+                        <p className="text-[11px] text-stone-gray mt-1">
+                          Aucune mise en évidence des allergènes n'est faite : elle demanderait de les saisir un à un, produit par produit.
+                        </p>
+                      </div>
                     </div>
+                  </section>
 
-                    <div className="md:col-span-2">
-                      <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Liste INCI</label>
-                      <textarea rows={3} placeholder="La nomenclature réglementaire, telle qu'elle figure sur l'étiquette." value={productForm.inci}
-                        onChange={e => setProductForm({...productForm, inci: e.target.value})}
-                        className="px-4 py-2 border rounded w-full" />
-                      <p className="text-[11px] text-stone-gray mt-1">
-                        Aucune mise en évidence des allergènes n'est faite : elle demanderait de les saisir un à un, produit par produit.
-                      </p>
+                  {/* ── Découverte ───────────────────────────────────────── */}
+                  <section id="fiche-decouverte" className="scroll-mt-6 bg-white rounded-2xl border border-slate-stone/10 p-5 sm:p-6 shadow-sm">
+                    <EnteteSection section={SECTIONS_FICHE[4]} form={productForm}
+                      chapeau="Ce par quoi on tombe sur la fiche sans la chercher : les filtres de la boutique." />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Types de peau</label>
+                        <input type="text" placeholder="ex : sèche, sensible" value={productForm.typePeauText}
+                          onChange={e => setProductForm({...productForm, typePeauText: e.target.value})}
+                          className="px-4 py-2 border rounded w-full" />
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Besoins</label>
+                        <input type="text" placeholder="ex : hydratation, apaisement" value={productForm.besoinsText}
+                          onChange={e => setProductForm({...productForm, besoinsText: e.target.value})}
+                          className="px-4 py-2 border rounded w-full" />
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Étiquettes libres</label>
+                        <input type="text" placeholder="une par ligne, ou séparées par des virgules" value={productForm.etiquettesText}
+                          onChange={e => setProductForm({...productForm, etiquettesText: e.target.value})}
+                          className="px-4 py-2 border rounded w-full" />
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Prix en recharge (CHF)</label>
+                        <input type="number" step="0.05" min="0" placeholder="ex : 15.00"
+                          value={productForm.rechargePrix}
+                          onChange={e => setProductForm({...productForm, rechargePrix: e.target.value})}
+                          className="px-4 py-2 border rounded w-full" />
+                        <p className="text-[11px] text-stone-gray mt-1 leading-snug">
+                          Si la cliente rapporte son flacon. Laissé vide, aucune recharge n'est proposée.
+                          Une recharge se retire <strong>à la boutique</strong> — le serveur refuse de
+                          l'expédier, et facture bien ce prix-là, pas le prix plein.
+                        </p>
+                      </div>
                     </div>
+                  </section>
+
+                  {/* ── Liens ────────────────────────────────────────────── */}
+                  <section id="fiche-liens" className="scroll-mt-6 bg-white rounded-2xl border border-slate-stone/10 p-5 sm:p-6 shadow-sm">
+                    <EnteteSection section={SECTIONS_FICHE[5]} form={productForm}
+                      chapeau="Ce qui relie cette fiche aux autres — et retient la visite une fiche de plus." />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">
+                          « Vous aimerez aussi » — jusqu'à 4 produits
+                        </label>
+                        <p className="text-[11px] text-stone-gray mb-2">
+                          Laissé vide, le site propose automatiquement des produits de la même catégorie.
+                        </p>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {(productForm.related || []).map((rid) => {
+                            const p = products.find((x) => x.id === rid);
+                            return (
+                              <span key={rid} className="inline-flex items-center gap-2 bg-mist-white border border-slate-stone/15 rounded-full px-3 py-1 text-xs text-slate-stone">
+                                {p ? p.name.slice(0, 40) : rid}
+                                <button type="button" aria-label="Retirer"
+                                  onClick={() => setProductForm({ ...productForm, related: productForm.related.filter((x) => x !== rid) })}
+                                  className="text-red-500 hover:text-red-700">×</button>
+                              </span>
+                            );
+                          })}
+                          {(productForm.related || []).length === 0 && (
+                            <span className="text-xs text-stone-gray/70">Sélection automatique</span>
+                          )}
+                        </div>
+                        {/* Une liste déroulante de 170 noms, dans l'ordre de la
+                            base : elle demandait « une boîte de recherche » et
+                            « l'ordre alphabétique ou par catégorie ». Les deux,
+                            avec la contenance pour distinguer les formats. */}
+                        {(productForm.related || []).length >= 4 ? (
+                          <p className="text-xs text-stone-gray/70">Maximum atteint (4). Retirez-en un pour en choisir un autre.</p>
+                        ) : (
+                          <div className="border rounded">
+                            <div className="flex flex-wrap items-center gap-2 p-2 border-b bg-mist-white/60">
+                              <input type="search" value={rechercheLies}
+                                onChange={(e) => setRechercheLies(e.target.value)}
+                                placeholder="Rechercher un produit…"
+                                className="flex-1 min-w-[12rem] px-3 py-1.5 border rounded text-sm bg-white" />
+                              <div className="flex rounded border overflow-hidden text-xs">
+                                {[['alpha', 'A → Z'], ['categorie', 'Par catégorie']].map(([v, libelle]) => (
+                                  <button key={v} type="button" onClick={() => setClassementLies(v)}
+                                    aria-pressed={classementLies === v}
+                                    className={`px-3 py-1.5 ${classementLies === v ? 'bg-slate-stone text-white' : 'bg-white text-stone-gray hover:bg-mist-white'}`}>
+                                    {libelle}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="max-h-72 overflow-y-auto">
+                              {(() => {
+                                const groupes = groupesLies(products, productForm, rechercheLies, classementLies);
+                                if (groupes.length === 0) return <p className="p-3 text-xs text-stone-gray/70">Aucun produit ne correspond.</p>;
+                                return groupes.map(([groupe, liste]) => (
+                                  <div key={groupe || '-'}>
+                                    {groupe && (
+                                      <p className="sticky top-0 bg-white/95 px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest text-mist-blue font-medium border-b border-slate-stone/5">
+                                        {groupe}
+                                      </p>
+                                    )}
+                                    {liste.map((p) => (
+                                      <button key={p.id} type="button"
+                                        onClick={() => {
+                                          setProductForm({ ...productForm, related: [...(productForm.related || []), p.id] });
+                                          setRechercheLies('');
+                                        }}
+                                        className="w-full text-left px-3 py-1.5 text-sm text-slate-stone hover:bg-mist-white flex justify-between gap-3">
+                                        <span>{p.name}</span>
+                                        {p.contenance && <span className="text-xs text-stone-gray/70 shrink-0">{p.contenance}</span>}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ));
+                              })()}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs uppercase tracking-widest text-stone-gray mb-1">Rituel</label>
+                        <p className="text-[11px] text-stone-gray mb-2">
+                          Donnez le même identifiant à tous les produits d'un même rituel — par exemple
+                          <em> rituel-visage</em> — puis numérotez les étapes. Le bloc « Le rituel complet »
+                          apparaît alors sur chacune de leurs fiches. Laissé vide, rien ne s'affiche.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <input type="text" placeholder="Identifiant du rituel" value={productForm.rituelId}
+                            onChange={e => setProductForm({...productForm, rituelId: e.target.value})}
+                            className="px-4 py-2 border rounded w-full" />
+                          <input type="text" inputMode="numeric" placeholder="N° d'étape" value={productForm.rituelEtape}
+                            onChange={e => setProductForm({...productForm, rituelEtape: e.target.value})}
+                            className="px-4 py-2 border rounded w-full" />
+                          <input type="text" placeholder="Le geste, en une phrase" value={productForm.rituelGeste}
+                            onChange={e => setProductForm({...productForm, rituelGeste: e.target.value})}
+                            className="px-4 py-2 border rounded w-full" />
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* L'aperçu passe SOUS le formulaire en dessous de 1024 px :
+                      en colonne étroite, il volerait la place de la saisie. */}
+                  <div className="xl:hidden">
+                    <ApercuFiche productForm={productForm} />
                   </div>
                 </div>
-                <div className="flex items-end">
-                  <label className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-red-50 border border-red-200 rounded w-full">
-                    <input type="checkbox" checked={!productForm.inStock} onChange={e => setProductForm({...productForm, inStock: !e.target.checked})} className="w-4 h-4 accent-red-600" />
-                    <span className="text-sm text-red-700 font-medium">Marquer le produit comme épuisé</span>
-                  </label>
+
+                <div className="hidden xl:block">
+                  <ApercuFiche productForm={productForm} />
                 </div>
-                <div className="md:col-span-2 flex gap-4">
-                  <button type="submit" className="px-6 py-2 bg-slate-stone text-white rounded">{productForm.id ? 'Enregistrer les modifications' : 'Ajouter le produit'}</button>
-                  {productForm.id && <button type="button" onClick={() => { setProductForm(emptyProductForm); setCustomBadge(false); }} className="px-6 py-2 bg-gray-200 rounded">Annuler</button>}
+
+                {/* La barre d'action.
+
+                    Le bouton d'enregistrement se trouvait tout en bas, après
+                    vingt champs : il fallait traverser la fiche entière pour
+                    l'atteindre, et rien ne disait s'il restait quelque chose à
+                    enregistrer. */}
+                <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-4 flex-wrap px-4 sm:px-8 py-3 bg-white/95 backdrop-blur-md border-t border-slate-stone/10 shadow-[0_-8px_24px_rgba(58,51,43,.06)]">
+                  <span className="flex items-center gap-2 text-xs text-stone-gray">
+                    <span className={`w-1.5 h-1.5 rounded-full ${ficheModifiee ? 'bg-amber-600' : 'bg-slate-stone/25'}`} />
+                    {ficheModifiee
+                      ? 'Modifications non enregistrées'
+                      : (productForm.id ? 'Fiche à jour' : 'Nouvelle fiche')}
+                  </span>
+                  <span className="ml-auto flex items-center gap-3">
+                    {productForm.id && (
+                      <button type="button"
+                        onClick={() => {
+                          if (ficheModifiee && !window.confirm('Abandonner les modifications en cours ?')) return;
+                          setProductForm(emptyProductForm);
+                          setCustomBadge(false);
+                          setEmpreinteOuverture(JSON.stringify(emptyProductForm));
+                        }}
+                        className="px-6 py-2 border border-slate-stone/20 text-stone-gray rounded-full text-xs uppercase tracking-widest hover:border-slate-stone hover:text-slate-stone transition-colors">
+                        Annuler
+                      </button>
+                    )}
+                    <button type="submit" className="px-7 py-2.5 bg-slate-stone text-white rounded-full text-xs uppercase tracking-widest">
+                      {productForm.id ? 'Enregistrer les modifications' : 'Ajouter le produit'}
+                    </button>
+                  </span>
                 </div>
               </form>
             </div>
 
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <input type="text" placeholder="Rechercher un produit..." value={productSearch} onChange={e => { setProductSearch(e.target.value); setProductsPage(1); }} className="px-4 py-2 border rounded w-full max-w-sm" />
-              <span className="text-sm text-stone-gray whitespace-nowrap">{products.filter(p => !productSearch || (p.name || '').toLowerCase().includes(productSearch.toLowerCase())).length} produit(s)</span>
+            <div className="mb-4 flex items-center gap-3 flex-wrap">
+              {/* Effacer la recherche demandait d'appuyer sur la touche
+                  d'effacement autant de fois qu'il y avait de lettres. */}
+              <div className="relative w-full max-w-xs">
+                <input type="text" placeholder="Rechercher un produit..." value={productSearch}
+                  onChange={e => { setProductSearch(e.target.value); setProductsPage(1); }}
+                  onKeyDown={e => { if (e.key === 'Escape') { setProductSearch(''); setProductsPage(1); } }}
+                  className="px-4 py-2 pr-10 border rounded w-full" />
+                {productSearch && (
+                  <button type="button" aria-label="Effacer la recherche"
+                    onClick={() => { setProductSearch(''); setProductsPage(1); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full text-stone-gray hover:bg-mist-white hover:text-slate-stone leading-none">
+                    ×
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                aria-pressed={stockBasSeul}
+                onClick={() => { setStockBasSeul(!stockBasSeul); setProductsPage(1); }}
+                className={`px-3.5 py-2 rounded-full text-xs border transition-colors ${stockBasSeul ? 'bg-amber-700 text-white border-amber-700' : 'bg-white text-stone-gray border-slate-stone/15 hover:border-slate-stone/40'}`}
+              >
+                Stock bas{products.length > 0 && ` (${products.filter((p) => p.stock != null && Number(p.stock) <= (p.seuilAlerte ?? seuilGeneral)).length})`}
+              </button>
+              <div className="inline-flex rounded-full border border-slate-stone/15 bg-white p-1">
+                {[
+                  { cle: 'alpha', nom: 'A → Z' },
+                  { cle: 'rubrique', nom: 'Par rubrique' },
+                  { cle: 'boutique', nom: 'Ordre de la boutique' },
+                ].map((t) => (
+                  <button
+                    key={t.cle}
+                    type="button"
+                    aria-pressed={triProduits === t.cle}
+                    onClick={() => { setTriProduits(t.cle); setProductsPage(1); }}
+                    className={`px-3.5 py-1.5 rounded-full text-xs transition-colors ${
+                      triProduits === t.cle ? 'bg-slate-stone text-white' : 'text-stone-gray hover:text-slate-stone'
+                    }`}
+                  >
+                    {t.nom}
+                  </button>
+                ))}
+              </div>
+              <span className="ml-auto text-sm text-stone-gray whitespace-nowrap">{produitsListes.length} produit(s)</span>
             </div>
 
             <div className="bg-white rounded-3xl border border-slate-stone/5 overflow-hidden shadow-sm">
@@ -1314,17 +2014,49 @@ const AdminDashboard = ({ onLogout }) => {
                 </thead>
                 <tbody>
                   {(() => {
-                    const filtered = products.filter(p => !productSearch || (p.name || '').toLowerCase().includes(productSearch.toLowerCase()));
-                    const totalPages = Math.max(1, Math.ceil(filtered.length / PRODUCTS_PER_PAGE));
+                    const totalPages = Math.max(1, Math.ceil(produitsListes.length / PRODUCTS_PER_PAGE));
                     const page = Math.min(productsPage, totalPages);
-                    return filtered.slice((page - 1) * PRODUCTS_PER_PAGE, page * PRODUCTS_PER_PAGE).map((p) => (
-                    <tr key={p.id} className="border-b align-top">
+                    const tranche = produitsListes.slice((page - 1) * PRODUCTS_PER_PAGE, page * PRODUCTS_PER_PAGE);
+                    // L'intertitre reparaît en tête de chaque page : une rubrique
+                    // qui enjambe deux pages laisserait sinon la seconde sans nom.
+                    let rubriquePrecedente = null;
+                    return tranche.map((p) => {
+                    const rubrique = (p.collections || [])[0] || 'Sans rubrique';
+                    const nouvelleRubrique = triProduits === 'rubrique' && rubrique !== rubriquePrecedente;
+                    rubriquePrecedente = rubrique;
+                    return (
+                    <React.Fragment key={p.id}>
+                    {nouvelleRubrique && (
+                      <tr className="bg-mist-white">
+                        <td colSpan={6} className="px-4 py-2 font-sans text-[11px] uppercase tracking-[0.2em] text-stone-gray">
+                          {rubrique}
+                        </td>
+                      </tr>
+                    )}
+                    <tr className="border-b align-top">
                       <td className="p-4 flex items-center gap-3">
-                        {p.images && p.images[0] && <img src={p.images[0]} alt="" className="w-10 h-10 object-cover rounded" />}
+                        {/* Une vignette de 40 px chargeait la photo entière : 109 Ko par
+                            ligne pour les images du catalogue, jusqu'à 4,5 Mo pour
+                            celles téléversées depuis. Vingt-cinq lignes par page. */}
+                        {p.images && p.images[0] && <img src={imageUrl(p.images[0], 400)} alt="" loading="lazy" className="w-10 h-10 object-cover rounded" />}
                         <div className="flex flex-col gap-1">
                           <span className="font-medium">{p.name}</span>
                           {p.inStock === false && (
                             <span className="inline-block self-start bg-red-100 text-red-700 text-[10px] tracking-widest uppercase px-2 py-0.5 rounded font-medium">Épuisé</span>
+                          )}
+                          {p.enLigne === false && (
+                            <span className="inline-block self-start bg-amber-100 text-amber-800 text-[10px] tracking-widest uppercase px-2 py-0.5 rounded font-medium">En attente</span>
+                          )}
+                          {/* Dupliquer une fiche pour en dériver une variante est
+                              normal — c'est le nom qu'on oublie ensuite. Trois
+                              fiches sont restées « (copie) » en boutique, et la
+                              cliente a signalé « le même produit plusieurs fois » :
+                              rien ne les distinguait à l'œil, seul le prix
+                              changeait. Le rappel se fait donc là où elle regarde. */}
+                          {/\(copie\)/i.test(p.name || '') && (
+                            <span className="inline-block self-start bg-amber-100 text-amber-800 text-[10px] tracking-widest uppercase px-2 py-0.5 rounded font-medium">
+                              À renommer
+                            </span>
                           )}
                         </div>
                       </td>
@@ -1336,7 +2068,7 @@ const AdminDashboard = ({ onLogout }) => {
                         ) : (
                           <span className={
                             p.stock === 0 ? 'text-red-700 font-semibold'
-                              : p.stock <= 3 ? 'text-amber-700 font-medium'
+                              : p.stock <= (p.seuilAlerte ?? seuilGeneral) ? 'text-amber-700 font-medium'
                               : 'text-slate-stone'
                           }>
                             {p.stock}
@@ -1363,12 +2095,16 @@ const AdminDashboard = ({ onLogout }) => {
                             // as a new product. Name is suffixed so the two are
                             // distinguishable in the list.
                             setCustomBadge(!!p.ribbon && !['coming-soon', 'best-seller'].includes(p.ribbon));
-                            setProductForm(chargerProduitDansFormulaire(p, { copie: true }));
+                            const forme = chargerProduitDansFormulaire(p, { copie: true });
+                            setProductForm(forme);
+                            setEmpreinteOuverture(JSON.stringify(forme));
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }} className="text-slate-stone underline">Dupliquer</button>
                           <button onClick={() => {
                             setCustomBadge(!!p.ribbon && !['coming-soon', 'best-seller'].includes(p.ribbon));
-                            setProductForm(chargerProduitDansFormulaire(p));
+                            const forme = chargerProduitDansFormulaire(p);
+                            setProductForm(forme);
+                            setEmpreinteOuverture(JSON.stringify(forme));
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }} className="text-blue-500 underline">Modifier</button>
                           <button onClick={() => {
@@ -1382,15 +2118,16 @@ const AdminDashboard = ({ onLogout }) => {
                         </div>
                       </td>
                     </tr>
-                  ));
+                    </React.Fragment>
+                  );
+                  });
                   })()}
                 </tbody>
               </table>
             </div>
 
             {(() => {
-              const filteredCount = products.filter(p => !productSearch || (p.name || '').toLowerCase().includes(productSearch.toLowerCase())).length;
-              const totalPages = Math.max(1, Math.ceil(filteredCount / PRODUCTS_PER_PAGE));
+              const totalPages = Math.max(1, Math.ceil(produitsListes.length / PRODUCTS_PER_PAGE));
               const page = Math.min(productsPage, totalPages);
               if (totalPages <= 1) return null;
               return (
@@ -1583,6 +2320,12 @@ const AdminDashboard = ({ onLogout }) => {
         {activeTab === 'content' && <ContentEditor fetchHeaders={fetchHeaders} />}
 
         {activeTab === 'journal' && <JournalEditor fetchHeaders={fetchHeaders} />}
+        {activeTab === 'infolettre' && <InfolettreEditor fetchHeaders={fetchHeaders} />}
+        {activeTab === 'paniers' && <PaniersAbandonnes fetchHeaders={fetchHeaders} onRelancer={setEmailModal} />}
+        {activeTab === 'marketing' && <Marketing fetchHeaders={fetchHeaders} />}
+        {activeTab === 'accueil' && <Accueil fetchHeaders={fetchHeaders} allerA={setActiveTab} />}
+        {activeTab === 'caisse' && <Caisse fetchHeaders={fetchHeaders} />}
+        {activeTab === 'comptoir' && <Comptoir fetchHeaders={fetchHeaders} allerA={setActiveTab} />}
 
         {activeTab === 'shop' && <ShopSettings fetchHeaders={fetchHeaders} />}
 
@@ -1657,6 +2400,18 @@ const AdminDashboard = ({ onLogout }) => {
                   <p className="text-[11px] text-stone-gray/70 mt-2">À configurer si SumUp signe ses webhooks. URL webhook : <code className="text-xs">https://soyoucosmetics.com/api/sumup/webhook</code></p>
                 </div>
 
+                <div>
+                  <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">Identifiant marchand Google Pay (facultatif)</label>
+                  <input
+                    type="text"
+                    value={sumupForm.googlePayMerchantId || ''}
+                    onChange={(e) => setSumupForm({ ...sumupForm, googlePayMerchantId: e.target.value })}
+                    className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40"
+                    placeholder="BCR2DN…"
+                  />
+                  <p className="text-[11px] text-stone-gray/70 mt-2">Fourni par la console Google Pay &amp; Wallet (pay.google.com/business/console) — ce n'est pas le code marchand SumUp. Sans lui, Google Pay n'apparaît pas au paiement.</p>
+                </div>
+
                 <button
                   type="submit"
                   disabled={sumupSaving}
@@ -1664,6 +2419,86 @@ const AdminDashboard = ({ onLogout }) => {
                 >
                   {sumupSaving ? 'Sauvegarde…' : 'Enregistrer'}
                 </button>
+              </form>
+
+              {/* Elle demandait de vérifier que PayPal, V PAY, Google Pay et
+                  Apple Pay sont activés. La réponse est chez SumUp : ce bloc la
+                  lui demande, plutôt que de la deviner. */}
+              <div className="mt-10 pt-8 border-t border-slate-stone/10">
+                <h3 className="font-serif text-xl text-slate-stone mb-2">Moyens de paiement actifs</h3>
+                <p className="text-[12px] text-stone-gray mb-4">Demande à SumUp ce qu'il propose réellement pour un paiement en CHF sur ce compte.</p>
+                <button type="button" onClick={verifierMoyens} disabled={diagMoyens?.chargement}
+                  className="px-6 py-2.5 border border-slate-stone/20 text-slate-stone font-sans uppercase tracking-[0.2em] text-[10px] rounded-full hover:bg-mist-white disabled:opacity-50">
+                  {diagMoyens?.chargement ? 'Vérification…' : 'Vérifier auprès de SumUp'}
+                </button>
+                {diagMoyens && !diagMoyens.chargement && (
+                  <div className="mt-5 text-sm text-stone-gray space-y-2">
+                    {diagMoyens.erreur && <p className="text-red-600">{diagMoyens.erreur}</p>}
+                    {diagMoyens.configure === false && <p className="text-amber-600">Clé API SumUp non configurée.</p>}
+                    {Array.isArray(diagMoyens.methodes) && (
+                      <>
+                        <p>Compte <code className="text-xs">{diagMoyens.merchantCode}</code> — SumUp renvoie : <strong className="text-slate-stone">{diagMoyens.methodes.join(', ') || 'rien'}</strong></p>
+                        <ul className="space-y-1">
+                          {[
+                            ['Cartes (Visa, Mastercard, Maestro, V PAY, Amex)', diagMoyens.methodes.includes('card'), 'Le module SumUp reconnaît la marque de chaque carte.'],
+                            ['PayPal', diagMoyens.methodes.includes('paypal'), "À demander à SumUp (formulaire de contact développeurs) s'il manque."],
+                            ['Apple Pay', diagMoyens.methodes.includes('apple_pay') && diagMoyens.fichierApple,
+                              !diagMoyens.methodes.includes('apple_pay') ? 'Non activé chez SumUp.'
+                                : !diagMoyens.fichierApple ? "Activé chez SumUp, mais le domaine n'est pas encore vérifié : SumUp → Paramètres → Pour les développeurs → Portefeuilles de paiement." : ''],
+                            ['Google Pay', diagMoyens.methodes.includes('google_pay') && diagMoyens.googlePayConfigure,
+                              !diagMoyens.methodes.includes('google_pay') ? 'Non activé chez SumUp.'
+                                : !diagMoyens.googlePayConfigure ? "Activé chez SumUp, mais l'identifiant marchand Google Pay ci-dessus manque." : ''],
+                          ].map(([nom, ok, note]) => (
+                            <li key={nom}>
+                              <span className={ok ? 'text-green-600' : 'text-amber-600'}>{ok ? '✓' : '✗'}</span>{' '}
+                              <span className="text-slate-stone">{nom}</span>
+                              {note && <span className="text-[12px] text-stone-gray/80"> — {note}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* TWINT passe par Payrexx, à côté de SumUp. Tant que ces deux
+                  champs sont vides, le panier ne propose pas TWINT et rien ne
+                  change pour les autres moyens de paiement. */}
+              <form onSubmit={enregistrerPayrexx} className="mt-10 pt-8 border-t border-slate-stone/10 space-y-5">
+                <div>
+                  <h3 className="font-serif text-xl text-slate-stone mb-1">TWINT (Payrexx)</h3>
+                  <p className="text-[12px] text-stone-gray">
+                    {payrexx.instance && payrexx.apiKeyConfigured
+                      ? <span className="text-green-600">Actif — TWINT est proposé au paiement.</span>
+                      : <span className="text-amber-600">Inactif — renseignez l'instance et la clé API pour proposer TWINT.</span>}
+                  </p>
+                </div>
+                {payrexxStatut && <p className={`text-sm ${payrexxStatut.erreur ? 'text-red-600' : 'text-green-700'}`}>{payrexxStatut.erreur || payrexxStatut.ok}</p>}
+                <div>
+                  <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">Instance Payrexx</label>
+                  <input type="text" value={payrexxForm.instance}
+                    onChange={(e) => setPayrexxForm({ ...payrexxForm, instance: e.target.value })}
+                    className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40"
+                    placeholder="soyou (pour soyou.payrexx.com)" />
+                </div>
+                <div>
+                  <label className="block font-sans text-xs tracking-widest uppercase font-bold text-slate-stone mb-2">Clé API Payrexx</label>
+                  <input type="password" autoComplete="off" value={payrexxForm.apiKey}
+                    onChange={(e) => setPayrexxForm({ ...payrexxForm, apiKey: e.target.value })}
+                    className="w-full bg-mist-white border border-slate-stone/10 rounded-2xl px-5 py-3 font-sans text-slate-stone text-sm focus:outline-none focus:border-slate-stone/40"
+                    placeholder={payrexx.apiKeyConfigured ? `Laisser vide pour conserver •••• ${payrexx.apiKeyLast4}` : 'Payrexx → API & Plugins'} />
+                  <p className="text-[11px] text-stone-gray/70 mt-2">
+                    Dans Payrexx → Webhooks, ajoutez l'adresse <code className="text-xs">https://soyoucosmetics.com/api/payrexx/webhook</code> (format JSON).
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button type="submit" className="px-8 py-3 bg-slate-stone text-white font-sans uppercase tracking-[0.2em] text-xs rounded-full hover:bg-slate-stone/90 shadow-md">Enregistrer</button>
+                  {(payrexx.instance || payrexx.apiKeyConfigured) && (
+                    <button type="button" onClick={() => envoyerPayrexx({ instance: '', apiKey: '' }, 'TWINT désactivé.')}
+                      className="px-6 py-3 text-xs uppercase tracking-widest font-bold text-red-600 hover:bg-red-50 rounded-full border border-red-100">Désactiver TWINT</button>
+                  )}
+                </div>
               </form>
             </div>
           </div>
@@ -1761,7 +2596,19 @@ const AdminDashboard = ({ onLogout }) => {
               <div>
                 <h4 className="font-sans text-xs tracking-widest uppercase font-bold text-stone-gray/60 mb-2">Informations Client</h4>
                 <p className="font-semibold text-base">{selectedOrder.customer_name}</p>
+                {selectedOrder.customer_company && (
+                  <p className="text-xs text-stone-gray mt-0.5">{selectedOrder.customer_company}</p>
+                )}
                 <p className="font-mono text-xs mt-0.5">{selectedOrder.customer_email}</p>
+                {/* Cliquable : sur un téléphone, c'est un appel ; sur l'ordinateur
+                    de la boutique, c'est un numéro qu'on lit sans le recopier. */}
+                {selectedOrder.customer_phone && (
+                  <p className="font-mono text-xs mt-0.5">
+                    <a href={`tel:${selectedOrder.customer_phone.replace(/\s+/g, '')}`} className="hover:underline">
+                      {selectedOrder.customer_phone}
+                    </a>
+                  </p>
+                )}
                 <p className="text-xs text-stone-gray mt-2">
                   Commandée le : {new Date(selectedOrder.created_at).toLocaleString('fr-CH', { dateStyle: 'long', timeStyle: 'short' })}
                 </p>
@@ -1826,8 +2673,33 @@ const AdminDashboard = ({ onLogout }) => {
                   <option value="Pending">En attente (Pending)</option>
                   <option value="Paid">Payé (Paid)</option>
                   <option value="ReadyForPickup">À retirer (Ready)</option>
+                  <option value="PickedUp">Remise en boutique</option>
                   <option value="Shipped">Envoyé (Shipped)</option>
+                  {/* Le serveur acceptait déjà ces deux statuts ; ils
+                      n'apparaissaient nulle part dans le menu, si bien qu'une
+                      commande d'essai ne pouvait pas être écartée. Une commande
+                      annulée ne compte plus dans le chiffre d'affaires. */}
+                  <option value="Cancelled">Annulée</option>
+                  <option value="Refunded">Remboursée</option>
                 </select>
+                {/* La suppression ne paraît qu'une fois la commande écartée.
+                    Tant qu'elle est vivante, il n'y a rien à effacer — et un
+                    bouton rouge dormant à côté du menu finirait par se cliquer. */}
+                {['Cancelled', 'Refunded'].includes(selectedOrder.status) && (
+                  <div className="mt-4 pt-4 border-t border-slate-stone/10">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteOrder(selectedOrder)}
+                      className="text-xs text-red-700 hover:text-red-900 underline underline-offset-2"
+                    >
+                      Supprimer définitivement cette commande
+                    </button>
+                    <p className="text-[11px] text-stone-gray mt-1 leading-snug max-w-[46ch]">
+                      Il faudra recopier son numéro. Une copie est conservée sur le
+                      serveur, hors de la liste.
+                    </p>
+                  </div>
+                )}
                 <button 
                   onClick={() => {
                     setEmailModal({ 
@@ -1850,9 +2722,27 @@ const AdminDashboard = ({ onLogout }) => {
             <h4 className="font-sans text-xs tracking-widest uppercase font-bold text-stone-gray/60 mb-4">Articles achetés</h4>
             <div className="space-y-4 mb-6 max-h-56 overflow-y-auto">
               {selectedOrder.items && selectedOrder.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-center text-sm font-light">
-                  <span className="font-medium">{item.name}</span>
-                  <span className="font-mono text-stone-gray">CHF {parseFloat(item.price).toFixed(2)}</span>
+                <div key={idx} className="flex justify-between items-center gap-3 text-sm font-light">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* La photo vient du serveur, cherchée au catalogue par
+                        identifiant — la commande, elle, ne l'enregistre pas.
+                        Un cadre neutre quand le produit n'a pas de photo ou
+                        n'existe plus : mieux qu'une image cassée. */}
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt=""
+                        className="w-11 h-11 rounded-lg object-cover border border-slate-stone/10 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-11 h-11 rounded-lg bg-mist-white border border-slate-stone/10 shrink-0" />
+                    )}
+                    <span className="font-medium truncate">
+                      {item.qty > 1 && <span className="text-stone-gray">{item.qty} × </span>}
+                      {item.name}
+                    </span>
+                  </div>
+                  <span className="font-mono text-stone-gray shrink-0">CHF {parseFloat(item.price).toFixed(2)}</span>
                 </div>
               ))}
             </div>

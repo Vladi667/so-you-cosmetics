@@ -1,13 +1,24 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import AutoPlayVideo from '../components/AutoPlayVideo';
+// Utilisé deux fois plus bas, et jamais importé : la page tombait sur
+// « ReferenceError: Lien is not defined » dès qu'un atelier devait s'afficher,
+// c'est-à-dire toujours. Écran blanc, arbre React démonté, titre revenu à
+// celui de l'accueil. La liste était vide en local, où rien ne la déclenchait.
+import Lien from '../components/Lien';
 import { useLanguage } from '../i18n/LanguageContext';
 import useMetadonnees from '../hooks/useMetadonnees';
 
 const WorkshopsPage = () => {
   const { t } = useLanguage();
   useMetadonnees({ titre: t('workshopsPage.title'), description: t('workshopsPage.introQuote') });
-  const [workshops, setWorkshops] = useState([]);
+  // La liste part de ce que le serveur a posé : la page rendait déjà son
+  // titre, mais pas un seul atelier — c'est-à-dire pas ce qu'on venait y lire.
+  const depart = useMemo(
+    () => (Array.isArray(globalThis.__ATELIERS__) ? globalThis.__ATELIERS__ : []),
+    []
+  );
+  const [workshops, setWorkshops] = useState(depart);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [contactForm, setContactForm] = useState({ name: '', email: '', subject: t('workshopsPage.defaultSubject'), message: '' });
   const [contactStatus, setContactStatus] = useState({ sending: false, success: '', error: '' });

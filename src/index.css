@@ -336,3 +336,84 @@
   .glass-dark { background: #3a332b; backdrop-filter: none; border-color: rgba(255,255,255,0.5); }
   .text-shadow { text-shadow: none; }
 }
+
+/* ── L'habillage saisonnier ──────────────────────────────────────────────
+   Une couche mince par-dessus le bandeau d'accueil, et rien d'autre. La
+   consigne de la cliente fait règle : « faut pas que ça change le design
+   complet du site, juste des petits détails ». Donc pas de fond retourné,
+   pas de typographie touchée, pas de teinte sur les photos produits.
+
+   Le bandeau étant une vidéo sombre au texte ivoire, les particules y sont
+   lisibles sans qu'on ait à éclaircir quoi que ce soit. */
+
+.saison {
+  position: absolute;
+  inset: 0;
+  z-index: 15;              /* au-dessus du dégradé, sous le texte (z-20) */
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.saison-grains { position: absolute; inset: -3rem 0 0; }
+
+.saison-grain {
+  position: absolute;
+  top: 0;
+  will-change: transform, opacity;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.saison-grain svg { display: block; width: 100%; height: 100%; }
+
+/* Une ombre portée, sans quoi un flocon blanc disparaît dans un ciel d'aube.
+   Le bandeau n'est pas sombre : c'est le Léman au petit matin, pâle et rose. */
+.saison[data-saison="hiver"] .saison-grain svg,
+.saison[data-saison="noel"] .saison-grain svg { filter: drop-shadow(0 1px 3px rgba(58, 51, 43, .35)); }
+.saison[data-saison="printemps"] .saison-grain svg,
+.saison[data-saison="ete"] .saison-grain svg,
+.saison[data-saison="automne"] .saison-grain svg { filter: drop-shadow(0 1px 3px rgba(255, 255, 255, .45)); }
+
+/* Toutes les étapes dans la même unité. Un pourcentage dans translate3d se
+   calcule sur la taille du flocon, pas sur celle du bandeau : mélangé à des
+   vh, il faisait remonter la neige d'un coup aux deux tiers de la chute. */
+@keyframes saisonDescend {
+  0%   { transform: translate3d(0, -3rem, 0) rotate(0deg);        opacity: 0; }
+  8%   { opacity: 1; }
+  34%  { transform: translate3d(2rem, 30vh, 0) rotate(120deg); }
+  67%  { transform: translate3d(-1.5rem, 62vh, 0) rotate(230deg); }
+  92%  { opacity: 1; }
+  100% { transform: translate3d(1.2rem, 104vh, 0) rotate(350deg);  opacity: 0; }
+}
+
+@keyframes saisonCulbute {
+  0%   { transform: translate3d(0, -3rem, 0) rotate3d(1, 1, .3, 0deg);      opacity: 0; }
+  8%   { opacity: 1; }
+  38%  { transform: translate3d(-2.6rem, 34vh, 0) rotate3d(1, 1, .3, 300deg); }
+  72%  { transform: translate3d(2.2rem, 68vh, 0) rotate3d(1, 1, .3, 580deg); }
+  92%  { opacity: 1; }
+  100% { transform: translate3d(-1.2rem, 104vh, 0) rotate3d(1, 1, .3, 820deg); opacity: 0; }
+}
+
+.saison[data-saison="hiver"]     .saison-grain { animation-name: saisonDescend; }
+.saison[data-saison="noel"]      .saison-grain { animation-name: saisonDescend; }
+.saison[data-saison="printemps"] .saison-grain { animation-name: saisonCulbute; }
+.saison[data-saison="automne"]   .saison-grain { animation-name: saisonCulbute; }
+.saison[data-saison="ete"]       .saison-grain { animation-name: saisonCulbute; }
+
+/* Le petit végétal, dans l'angle bas. Tracé en ivoire : sur une vidéo sombre,
+   une illustration colorée disparaîtrait. */
+.saison-vegetal {
+  position: absolute;
+  right: clamp(1.5rem, 5vw, 5rem);
+  bottom: clamp(4.5rem, 9vw, 7rem);
+  width: clamp(6rem, 11vw, 10rem);
+  height: auto;
+  color: #FDFBF7;
+  opacity: .3;
+}
+
+/* Le mouvement s'arrête si le visiteur l'a demandé — mais le végétal reste :
+   il ne bouge pas, il n'a aucune raison de disparaître. */
+@media (prefers-reduced-motion: reduce) {
+  .saison-grain { animation: none; opacity: .3; }
+}

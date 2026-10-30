@@ -8,7 +8,14 @@ const emailService = require('./email');
 const imapService = require('./imap');
 
 // Directory for admin-uploaded product images (served at /uploads by index.js).
-const { UPLOADS_DIR, ensureUploadsDir } = require('./uploads');
+const { UPLOADS_DIR, ensureUploadsDir, empreinteContenu, fichierExistant } = require('./uploads');
+const comptes = require('./comptes');
+const infolettre = require('./infolettre');
+const rebonds = require('./rebonds');
+const payrexx = require('./payrexx');
+const audience = require('./audience');
+const crm = require('./crm');
+const caisse = require('./caisse');
 
 // Compare two strings in constant time; tolerates length mismatch
 function timingSafeEqualStr(a, b) {
@@ -260,7 +267,7 @@ function buildInvoiceHtml({ invoiceNumber, order, settings }) {
       </table>
       <p style="text-align:right;font-size:18px;margin:18px 0 0;"><strong>Total : CHF ${Number(order.total).toFixed(2)}</strong></p>
       ${tva}
-      <p style="color:#888;font-size:12px;margin-top:18px;">Payé par carte via SumUp. Ce document tient lieu de facture acquittée.</p>
+      <p style="color:#888;font-size:12px;margin-top:18px;">${order.paiement && order.paiement.moyen === 'twint' ? 'Payé par TWINT via Payrexx' : 'Payé via SumUp'}. Ce document tient lieu de facture acquittée.</p>
     </div>`;
 }
 
@@ -268,7 +275,7 @@ function escapeForEmail(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function buildPaymentConfirmedEmail({ name, orderId, total }) {
+function buildPaymentConfirmedEmail({ name, orderId, total, retrait }) {
   return `
       <div style="font-family: sans-serif; color: #444; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
         <h2 style="color: #2c3e50; font-family: serif; border-bottom: 1px solid #eee; padding-bottom: 10px;">Merci pour votre achat !</h2>
@@ -279,7 +286,9 @@ function buildPaymentConfirmedEmail({ name, orderId, total }) {
           <p style="margin: 0 0 10px 0;"><strong>Statut :</strong> Paiement reçu</p>
           <p style="margin: 0;"><strong>Total :</strong> CHF ${parseFloat(total).toFixed(2)}</p>
         </div>
-        <p>Vous recevrez un nouveau message dès l'expédition.</p>
+        <p>${retrait
+          ? 'Vous recevrez un nouveau message dès que votre commande sera prête pour le retrait.'
+          : "Vous recevrez un nouveau message dès l'expédition."}</p>
         <p style="font-style: italic; color: #888;">So You Cosmetics Genève - Faits main en Suisse</p>
       </div>
     `;
@@ -294,7 +303,7 @@ function buildPickupReadyEmail({ name, orderId }) {
         <p>Bonne nouvelle : votre commande <strong>${orderId}</strong> est prête à être retirée en boutique.</p>
         <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
           <p style="margin: 0 0 6px 0;"><strong>Adresse de retrait :</strong></p>
-          <p style="margin: 0 0 6px 0;">Boutique Soap Opera by So You Cosmetics<br />3 av. Pictet-De-Rochemont, 1207 Genève</p>
+          <p style="margin: 0 0 6px 0;">Boutique Soap Opera by So You Cosmetics<br />3 av. Pictet-de-Rochemont, 1207 Genève</p>
           <p style="margin: 6px 0 0 0;"><strong>Téléphone :</strong> 022 556 69 92</p>
         </div>
         <p>Nous nous réjouissons de vous accueillir prochainement.</p>
@@ -352,22 +361,79 @@ async function computeOrderTotal(items, shippingId, options = {}) {
   // Ce que la commande contient réellement, pour vérifier ensuite qu'elle a le
   // droit du mode d'expédition demandé.
   const produitsCommandes = [];
+  const lignes = [];
+
   for (const line of items || []) {
     const product = byId.get(String(line.id));
     if (!product) continue;                       // ligne inconnue : ignorée, jamais facturée
     // Une fiche sans prix ne s'achète pas : c'est un « sur devis », pas un
     // article à zéro franc. Quatre existent au catalogue, et sans cette garde
     // un panier n'en contenant qu'elles passait pour le seul prix du port.
-    if (!(Number(product.price) > 0)) continue;
-    produitsCommandes.push({ produit: product, qty: Math.max(1, parseInt(line.qty, 10) || 1) });
+    // Une fiche qui propose des contenances porte son prix sur chacune, et le
+    // prix de tête n'est qu'un repère. La garde du « sur devis » ne doit donc
+    // s'appliquer qu'aux fiches sans contenance, sinon un produit décliné et
+    // sans prix nu ne s'achèterait plus du tout.
+    const aDesVariantes = Array.isArray(product.variantes) && product.variantes.length > 0;
+    if (!aDesVariantes && !(Number(product.price) > 0)) continue;
 
     // La variante de recharge. Le navigateur DEMANDE une recharge ; c'est le
     // catalogue qui en donne le prix, et seulement si la fiche en propose une.
     // Une demande de recharge sur un produit qui n'en a pas retombe sur le
     // prix plein — jamais sur un montant que le navigateur aurait choisi.
-    const recharge = line.recharge && Number(product.rechargePrix) > 0;
-    const price = recharge ? Number(product.rechargePrix) : (Number(product.price) || 0);
+    // Booléen explicite : `line.recharge && …` rend *undefined* quand le champ
+    // manque, et JSON.stringify efface une clé undefined. La commande partait
+    // donc sans drapeau, et le compteur de flacons remplis lit ce drapeau.
+    const recharge = Boolean(line.recharge) && Number(product.rechargePrix) > 0;
+
+    // La contenance choisie, si la fiche en propose. Même règle que la
+    // recharge, et pour la même raison : le navigateur DEMANDE « 50 ml », le
+    // catalogue en donne le prix. Un identifiant inconnu — onglet resté ouvert
+    // après qu'elle a modifié ses contenances, ou requête forgée — retombe sur
+    // une variante réelle, jamais sur un montant venu du navigateur.
+    const variantes = Array.isArray(product.variantes) ? product.variantes : [];
+    const demandee = line.varianteId
+      ? variantes.find((v) => String(v.id) === String(line.varianteId))
+      : null;
+    // Une fiche qui propose des contenances n'a plus de prix « nu » : commander
+    // sans en choisir une facturerait un montant ne correspondant à aucun
+    // article réel. On retient alors la première, celle qu'elle a saisie en
+    // tête.
+    const variante = demandee || (variantes.length > 0 ? variantes[0] : null);
+
+    const price = recharge
+      ? Number(product.rechargePrix)
+      : (variante ? Number(variante.prix) : (Number(product.price) || 0));
     const qty = Math.max(1, parseInt(line.qty, 10) || 1);
+
+    // La ligne commandée porte le poids de la contenance retenue, pas celui de
+    // la fiche. C'est ce poids qui décide de la limite des 2 kg, donc des modes
+    // d'expédition proposés : facturer un envoi de 15 ml au poids d'un pot de
+    // 200 ml refuserait des tarifs auxquels la commande a droit — ou pire,
+    // accepterait un colis trop lourd que La Poste renverrait.
+    produitsCommandes.push({
+      produit: variante && variante.poids ? { ...product, poids: variante.poids } : product,
+      qty,
+    });
+
+    // La ligne telle qu'elle sera ENREGISTREE. Jusqu'ici la commande gardait
+    // les lignes envoyées par le navigateur : le total était juste, mais le nom
+    // et le prix inscrits au dossier étaient ceux qu'on avait bien voulu
+    // envoyer. Avec des contenances, le défaut devient concret — « Absolute Gel
+    // Crème » sans format, et elle ne sait pas quel pot mettre dans le colis.
+    lignes.push({
+      id: product.id,
+      // Le nom dit ce qu'il y a à préparer. Une recharge se remplit, elle ne
+      // se vend pas neuve : jusqu'ici rien ne la distinguait dans le tableau
+      // des commandes, sinon un prix plus bas qu'il fallait reconnaître.
+      name: recharge
+        ? `${product.name} — recharge`
+        : (variante ? `${product.name} — ${variante.libelle}` : product.name),
+      qty,
+      price,
+      recharge,
+      varianteId: variante ? variante.id : null,
+    });
+
     goods += price * qty;
     if (recharge) nbRecharges += qty;
   }
@@ -430,6 +496,7 @@ async function computeOrderTotal(items, shippingId, options = {}) {
     nbRecharges,
     total: Math.round((goods + shippingCost + emballage) * 100) / 100,
     shippingLabel: option ? option.label : '',
+    lignes,
   };
 }
 
@@ -443,7 +510,10 @@ router.get('/refill-count', async (req, res) => {
   try {
     const commandes = await db.getOrders();
     const total = (commandes || [])
-      .filter((c) => db.canonicalOrderStatus(c.status) !== 'Pending')
+      // Ni les paniers abandonnés, ni les commandes écartées : une commande
+      // d'essai annulée ne doit pas continuer de compter des flacons remplis
+      // sur la page d'accueil.
+      .filter((c) => !['Pending', 'Cancelled', 'Refunded'].includes(db.canonicalOrderStatus(c.status)))
       .reduce((n, c) => n + (c.items || []).reduce(
         (m, l) => m + (l.recharge ? Math.max(1, parseInt(l.qty, 10) || 1) : 0), 0), 0);
     res.json({ count: total });
@@ -455,7 +525,9 @@ router.get('/refill-count', async (req, res) => {
 });
 
 router.post('/orders', async (req, res) => {
-  const { name, email, items, shippingId, address, cadeau, cgvAcceptees } = req.body;
+  const { name, email, phone, company, items, shippingId, address, cadeau, cgvAcceptees, moyen } = req.body;
+  // « twint » passe par Payrexx ; tout le reste, comme avant, par SumUp.
+  const parTwint = moyen === 'twint';
   if (!name || !email || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Missing required order details' });
   }
@@ -519,9 +591,21 @@ router.post('/orders', async (req, res) => {
         });
       }
     }
+    // TWINT demandé mais Payrexx pas réglé : refuser AVANT d'enregistrer une
+    // commande qu'aucun paiement ne pourrait solder.
+    if (parTwint && !payrexx.actif()) {
+      return res.status(400).json({ error: "TWINT n'est pas disponible pour le moment. Merci de choisir un autre moyen de paiement." });
+    }
     const total = calcul.total;
     const newOrder = await db.createOrder({
-      name, email, items, total,
+      // Les lignes du CATALOGUE, pas celles du navigateur : mêmes noms, mêmes
+      // prix et mêmes formats que ceux qui viennent d'être facturés.
+      name, email, items: calcul.lignes, total,
+      // Facultatifs tous les deux. Coupés à une longueur raisonnable plutôt que
+      // refusés : une commande ne doit pas échouer sur un champ qu'on n'exige
+      // pas. Le téléphone sert au transporteur, la société à la facture.
+      phone: String(phone || '').trim().slice(0, 40),
+      company: String(company || '').trim().slice(0, 120),
       shipping: { id: shippingId || '', label: calcul.shippingLabel, cost: calcul.shippingCost },
       // Nulle pour un retrait en boutique : il n'y a rien à expédier.
       address: db.exigeAdresse(shippingId) ? address : null,
@@ -530,6 +614,38 @@ router.post('/orders', async (req, res) => {
       // et la commande ne doit pas pretendre le contraire.
       cadeau: cadeau ? { ...cadeau, emballage: calcul.giftWrapCost > 0 } : null,
     });
+
+    // D'où venait la visite : de quoi dire, plus tard, combien de ventes une
+    // annonce a rapportées. Classée par le serveur, pas par le navigateur. Une
+    // erreur ici ne doit jamais coûter la commande.
+    if (req.body.source && typeof req.body.source === 'object') {
+      try {
+        const source = audience.classer(req.body.source);
+        const clic = audience.clicGoogle(req.body.source);
+        if (clic) source.clic = clic;
+        await db.setOrderSource(newOrder.id, source);
+      } catch (err) {
+        console.error('Source de la commande non enregistrée :', err.message);
+      }
+    }
+
+    // TWINT : une passerelle Payrexx restreinte à TWINT, ouverte dans le
+    // panier même. Rien de ce qui suit — SumUp, ni le paiement simulé quand
+    // SumUp n'est pas réglé — ne concerne cette commande.
+    if (parTwint) {
+      try {
+        const passerelle = await payrexx.creerPasserelleTwint(newOrder, { langue: ['fr', 'en', 'de'].includes(req.body.langue) ? req.body.langue : 'fr' });
+        await db.setOrderPaiement(newOrder.id, { fournisseur: 'payrexx', moyen: 'twint', passerelle: passerelle.id });
+        return res.status(201).json({
+          message: 'Order created (Pending TWINT payment)',
+          orderId: newOrder.id,
+          twint: { lien: passerelle.lien },
+        });
+      } catch (err) {
+        console.error('Payrexx gateway creation failed:', err.response ? err.response.data : err.message);
+        return res.status(500).json({ error: 'Erreur lors de la création du paiement TWINT.' });
+      }
+    }
 
     let checkoutId = `mock_session_${newOrder.id}`;
     let sumupActive = false;
@@ -572,18 +688,14 @@ router.post('/orders', async (req, res) => {
     if (!sumupActive) {
       try {
         await db.updateOrderStatus(newOrder.id, 'Paid');
-        await emailService.sendMail({
-          to: email,
-          subject: `Merci pour votre achat ${newOrder.id} - So You Cosmetics`,
-          html: buildPaymentConfirmedEmail({ name, orderId: newOrder.id, total })
-        });
+
         // Les trois mêmes suites qu'un vrai paiement. Ce chemin n'envoyait que
         // la confirmation : ni facture, ni avis à la boutique, ni mouvement de
         // stock. Tant que SumUp est configuré cela ne se voit pas — mais le
         // jour où la clé expire ou est retirée, le site continuerait d'encaisser
         // en apparence tout en cessant silencieusement de facturer, de la
         // prévenir et de décompter ce qui part.
-        await sendInvoiceIfEnabled(newOrder, email);
+        await envoyerConfirmationEtFacture(newOrder, email, name);
         await avertirNouvelleCommande(newOrder);
         await appliquerStockEtAlerter(newOrder);
       } catch (mailErr) {
@@ -594,7 +706,8 @@ router.post('/orders', async (req, res) => {
     res.status(201).json({
       message: sumupActive ? 'Order created (Pending Payment)' : 'Order created (Mocked Payment)',
       orderId: newOrder.id,
-      checkoutId: checkoutId
+      checkoutId: checkoutId,
+      googlePayMerchantId: sumup.googlePayMerchantId || null
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to process order' });
@@ -623,13 +736,24 @@ async function confirmOrderPaid(orderId, source) {
     return { confirmed: true, status: 'Paid' };
   }
 
-  const checkout = await fetchCheckoutFromSumup(order.id);
+  // Chaque commande est vérifiée auprès de celui qui l'a encaissée. Sans
+  // mention, c'est SumUp : toutes les commandes d'avant TWINT, et toutes celles
+  // payées par carte, PayPal, Apple Pay ou Google Pay.
+  const parPayrexx = order.paiement && order.paiement.fournisseur === 'payrexx';
+  const qui = parPayrexx ? 'Payrexx' : 'SumUp';
+  const checkout = parPayrexx
+    ? await payrexx.lirePasserelle(order.paiement.passerelle)
+    : await fetchCheckoutFromSumup(order.id);
+  if (parPayrexx && checkout && checkout.referenceId && checkout.referenceId !== order.id) {
+    console.error(`Payrexx confirmation (${source}): gateway ${order.paiement.passerelle} belongs to ${checkout.referenceId}, not ${order.id} — ignored.`);
+    return { confirmed: false, status: order.status };
+  }
   if (!checkout) {
-    console.error(`SumUp confirmation (${source}): could not reach SumUp for order ${order.id} — left unconfirmed rather than assumed paid.`);
+    console.error(`${qui} confirmation (${source}): could not reach ${qui} for order ${order.id} — left unconfirmed rather than assumed paid.`);
     return { confirmed: false, status: order.status };
   }
   if (!checkout.paid) {
-    console.warn(`SumUp confirmation (${source}): order ${order.id} announced but SumUp does not report it paid — ignored.`);
+    console.warn(`${qui} confirmation (${source}): order ${order.id} announced but ${qui} does not report it paid — ignored.`);
     return { confirmed: false, status: order.status };
   }
   // Guard the amount too: confirming an order for less than it is worth is as
@@ -637,28 +761,23 @@ async function confirmOrderPaid(orderId, source) {
   // two sides are floating-point currency values.
   const expected = Number(order.total);
   if (Number.isFinite(expected) && Math.abs(checkout.amount - expected) > 0.01) {
-    console.error(`SumUp confirmation (${source}): order ${order.id} paid ${checkout.amount} ${checkout.currency} but is worth ${expected} — not confirmed, needs review.`);
+    console.error(`${qui} confirmation (${source}): order ${order.id} paid ${checkout.amount} ${checkout.currency} but is worth ${expected} — not confirmed, needs review.`);
     return { confirmed: false, status: order.status };
   }
 
   await db.updateOrderStatus(order.id, 'Paid');
   const { name, email } = orderContact(order);
   if (!email) {
-    console.error(`SumUp confirmation (${source}): order ${order.id} is marked paid but has no customer email — confirmation not sent.`);
+    console.error(`${qui} confirmation (${source}): order ${order.id} is marked paid but has no customer email — confirmation not sent.`);
     return { confirmed: true, status: 'Paid' };
   }
   try {
-    await emailService.sendMail({
-      to: email,
-      subject: `Merci pour votre achat ${order.id} - So You Cosmetics`,
-      html: buildPaymentConfirmedEmail({ name, orderId: order.id, total: order.total })
-    });
-    await sendInvoiceIfEnabled(order, email);
+    await envoyerConfirmationEtFacture(order, email, name);
     await avertirNouvelleCommande(order);
     await appliquerStockEtAlerter(order);
   } catch (mailErr) {
     // The payment is real either way — never fail the confirmation over email.
-    console.error(`SumUp confirmation (${source}): order ${order.id} confirmed but the email failed:`, mailErr);
+    console.error(`${qui} confirmation (${source}): order ${order.id} confirmed but the email failed:`, mailErr);
   }
   return { confirmed: true, status: 'Paid' };
 }
@@ -690,15 +809,91 @@ function blocAdresseEmail(order) {
     <p style="margin:0;line-height:1.5;">${lignes.join('<br>')}</p>`;
 }
 
+// La photo de chaque article, à côté de son nom.
+//
+// Sa demande : « sur les alertes commandes reçues en interne — tableau de bord
+// et courriel — les images des produits à côté des noms. » Une commande de six
+// lignes se lit d'un coup d'œil quand elle est illustrée ; en liste de noms,
+// il faut la déchiffrer.
+//
+// L'image N'EST PAS prise dans la commande : le navigateur n'envoie que
+// l'identifiant, le nom, la quantité et le prix. Elle est cherchée dans le
+// catalogue par identifiant, comme le serveur le fait déjà pour recalculer les
+// prix — le navigateur ne décide pas de ce qui s'affiche dans son courrier.
+//
+// Conséquence utile : les commandes déjà enregistrées s'illustrent aussi,
+// sans migration.
+// Le catalogue indexe par identifiant. Sorti a part pour qu'une LISTE de
+// commandes le lise une seule fois : le relire par commande faisait cinquante
+// lectures de fichier pour afficher un tableau de bord.
+async function catalogueParId() {
+  try {
+    // Tout le catalogue : une commande passée sur une fiche depuis retirée doit
+    // garder sa vignette.
+    const catalogue = await db.getProduitsTous();
+    return new Map((catalogue || []).map((p) => [String(p.id), p]));
+  } catch (err) {
+    // Un catalogue illisible ne doit pas empêcher l'alerte de partir : mieux
+    // vaut une commande sans vignette qu'une commande dont on n'est pas averti.
+    console.error('Vignettes de commande : catalogue illisible —', err.message);
+    return new Map();
+  }
+}
+
+async function vignettesParArticle(order, indexFourni) {
+  const lignes = Array.isArray(order && order.items) ? order.items : [];
+  if (lignes.length === 0) return new Map();
+
+  const parId = indexFourni || await catalogueParId();
+  const sortie = new Map();
+  for (const ligne of lignes) {
+    const p = parId.get(String(ligne && ligne.id));
+    if (!p) continue;
+    const brut = (Array.isArray(p.images) && p.images[0]) || p.image || '';
+    if (!brut) continue;
+    // Une messagerie n'a pas de page de référence : un « /uploads/… » n'y
+    // résout pas. Même règle que pour les aperçus de partage.
+    sortie.set(String(ligne.id), /^https?:\/\//i.test(brut)
+      ? brut
+      : publicBaseUrl() + (brut.startsWith('/') ? brut : '/' + brut));
+  }
+  return sortie;
+}
+
+// Une ligne d'article pour un courriel.
+//
+// En tableau et non en flex : Outlook ne connaît pas la mise en page moderne,
+// et c'est encore la messagerie de bien des commerçants.
+//
+// La vignette est décorative — alt vide, le nom est juste à côté en texte. La
+// plupart des messageries bloquent les images distantes par défaut : la ligne
+// doit rester lisible sans elles, et elle l'est.
+function ligneArticleEmail(ligne, urlImage) {
+  const qte = Math.max(1, parseInt(ligne.qty, 10) || 1);
+  const nom = escapeForEmail(ligne.name || ligne.id || '');
+  const vignette = urlImage
+    ? `<img src="${escapeForEmail(urlImage)}" alt="" width="44" height="44"
+           style="display:block;width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #DED3C4;">`
+    : `<div style="width:44px;height:44px;border-radius:6px;background:#F7F3EC;border:1px solid #DED3C4;"></div>`;
+
+  return `
+    <tr>
+      <td width="44" style="padding:6px 12px 6px 0;vertical-align:middle;">${vignette}</td>
+      <td style="padding:6px 0;vertical-align:middle;font-size:14px;color:#3A332B;">
+        <strong>${qte} ×</strong> ${nom}
+      </td>
+    </tr>`;
+}
+
 async function avertirNouvelleCommande(order) {
   const { alerts } = db.getShopSettings();
   const destinataire = db.adresseAlerte();
   if (!alerts.onNewOrder || !destinataire) return;
 
-  const lignes = (order.items || []).map((it) => {
-    const qte = Math.max(1, parseInt(it.qty, 10) || 1);
-    return `<li>${qte} × ${escapeForEmail(it.name || it.id || '')}</li>`;
-  }).join('');
+  const vignettes = await vignettesParArticle(order);
+  const lignes = (order.items || [])
+    .map((it) => ligneArticleEmail(it, vignettes.get(String(it.id))))
+    .join('');
 
   const livraison = order.shipping
     ? `<p><strong>Expédition :</strong> ${escapeForEmail(order.shipping.label || '')}${
@@ -713,7 +908,8 @@ async function avertirNouvelleCommande(order) {
         <div style="font-family:sans-serif;color:#3A332B;max-width:600px;margin:0 auto;padding:24px;">
           <h2 style="font-family:serif;font-weight:400;">Commande ${escapeForEmail(order.id)}</h2>
           <p><strong>${escapeForEmail(order.customer_name || '')}</strong> — ${escapeForEmail(order.customer_email || '')}</p>
-          <ul>${lignes}</ul>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"
+                 style="width:100%;border-collapse:collapse;margin:16px 0;">${lignes}</table>
           ${livraison}
           ${blocAdresseEmail(order)}
           <p style="font-size:17px;"><strong>Total encaissé : CHF ${Number(order.total).toFixed(2)}</strong></p>
@@ -747,13 +943,20 @@ async function appliquerStockEtAlerter(order) {
     return;
   }
 
-  if (evenements.length === 0) return;
+  await alerterStock(evenements, `Après la commande ${order.id}`);
+}
+
+// Le courriel d'alerte, quelle que soit l'origine de la vente : une commande
+// en ligne, ou des ventes relevées dans la caisse SumUp.
+async function alerterStock(evenements, contexte) {
+  const { alerts } = db.getShopSettings();
+  if (!evenements || evenements.length === 0) return;
   const destinataire = db.adresseAlerte();
   if (!alerts.onLowStock || !destinataire) return;
 
   const ruptures = evenements.filter((e) => e.type === 'rupture');
   const bas = evenements.filter((e) => e.type === 'bas');
-  const ligne = (e) => `<li><strong>${escapeForEmail(e.nom)}</strong> — ${e.restant === 0 ? 'épuisé' : `${e.restant} restant(s)`}</li>`;
+  const ligne = (e) => `<li><strong>${escapeForEmail(e.nom)}</strong> — ${e.restant === 0 ? 'épuisé' : `${e.restant} restant(s), seuil ${e.seuil}`}</li>`;
 
   try {
     await emailService.sendMail({
@@ -763,38 +966,66 @@ async function appliquerStockEtAlerter(order) {
         : `Stock bas — ${bas.length} produit(s)`,
       html: `
         <div style="font-family:sans-serif;color:#3A332B;max-width:600px;margin:0 auto;padding:24px;">
-          <h2 style="font-family:serif;font-weight:400;">Après la commande ${escapeForEmail(order.id)}</h2>
+          <h2 style="font-family:serif;font-weight:400;">${escapeForEmail(contexte)}</h2>
           ${ruptures.length ? `<p><strong>Épuisé :</strong></p><ul>${ruptures.map(ligne).join('')}</ul>` : ''}
-          ${bas.length ? `<p><strong>Il en reste peu (seuil : ${seuil}) :</strong></p><ul>${bas.map(ligne).join('')}</ul>` : ''}
+          ${bas.length ? `<p><strong>Il en reste peu :</strong></p><ul>${bas.map(ligne).join('')}</ul>` : ''}
           <p style="color:#6A6157;font-size:13px;">Les quantités ont déjà été mises à jour dans votre administration.
           Un produit épuisé est automatiquement retiré de la vente.</p>
         </div>`,
     });
   } catch (err) {
-    console.error(`Stock alert for order ${order.id} could not be sent:`, err.message);
+    console.error(`Stock alert (${contexte}) could not be sent:`, err.message);
   }
 }
 
 // Émet la facture une seule fois par commande. Le numéro est réservé au moment
 // de l'envoi : une commande confirmée deux fois (webhook puis navigateur) ne
 // doit pas consommer deux numéros ni envoyer deux factures.
-async function sendInvoiceIfEnabled(order, email) {
-  const settings = db.getShopSettings();
-  if (!settings.invoice || !settings.invoice.enabled) return;
-  if (order.invoice_number) return;             // déjà facturée
+async function envoyerConfirmationEtFacture(order, email, name) {
   if (!email) return;
 
+  const settings = db.getShopSettings();
+  const facture = settings.invoice && settings.invoice.enabled;
+  // Le numéro est réservé au moment de l'envoi : une commande confirmée deux
+  // fois — le webhook puis le retour du navigateur — ne doit pas consommer deux
+  // numéros ni envoyer deux fois la même facture.
+  let invoiceNumber = order.invoice_number || null;
+
   try {
-    const invoiceNumber = db.nextInvoiceNumber();
-    await db.updateOrderFields(order.id, { invoice_number: invoiceNumber });
+    if (facture && !invoiceNumber) {
+      invoiceNumber = db.nextInvoiceNumber();
+      await db.updateOrderFields(order.id, { invoice_number: invoiceNumber });
+      order.invoice_number = invoiceNumber;
+    }
+  } catch (err) {
+    // Une facture qui échoue ne doit pas remettre en cause un paiement encaissé,
+    // ni priver la cliente de sa confirmation : on envoie l'un sans l'autre.
+    console.error(`Invoice number for order ${order.id} could not be reserved:`, err.message);
+    invoiceNumber = null;
+  }
+
+  // Un retrait en boutique ne s'expédie pas : la phrase de fin doit le dire.
+  const retrait = !db.exigeAdresse(order.shipping && order.shipping.id);
+
+  const corps = buildPaymentConfirmedEmail({
+    name, orderId: order.id, total: order.total, retrait,
+  }) + (invoiceNumber
+    ? `<div style="height:28px"></div>${buildInvoiceHtml({ invoiceNumber, order, settings })}`
+    : '');
+
+  try {
     await emailService.sendMail({
       to: email,
-      subject: `Facture ${invoiceNumber} - So You Cosmetics`,
-      html: buildInvoiceHtml({ invoiceNumber, order, settings }),
+      // Deux e-mails arrivaient à la suite : la confirmation, puis la facture.
+      // « Je trouve ça plus simple pour le client » — et c'est vrai : une
+      // commande, un message, qu'on retrouve d'une seule recherche.
+      subject: invoiceNumber
+        ? `Votre commande ${order.id} et sa facture ${invoiceNumber} - So You Cosmetics`
+        : `Merci pour votre achat ${order.id} - So You Cosmetics`,
+      html: corps,
     });
   } catch (err) {
-    // Une facture qui échoue ne doit pas remettre en cause un paiement encaissé.
-    console.error(`Invoice for order ${order.id} could not be sent:`, err.message);
+    console.error(`Confirmation for order ${order.id} could not be sent:`, err.message);
   }
 }
 
@@ -826,6 +1057,27 @@ router.post('/sumup/webhook', async (req, res) => {
     await confirmOrderPaid(checkoutRef, 'webhook');
   } catch (err) {
     console.error('SumUp webhook handler error:', err);
+  }
+});
+
+// 3b-bis. Payrexx Webhook — TWINT.
+//
+// Payrexx envoie la transaction, en JSON ou en formulaire selon le réglage du
+// compte. On n'en retient que la commande qu'elle désigne (referenceId) ; le
+// paiement lui-même est revérifié auprès de Payrexx par confirmOrderPaid, comme
+// pour SumUp. Réponse immédiate : Payrexx abandonne après 20 secondes.
+router.post('/payrexx/webhook', express.urlencoded({ extended: true }), async (req, res) => {
+  res.status(200).json({ received: true });
+  const t = (req.body && req.body.transaction) || {};
+  const ref = t.referenceId || (t.invoice && t.invoice.referenceId);
+  if (!ref) {
+    console.warn('Payrexx webhook without referenceId');
+    return;
+  }
+  try {
+    await confirmOrderPaid(String(ref), 'payrexx-webhook');
+  } catch (err) {
+    console.error('Payrexx webhook handler error:', err);
   }
 });
 
@@ -1097,6 +1349,12 @@ router.put('/admin/settings/shop', requireAdmin, (req, res) => {
   if (patch.hours !== undefined && !Array.isArray(patch.hours)) {
     return res.status(400).json({ error: 'Les horaires doivent être une liste' });
   }
+  // La saison se pose sur le bandeau public : on refuse une valeur inconnue au
+  // lieu de la laisser retomber en silence sur « aucune ». Un réglage qu'on
+  // croit enregistré et qui ne l'est pas se cherche longtemps.
+  if (patch.saison !== undefined && !['aucune', 'hiver', 'printemps', 'ete', 'automne', 'noel'].includes(patch.saison)) {
+    return res.status(400).json({ error: 'Saison inconnue' });
+  }
 
   // Les tarifs postaux sont sur le chemin de l'argent : un prix illisible
   // enregistré, et toute commande part au mauvais montant. On refuse plutôt que
@@ -1234,6 +1492,19 @@ router.get('/admin/newsletter', requireAdmin, async (req, res) => {
   }
 });
 
+// Retirer d'un coup les inscriptions jamais confirmées, plus vieilles que
+// quelques jours : celles des robots, et celles qui n'ont pas cliqué.
+router.delete('/admin/newsletter/non-confirmees', requireAdmin, async (req, res) => {
+  try {
+    const jours = Math.max(1, Number((req.body && req.body.jours) || 7));
+    const retirees = await db.retirerNonConfirmees(Date.now() - jours * 86400000);
+    res.json({ retirees });
+  } catch (err) {
+    console.error('Nettoyage des inscriptions impossible :', err.message);
+    res.status(500).json({ error: 'Le nettoyage a échoué.' });
+  }
+});
+
 // Retirer une inscription. C'est ce qui rend tenable le droit d'effacement que
 // la politique de confidentialité annonce.
 router.delete('/admin/newsletter', requireAdmin, async (req, res) => {
@@ -1275,7 +1546,7 @@ router.get('/admin/orders/export', requireAdmin, async (req, res) => {
     // Seules les commandes encaissées intéressent la comptabilité : un panier
     // abandonné n'est pas une vente.
     const ventes = (toutes || []).filter((o) => {
-      const payee = ['paid', 'readyforpickup', 'shipped'].includes(String(o.status || '').toLowerCase());
+      const payee = ['paid', 'readyforpickup', 'pickedup', 'shipped'].includes(String(o.status || '').toLowerCase());
       return payee && String(o.created_at || '').startsWith(annee);
     });
 
@@ -1384,7 +1655,7 @@ router.post('/workshops/book', async (req, res) => {
         <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
           <p style="margin: 0 0 10px 0;"><strong>Date de l'atelier :</strong> ${date}</p>
           <p style="margin: 0 0 10px 0;"><strong>Places réservées :</strong> ${seats || 1}</p>
-          <p style="margin: 0;"><strong>Lieu :</strong> Boutique Soap Opera, 3 av. Pictet-De-Rochemont, 1207 Genève</p>
+          <p style="margin: 0;"><strong>Lieu :</strong> Boutique Soap Opera, 3 av. Pictet-de-Rochemont, 1207 Genève</p>
         </div>
         <p>Vous repartirez avec votre propre création cosmétique naturelle faite main !</p>
         <p>À très bientôt,</p>
@@ -1481,18 +1752,129 @@ router.post('/contact', async (req, res) => {
 
 // 6b. Newsletter Signup — stores the email (deduped). Independent of SMTP,
 // so it works even before the mailbox/SMTP credentials are configured.
+// L'inscription à l'infolettre, en deux temps.
+//
+// Le formulaire du pied de page a reçu 472 inscriptions entre août et
+// octobre 2026, presque toutes de robots : des adresses Gmail truffées de
+// points (« or.up.a.h.oh.e.z.og.5.6@gmail.com »), par rafales de cinquante en
+// un jour. Ce sont souvent de VRAIES adresses, que le robot inscrit à des
+// centaines de listes pour noyer leur propriétaire. Leur écrire, c'était
+// récolter des plaintes pour spam et voir le domaine de la boutique bloqué.
+//
+// D'où trois barrières, et une règle :
+//   · un champ caché que seuls les robots remplissent ;
+//   · un délai minimum entre l'affichage du formulaire et l'envoi ;
+//   · un plafond d'inscriptions par connexion et par heure ;
+//   · et la règle : une adresse ne reçoit l'infolettre qu'après avoir cliqué
+//     le lien de confirmation qu'on lui envoie.
+//
+// Un robot écarté reçoit la même réponse qu'une inscription réelle : lui dire
+// qu'il a échoué, c'est lui apprendre à mieux faire.
+const tentativesInfolettre = new Map();
+const PLAFOND_INSCRIPTIONS_HEURE = 5;
+const DELAI_MINIMUM_MS = 2500;
+
+function tropDInscriptions(ip) {
+  const maintenant = Date.now();
+  const recentes = (tentativesInfolettre.get(ip) || []).filter((t) => maintenant - t < 3600000);
+  recentes.push(maintenant);
+  tentativesInfolettre.set(ip, recentes);
+  // L'adresse IP ne sert qu'à ce compte, en mémoire, et disparaît au bout d'une heure.
+  if (tentativesInfolettre.size > 5000) {
+    for (const [k, v] of tentativesInfolettre) if (!v.some((t) => maintenant - t < 3600000)) tentativesInfolettre.delete(k);
+  }
+  return recentes.length > PLAFOND_INSCRIPTIONS_HEURE;
+}
+
+// Le motif des robots observé ici : trois points ou plus avant @gmail.com.
+// Gmail ignore les points, ce qui permet de fabriquer des milliers de
+// variantes d'une même adresse ; une vraie adresse en porte rarement plus d'un.
+function adresseFabriquee(email) {
+  const [local, domaine] = String(email).toLowerCase().split('@');
+  return /^(gmail|googlemail)\.com$/.test(domaine || '') && (local.match(/\./g) || []).length >= 3;
+}
+
+const TEXTES_CONFIRMATION = {
+  fr: {
+    sujet: 'Confirmez votre inscription — So You Cosmetics',
+    titre: 'Une dernière étape',
+    texte: 'Pour recevoir notre newsletter, confirmez que cette adresse est bien la vôtre.',
+    bouton: 'Confirmer mon inscription',
+    apres: 'Vous n’avez rien demandé ? Ignorez ce message : sans clic, vous ne recevrez rien de notre part.',
+  },
+  en: {
+    sujet: 'Confirm your subscription — So You Cosmetics',
+    titre: 'One last step',
+    texte: 'To receive our newsletter, please confirm that this address is yours.',
+    bouton: 'Confirm my subscription',
+    apres: 'Didn’t ask for this? Ignore this message: without a click, you will receive nothing from us.',
+  },
+  de: {
+    sujet: 'Bestätigen Sie Ihre Anmeldung — So You Cosmetics',
+    titre: 'Ein letzter Schritt',
+    texte: 'Um unseren Newsletter zu erhalten, bestätigen Sie bitte, dass diese Adresse Ihnen gehört.',
+    bouton: 'Anmeldung bestätigen',
+    apres: 'Nichts angefordert? Ignorieren Sie diese Nachricht: Ohne Klick erhalten Sie nichts von uns.',
+  },
+};
+
+function lienConfirmation(email, langue) {
+  const e = encodeURIComponent(String(email || '').trim().toLowerCase());
+  const prefixe = langue === 'en' || langue === 'de' ? `/${langue}` : '';
+  return `${publicBaseUrl()}${prefixe}/confirmer-infolettre?e=${e}&s=${db.signerConfirmationNewsletter(email)}`;
+}
+
 router.post('/newsletter', async (req, res) => {
-  const { email } = req.body;
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const { email, site, delai, langue } = req.body || {};
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || String(email).length > 200) {
     return res.status(400).json({ error: 'Adresse e-mail invalide' });
   }
+  const reponse = { message: 'Inscription reçue : confirmez-la depuis l’e-mail que nous venons de vous envoyer.' };
+
+  const robot = Boolean(site) || !(Number(delai) >= DELAI_MINIMUM_MS) || adresseFabriquee(email);
+  // Derrière le proxy de l'hébergeur, req.ip est celle du proxy pour TOUT le
+  // monde : le plafond s'appliquerait au site entier. L'adresse du visiteur
+  // est la première de X-Forwarded-For.
+  const ip = String(req.get('x-forwarded-for') || '').split(',')[0].trim() || req.ip;
+  if (robot || tropDInscriptions(ip)) return res.status(201).json(reponse);
 
   try {
-    await db.createNewsletterSubscriber(email);
-    res.status(201).json({ message: 'Inscription à la newsletter réussie' });
+    const inscription = await db.createNewsletterSubscriber(email);
+    // Déjà confirmée : rien à envoyer. Lien déjà envoyé ces dernières 24 h :
+    // on ne le renvoie pas, pour que personne ne puisse se servir du
+    // formulaire pour bombarder une boîte de messages.
+    const dernier = inscription.confirmation_envoyee_le ? new Date(inscription.confirmation_envoyee_le).getTime() : 0;
+    if (!inscription.confirme_le && Date.now() - dernier > 24 * 3600000) {
+      const l = TEXTES_CONFIRMATION[langue] ? langue : 'fr';
+      const t = TEXTES_CONFIRMATION[l];
+      await emailService.sendMail({
+        to: inscription.email,
+        subject: t.sujet,
+        html: gabaritCompte({ titre: t.titre, bonjour: '', texte: t.texte, lien: lienConfirmation(inscription.email, l), libelleLien: t.bouton, apres: t.apres }),
+      });
+      await db.marquerConfirmationEnvoyee(inscription.email);
+    }
+    res.status(201).json(reponse);
   } catch (err) {
     console.error('Newsletter signup failed:', err);
     res.status(500).json({ error: 'Failed to subscribe to newsletter' });
+  }
+});
+
+// La confirmation, en POST depuis la page /confirmer-infolettre — jamais à
+// l'ouverture du lien : les messageries qui visitent les liens pour les
+// prévisualiser confirmeraient sinon à la place de la personne.
+router.post('/newsletter/confirmer', async (req, res) => {
+  const { email, signature } = req.body || {};
+  if (!email || !db.confirmationNewsletterValide(email, signature)) {
+    return res.status(400).json({ error: 'Ce lien de confirmation n’est pas valable. Réinscrivez-vous depuis le bas de n’importe quelle page.' });
+  }
+  try {
+    await db.confirmerNewsletterSubscriber(email);
+    res.json({ message: 'C’est confirmé : vous recevrez notre prochaine newsletter.' });
+  } catch (err) {
+    console.error('Confirmation newsletter impossible :', err);
+    res.status(500).json({ error: 'La confirmation a échoué. Réessayez dans un instant.' });
   }
 });
 
@@ -1561,7 +1943,26 @@ router.post('/admin/change-password', requireAdmin, async (req, res) => {
 router.get('/admin/orders', requireAdmin, async (req, res) => {
   try {
     const orders = await db.getOrders();
-    res.json(orders);
+    // Chaque ligne recoit la photo de son produit, cherchee au catalogue par
+    // identifiant. Le tableau de bord et le courriel d'alerte lisent ainsi la
+    // meme source : une commande illustree se lit d'un coup d'oeil, une liste
+    // de noms se dechiffre.
+    //
+    // Les commandes deja enregistrees en profitent aussi : rien n'est stocke,
+    // tout est resolu a la lecture.
+    const index = await catalogueParId();
+    const illustrees = [];
+    for (const order of orders || []) {
+      const vignettes = await vignettesParArticle(order, index);
+      illustrees.push(vignettes.size === 0 ? order : {
+        ...order,
+        items: (order.items || []).map((it) => ({
+          ...it,
+          image: vignettes.get(String(it.id)) || null,
+        })),
+      });
+    }
+    res.json(illustrees);
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve admin orders list' });
   }
@@ -1583,6 +1984,34 @@ router.put('/admin/orders/:id', requireAdmin, async (req, res) => {
     }
   } catch (err) {
     res.status(500).json({ error: 'Failed to update order status' });
+  }
+});
+
+// Supprimer une commande.
+//
+// Réservée à celles qui ont d'abord été annulées ou remboursées. Ce n'est pas
+// une formalité : c'est ce qui rend impossible d'effacer une vraie commande
+// d'un seul geste. Il faut l'écarter, la voir écartée, puis décider de
+// l'effacer — deux décisions séparées par un rechargement de la liste.
+router.delete('/admin/orders/:id', requireAdmin, async (req, res) => {
+  try {
+    const commande = await db.getOrderById(req.params.id);
+    if (!commande) return res.status(404).json({ error: 'Commande introuvable' });
+
+    const statut = db.canonicalOrderStatus(commande.status);
+    if (!['Cancelled', 'Refunded'].includes(statut)) {
+      return res.status(409).json({
+        error: "Cette commande n'est ni annulée ni remboursée. Changez d'abord son statut : "
+             + 'on ne supprime que ce qui a déjà été écarté.',
+      });
+    }
+
+    const fait = await db.deleteOrder(req.params.id);
+    if (!fait) return res.status(500).json({ error: 'La suppression a échoué ; rien n\'a été retiré.' });
+    res.json({ message: 'Commande supprimée.' });
+  } catch (err) {
+    console.error('deleteOrder error', err);
+    res.status(500).json({ error: 'La suppression a échoué' });
   }
 });
 
@@ -1623,7 +2052,7 @@ router.post('/admin/send-email', requireAdmin, async (req, res) => {
         </div>
         <div style="border-top: 1px solid #eee; padding-top: 15px; margin-top: 30px; font-size: 12px; color: #888;">
           <p style="margin: 0 0 5px 0;"><strong>Boutique Soap Opera by So You Cosmetics</strong></p>
-          <p style="margin: 0 0 5px 0;">3 av. Pictet-De-Rochemont, 1207 Genève</p>
+          <p style="margin: 0 0 5px 0;">3 av. Pictet-de-Rochemont, 1207 Genève</p>
           <p style="margin: 0;">Téléphone : <a href="tel:+41225566992" style="color: #888; text-decoration: none;">022 556 69 92</a> | Email : <a href="mailto:contact@soyoucosmetics.com" style="color: #888; text-decoration: none;">contact@soyoucosmetics.com</a></p>
         </div>
       </div>
@@ -1650,7 +2079,8 @@ router.get('/admin/settings/sumup', requireAdmin, (req, res) => {
       apiKeyConfigured: !!apiKey,
       apiKeyLast4: apiKey ? apiKey.slice(-4) : null,
       merchantEmail: cfg.merchantEmail || '',
-      webhookSecretConfigured: !!cfg.webhookSecret
+      webhookSecretConfigured: !!cfg.webhookSecret,
+      googlePayMerchantId: cfg.googlePayMerchantId || ''
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to read SumUp settings' });
@@ -1672,6 +2102,9 @@ router.put('/admin/settings/sumup', requireAdmin, (req, res) => {
     if (Object.prototype.hasOwnProperty.call(req.body, 'webhookSecret')) {
       patch.SUMUP_WEBHOOK_SECRET = req.body.webhookSecret;
     }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'googlePayMerchantId')) {
+      patch.GOOGLE_PAY_MERCHANT_ID = String(req.body.googlePayMerchantId || '').trim();
+    }
     db.updateSettings(patch);
     const cfg = db.getSumupConfig();
     res.json({
@@ -1679,11 +2112,101 @@ router.put('/admin/settings/sumup', requireAdmin, (req, res) => {
       apiKeyConfigured: !!cfg.apiKey,
       apiKeyLast4: cfg.apiKey ? cfg.apiKey.slice(-4) : null,
       merchantEmail: cfg.merchantEmail || '',
-      webhookSecretConfigured: !!cfg.webhookSecret
+      webhookSecretConfigured: !!cfg.webhookSecret,
+      googlePayMerchantId: cfg.googlePayMerchantId || ''
     });
   } catch (err) {
     console.error('SumUp settings update failed:', err);
     res.status(500).json({ error: 'Failed to update SumUp settings' });
+  }
+});
+
+// 13c-bis. Les moyens de paiement que SumUp propose réellement.
+//
+// Elle demandait de « vérifier que PayPal, V PAY, Google Pay et Apple Pay sont
+// bien activés ». Ce n'est pas une case du site : c'est SumUp qui décide, selon
+// le pays du compte, la devise et ce qui a été activé chez eux. Leur
+// documentation le dit — la liste renvoyée pour un paiement fait foi. On la
+// demande donc, pour 50 CHF, et on la garde une heure.
+let moyensEnCache = { quand: 0, resultat: null };
+async function moyensSumup() {
+  if (moyensEnCache.resultat && Date.now() - moyensEnCache.quand < 3600 * 1000) return moyensEnCache.resultat;
+  const { apiKey } = db.getSumupConfig();
+  if (!apiKey) return { configure: false, methodes: [] };
+  const axios = require('axios');
+  const headers = { Authorization: `Bearer ${apiKey}` };
+  const { data: moi } = await axios.get(`${sumupApiBase()}/v0.1/me`, { headers, timeout: 10000 });
+  const merchantCode = moi && moi.merchant_profile && moi.merchant_profile.merchant_code;
+  if (!merchantCode) throw new Error('code marchand introuvable dans /v0.1/me');
+  const { data } = await axios.get(`${sumupApiBase()}/v0.1/merchants/${encodeURIComponent(merchantCode)}/payment-methods`, {
+    headers, params: { amount: 50, currency: 'CHF' }, timeout: 10000,
+  });
+  const methodes = ((data && data.available_payment_methods) || []).map((m) => String(m.id));
+  moyensEnCache = { quand: Date.now(), resultat: { configure: true, merchantCode, methodes } };
+  return moyensEnCache.resultat;
+}
+
+// Le fichier qu'Apple vérifie avant d'autoriser Apple Pay sur ce domaine.
+const fichierApplePay = () =>
+  fs.existsSync(path.join(__dirname, '..', '.well-known', 'apple-developer-merchantid-domain-association'));
+
+// Public : les identifiants seulement, pour les logos du panier.
+//
+// SumUp peut annoncer Apple Pay et Google Pay sans que le module de paiement
+// puisse les montrer : Google Pay exige l'identifiant marchand Google, Apple
+// Pay le domaine vérifié. Un logo sans bouton au moment de payer serait une
+// promesse non tenue — on ne les annonce donc qu'une fois réglés.
+router.get('/paiement/moyens', async (req, res) => {
+  try {
+    const { methodes } = await moyensSumup();
+    const { googlePayMerchantId } = db.getSumupConfig();
+    const utilisables = methodes.filter((m) =>
+      (m !== 'google_pay' || !!googlePayMerchantId) && (m !== 'apple_pay' || fichierApplePay()));
+    res.set('Cache-Control', 'public, max-age=600');
+    res.json({ methodes: utilisables, twint: payrexx.actif() });
+  } catch (err) {
+    console.error('SumUp payment methods lookup failed:', err.response ? err.response.data : err.message);
+    res.json({ methodes: [], twint: payrexx.actif() });
+  }
+});
+
+// Admin : le diagnostic complet, à la demande, sans cache.
+router.get('/admin/sumup/moyens', requireAdmin, async (req, res) => {
+  moyensEnCache = { quand: 0, resultat: null };
+  const cfg = db.getSumupConfig();
+  // Apple Pay sur un site exige que le domaine soit déclaré chez SumUp
+  // (Tableau de bord → Paramètres → Pour les développeurs → Portefeuilles de
+  // paiement), qui fournit un fichier à poser sous /.well-known/.
+  const fichierApple = fichierApplePay();
+  try {
+    const r = await moyensSumup();
+    res.json({ ...r, googlePayConfigure: !!cfg.googlePayMerchantId, fichierApple });
+  } catch (err) {
+    const detail = err.response ? JSON.stringify(err.response.data) : err.message;
+    res.status(502).json({ error: `SumUp n'a pas répondu : ${detail}`, googlePayConfigure: !!cfg.googlePayMerchantId, fichierApple });
+  }
+});
+
+// 13c-ter. Réglages Payrexx (TWINT). La clé n'est jamais renvoyée en clair.
+router.get('/admin/settings/payrexx', requireAdmin, (req, res) => {
+  const cfg = db.getPayrexxConfig();
+  res.json({ instance: cfg.instance, apiKeyConfigured: !!cfg.apiKey, apiKeyLast4: cfg.apiKey ? cfg.apiKey.slice(-4) : null });
+});
+
+router.put('/admin/settings/payrexx', requireAdmin, (req, res) => {
+  try {
+    const patch = {};
+    if (Object.prototype.hasOwnProperty.call(req.body, 'instance')) {
+      // « soyou », « soyou.payrexx.com » ou l'adresse entière : on garde le sous-domaine.
+      patch.PAYREXX_INSTANCE = String(req.body.instance || '').trim().replace(/^https?:\/\//, '').replace(/\.payrexx\.com.*$/, '');
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'apiKey')) patch.PAYREXX_API_KEY = String(req.body.apiKey || '').trim();
+    db.updateSettings(patch);
+    const cfg = db.getPayrexxConfig();
+    res.json({ instance: cfg.instance, apiKeyConfigured: !!cfg.apiKey, apiKeyLast4: cfg.apiKey ? cfg.apiKey.slice(-4) : null });
+  } catch (err) {
+    console.error('Payrexx settings update failed:', err);
+    res.status(500).json({ error: 'Enregistrement des réglages Payrexx impossible' });
   }
 });
 
@@ -1863,7 +2386,9 @@ router.delete('/admin/workshops/:id', requireAdmin, async (req, res) => {
 // 18. Admin List Products
 router.get('/admin/products', requireAdmin, async (req, res) => {
   try {
-    const products = await db.getProducts();
+    // Tout, y compris les fiches en attente : c'est justement là qu'elle les
+    // retrouve pour les remettre en ligne.
+    const products = await db.getProduitsTous();
     res.json(products);
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve products' });
@@ -1935,12 +2460,1115 @@ router.post('/admin/products/upload-image', requireAdmin, async (req, res) => {
     }
     ensureUploadsDir();
     const safeBase = String(filename || 'image').replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 40) || 'image';
-    const name = `${safeBase}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
+
+    // Renvoyer le fichier déjà là, plutôt qu'en écrire un second identique.
+    //
+    // Réenvoyer la même photo est un geste banal : on ne l'a pas vue paraître,
+    // on recommence. Tant que le nom portait l'heure, ce geste créait un
+    // doublon que la galerie affichait deux fois — et que personne ne pouvait
+    // distinguer à l'œil, les deux vignettes étant la même image.
+    const empreinte = empreinteContenu(buf);
+    const deja = fichierExistant(empreinte, ext);
+    if (deja) {
+      return res.status(200).json({ url: `/uploads/${deja}`, deduplique: true });
+    }
+
+    const name = `${safeBase}-${empreinte}.${ext}`;
     fs.writeFileSync(path.join(UPLOADS_DIR, name), buf);
     res.status(201).json({ url: `/uploads/${name}` });
   } catch (err) {
     console.error('upload-image error', err);
     res.status(500).json({ error: "Échec du téléversement de l'image" });
+  }
+});
+
+// Les paniers abandonnés.
+//
+// « Est-ce qu'on peut avoir un suivi des paniers abandonnés ? Même simplement
+// pouvoir les voir serait déjà utile. »
+//
+// Rien de nouveau n'est collecté pour cela, et c'est le point important. Suivre
+// ce que des visiteuses anonymes mettent dans leur panier aurait demandé de
+// l'enregistrer côté serveur avant qu'elles n'aient rien validé — donc de
+// changer la nature des données recueillies, et la politique de
+// confidentialité avec.
+//
+// Ce n'est pas nécessaire : la donnée existe déjà. Une commande naît en
+// « Pending » et ne passe en « Paid » qu'au paiement confirmé. Une commande
+// restée en attente est donc exactement cela — quelqu'un qui a rempli le
+// formulaire, accepté les conditions, été envoyé vers le paiement, et n'est
+// jamais revenu. Avec son nom, son adresse et son panier, qu'elle a donnés
+// elle-même.
+//
+// Le délai écarte celles qui sont peut-être en train de payer : une commande
+// d'il y a trois minutes n'est pas abandonnée, elle est en cours.
+const DELAI_PANIER_ABANDONNE_MS = 60 * 60 * 1000;
+
+router.get('/admin/paniers-abandonnes', requireAdmin, async (req, res) => {
+  try {
+    const limite = Date.now() - DELAI_PANIER_ABANDONNE_MS;
+    const commandes = await db.getOrders();
+    const paniers = (commandes || [])
+      .filter((c) => db.canonicalOrderStatus(c.status) === 'Pending')
+      .filter((c) => new Date(c.created_at).getTime() < limite)
+      .map((c) => ({
+        id: c.id,
+        date: c.created_at,
+        nom: c.customer_name,
+        email: c.customer_email,
+        telephone: c.customer_phone || '',
+        total: c.total,
+        expedition: c.shipping || null,
+        articles: (c.items || []).map((a) => ({ nom: a.name, qty: a.qty, prix: a.price })),
+      }))
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+    res.json({ paniers, delaiHeures: DELAI_PANIER_ABANDONNE_MS / 3600000 });
+  } catch (err) {
+    console.error('Lecture des paniers abandonnés impossible :', err);
+    res.status(500).json({ error: 'Les paniers abandonnés n’ont pas pu être lus.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// La mesure d'audience, sans cookie : voir server/audience.js.
+// ─────────────────────────────────────────────────────────────────────────
+
+// Une page vue. Répond 204 dans tous les cas : le navigateur n'attend rien, et
+// un robot n'a pas à apprendre qu'il a été écarté.
+router.post('/audience', (req, res) => {
+  const b = req.body || {};
+  const source = b.source && typeof b.source === 'object' ? b.source : null;
+  if (b.action) {
+    audience.noterAction({ action: String(b.action), source }, req.get('user-agent'));
+    return res.status(204).end();
+  }
+  audience.noter({
+    chemin: b.chemin,
+    nouvelle: b.nouvelle === true,
+    source: b.source && typeof b.source === 'object' ? b.source : null,
+  }, req.get('user-agent'));
+  res.status(204).end();
+});
+
+const { STATUTS_PAYES } = audience;
+
+// Le tableau « Marketing » : les visites d'une période, et ce qu'elles ont
+// rapporté. Les commandes sont comptées payées seulement — un panier
+// abandonné n'est pas une vente — et rangées par la provenance de la visite
+// qui les a passées.
+router.get('/admin/audience', requireAdmin, async (req, res) => {
+  try {
+    const jours = Math.min(Math.max(parseInt(req.query.jours, 10) || 30, 1), 400);
+    const fin = audience.jourLocal();
+    const debut = audience.jourLocal(new Date(Date.now() - (jours - 1) * 86400000));
+    const visites = audience.periode(debut, fin);
+
+    const commandes = (await db.getOrders()).filter((o) => {
+      const jour = o.created_at ? audience.jourLocal(new Date(o.created_at)) : '';
+      return jour >= debut && jour <= fin && STATUTS_PAYES.includes(String(o.status || '').toLowerCase());
+    });
+    const ventes = {};
+    const ventesCampagnes = {};
+    for (const o of commandes) {
+      // Les commandes d'avant le suivi n'ont pas de provenance : on le dit,
+      // plutôt que de les ranger d'office sous « Direct ».
+      const canal = (o.source && o.source.canal) || 'Inconnue';
+      const v = ventes[canal] || (ventes[canal] = { commandes: 0, montant: 0 });
+      v.commandes += 1;
+      v.montant += Number(o.total) || 0;
+      const camp = o.source && o.source.campagne;
+      if (camp) {
+        const c = ventesCampagnes[camp] || (ventesCampagnes[camp] = { commandes: 0, montant: 0 });
+        c.commandes += 1;
+        c.montant += Number(o.total) || 0;
+      }
+    }
+
+    res.json({ debut, fin, ...visites, ventes, ventesCampagnes });
+  } catch (err) {
+    console.error('Lecture de l’audience impossible :', err);
+    res.status(500).json({ error: 'Les chiffres de fréquentation n’ont pas pu être lus.' });
+  }
+});
+
+// Les ventes venues de Google Ads, renvoyées à Google Ads.
+//
+// Sans cela, Google Ads ne sait pas qu'une annonce a fait vendre : son traceur
+// habituel dépose des cookies, et la boutique n'en veut pas. Le fichier est lu
+// de deux façons : téléchargé depuis l'onglet Marketing, ou relevé chaque jour
+// par Google Ads lui-même, avec un identifiant et une clé (authentification
+// HTTP « Basic », ce que l'import programmé de Google Ads sait faire).
+const UTILISATEUR_ADS = 'google-ads';
+
+router.get('/admin/google-ads', requireAdmin, async (req, res) => {
+  const commandes = await db.getOrders();
+  const csv = audience.csvConversionsGoogle(commandes);
+  res.json({
+    cle: db.getSetting('GOOGLE_ADS_EXPORT_KEY') || '',
+    utilisateur: UTILISATEUR_ADS,
+    adresse: `${publicBaseUrl()}/api/google-ads/conversions.csv`,
+    nomConversion: audience.NOM_CONVERSION,
+    ventes: csv.trim().split('\r\n').length - 2,
+  });
+});
+
+router.post('/admin/google-ads/cle', requireAdmin, (req, res) => {
+  const cle = crypto.randomBytes(18).toString('base64url');
+  db.updateSettings({ GOOGLE_ADS_EXPORT_KEY: cle });
+  res.json({ cle });
+});
+
+router.get('/admin/google-ads/conversions.csv', requireAdmin, async (req, res) => {
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="conversions-google-ads.csv"');
+  res.send(audience.csvConversionsGoogle(await db.getOrders()));
+});
+
+router.get('/google-ads/conversions.csv', async (req, res) => {
+  const cle = db.getSetting('GOOGLE_ADS_EXPORT_KEY') || '';
+  const [type, valeur] = String(req.get('authorization') || '').split(' ');
+  let utilisateur = '';
+  let motDePasse = '';
+  if (type === 'Basic' && valeur) {
+    const brut = Buffer.from(valeur, 'base64').toString('utf8');
+    const i = brut.indexOf(':');
+    utilisateur = brut.slice(0, i);
+    motDePasse = brut.slice(i + 1);
+  }
+  const a = Buffer.from(motDePasse);
+  const b = Buffer.from(cle);
+  // Pas de clé réglée : fermé, même à qui enverrait un mot de passe vide.
+  if (!cle || utilisateur !== UTILISATEUR_ADS || a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="google-ads"');
+    return res.status(401).send('Unauthorized');
+  }
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(audience.csvConversionsGoogle(await db.getOrders()));
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Le tableau de bord d'accueil : ce qu'elle doit savoir en ouvrant l'admin.
+// ─────────────────────────────────────────────────────────────────────────
+
+router.get('/admin/tableau-de-bord', requireAdmin, async (req, res) => {
+  try {
+    const [commandes, produits, ateliers, reservations] = await Promise.all([
+      db.getOrders(), db.getProduitsTous(), db.getWorkshops(), db.getBookings(),
+    ]);
+    const aujourdhui = audience.jourLocal();
+    const mois = aujourdhui.slice(0, 7);
+    const jourDe = (o) => (o.created_at ? audience.jourLocal(new Date(o.created_at)) : '');
+    const payees = commandes.filter((o) => STATUTS_PAYES.includes(String(o.status || '').toLowerCase()));
+    const somme = (l) => Math.round(l.reduce((t, o) => t + (Number(o.total) || 0), 0) * 100) / 100;
+    const duJour = payees.filter((o) => jourDe(o) === aujourdhui);
+    const duMois = payees.filter((o) => jourDe(o).startsWith(mois));
+
+    // Les plus vendus du mois, en quantité, toutes ventes en ligne payées.
+    const parProduit = new Map();
+    for (const o of duMois) {
+      for (const a of o.items || []) {
+        const k = String(a.id || a.name);
+        const v = parProduit.get(k) || { nom: a.name, qte: 0, montant: 0 };
+        v.qte += Number(a.qty) || 1;
+        v.montant += (Number(a.price) || 0) * (Number(a.qty) || 1);
+        parProduit.set(k, v);
+      }
+    }
+    const meilleurs = [...parProduit.values()].sort((a, b) => b.qte - a.qte || b.montant - a.montant).slice(0, 5);
+
+    // À traiter : payées, ni prêtes ni expédiées.
+    const aTraiter = commandes
+      .filter((o) => String(o.status || '').toLowerCase() === 'paid')
+      .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+      .map((o) => ({
+        id: o.id, nom: o.customer_name, date: o.created_at, total: Number(o.total) || 0,
+        livraison: (o.shipping && o.shipping.label) || '', retrait: !db.exigeAdresse(o.shipping && o.shipping.id),
+      }));
+
+    const seuilGeneral = Number((db.getShopSettings().alerts || {}).lowStockThreshold) || 3;
+    const stockBas = produits
+      .filter((p) => p.stock != null && Number(p.stock) <= (p.seuilAlerte == null ? seuilGeneral : Number(p.seuilAlerte)))
+      .map((p) => ({ id: p.id, nom: p.name, stock: Number(p.stock), seuil: p.seuilAlerte == null ? seuilGeneral : Number(p.seuilAlerte), enLigne: p.enLigne !== false }))
+      .sort((a, b) => a.stock - b.stock);
+
+    const maintenant = Date.now();
+    const prochains = (ateliers || [])
+      .filter((w) => w.starts_at && new Date(w.starts_at).getTime() >= maintenant - 3600000)
+      .sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)))
+      .slice(0, 5)
+      .map((w) => ({
+        id: w.id, titre: w.title, date: w.starts_at,
+        places: (reservations || []).filter((b) => String(b.workshop_id) === String(w.id) && String(b.status || '').toLowerCase() !== 'cancelled')
+          .reduce((t, b) => t + (Number(b.seats) || 1), 0),
+      }));
+    // Les dernières réservations, pour les ateliers sans date fixe.
+    const reservationsRecentes = (reservations || [])
+      .slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 5)
+      .map((b) => ({ nom: b.customer_name, atelier: ((ateliers || []).find((w) => String(w.id) === String(b.workshop_id)) || {}).title || 'Atelier', creneau: b.slot_date, places: b.seats, le: b.created_at }));
+
+    // Les commandes à remettre au comptoir : à retirer, payées, prêtes ou non.
+    const retraits = commandes
+      .filter((o) => !db.exigeAdresse(o.shipping && o.shipping.id) && ['paid', 'readyforpickup'].includes(String(o.status || '').toLowerCase()))
+      .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+      .map((o) => ({
+        id: o.id, nom: o.customer_name, telephone: o.customer_phone || '', date: o.created_at, total: Number(o.total) || 0,
+        pret: String(o.status).toLowerCase() === 'readyforpickup',
+        articles: (o.items || []).map((a) => `${Number(a.qty) > 1 ? a.qty + ' × ' : ''}${a.name}`),
+      }));
+    const aExpedier = aTraiter.filter((o) => !o.retrait).length;
+
+    // Les ateliers du jour, à l'heure de Genève.
+    const ateliersDuJour = (ateliers || [])
+      .filter((w) => w.starts_at && audience.jourLocal(new Date(w.starts_at)) === aujourdhui)
+      .map((w) => ({ id: w.id, titre: w.title, date: w.starts_at }));
+
+    // « À fabriquer » : la rupture prévue d'après ce qui est parti en 30 jours,
+    // en ligne ET au comptoir (ventes de la caisse appliquées au stock). Un
+    // produit sans vente récente n'a pas de date de rupture ; il n'apparaît
+    // que s'il est déjà sous son seuil.
+    const il30 = new Date(Date.now() - 30 * 86400000).toISOString();
+    const venduEnLigne = {};
+    for (const o of payees) {
+      if (!o.created_at || o.created_at < il30) continue;
+      for (const a of o.items || []) venduEnLigne[a.id] = (venduEnLigne[a.id] || 0) + (Number(a.qty) || 1);
+    }
+    const venduBoutique = caisse.articlesVendusDepuis(il30);
+    const production = produits
+      .filter((p) => p.stock != null)
+      .map((p) => {
+        const enLigne = venduEnLigne[p.id] || 0;
+        const boutique = Math.max(0, venduBoutique[p.id] || 0);
+        const parJour = (enLigne + boutique) / 30;
+        const seuil = p.seuilAlerte == null ? seuilGeneral : Number(p.seuilAlerte);
+        return {
+          id: p.id, nom: p.name, stock: Number(p.stock), seuil, enLigne, boutique,
+          joursRestants: parJour > 0 ? Math.floor(Number(p.stock) / parJour) : null,
+        };
+      })
+      .filter((x) => (x.joursRestants !== null && x.joursRestants <= 21) || x.stock <= x.seuil)
+      .sort((a, b) => (a.joursRestants ?? 9999) - (b.joursRestants ?? 9999) || a.stock - b.stock);
+
+    // Le chiffre en ligne, jour par jour sur 60 jours : la courbe du tableau
+    // de bord le superpose à celui de la boutique.
+    const il60 = audience.jourLocal(new Date(Date.now() - 59 * 86400000));
+    const enLigneParJour = {};
+    for (const o of payees) {
+      const j = jourDe(o);
+      if (j < il60) continue;
+      const v = enLigneParJour[j] || (enLigneParJour[j] = { montant: 0, ventes: 0 });
+      v.montant += Number(o.total) || 0;
+      v.ventes += 1;
+    }
+
+    // Le bloc Noël : les commandes cadeau à préparer, les meilleures ventes de
+    // la semaine, et le compte à rebours jusqu'au dernier jour d'envoi qu'elle
+    // a fixé. Il suit le thème du site : choisir « Noël » dans « Horaires &
+    // absences » l'affiche, revenir à un autre thème le retire. « ?apercuNoel=1 »
+    // le montre sans changer de thème.
+    const reglagesBoutique = db.getShopSettings();
+    let noel = null;
+    if (reglagesBoutique.saison === 'noel' || req.query.apercuNoel === '1') {
+      const il7 = new Date(Date.now() - 7 * 86400000).toISOString();
+      const semaine = new Map();
+      for (const o of payees) {
+        if (!o.created_at || o.created_at < il7) continue;
+        for (const a of o.items || []) {
+          const v = semaine.get(a.id) || { nom: a.name, qte: 0 };
+          v.qte += Number(a.qty) || 1;
+          semaine.set(a.id, v);
+        }
+      }
+      const dernierEnvoi = (reglagesBoutique.noel || {}).dernierEnvoi || '';
+      noel = {
+        dernierEnvoi,
+        joursAvantEnvoi: dernierEnvoi ? Math.round((new Date(`${dernierEnvoi}T12:00:00Z`) - new Date(`${aujourdhui}T12:00:00Z`)) / 86400000) : null,
+        joursAvantNoel: Math.round((new Date(`${aujourdhui.slice(0, 4)}-12-25T12:00:00Z`) - new Date(`${aujourdhui}T12:00:00Z`)) / 86400000),
+        cadeaux: commandes
+          .filter((o) => o.cadeau && ['paid', 'readyforpickup'].includes(String(o.status || '').toLowerCase()))
+          .map((o) => ({ id: o.id, nom: o.customer_name, pour: o.cadeau.destinataire || '', emballage: !!o.cadeau.emballage, date: o.created_at, retrait: !db.exigeAdresse(o.shipping && o.shipping.id) })),
+        semaine: [...semaine.values()].sort((a, b) => b.qte - a.qte).slice(0, 5),
+      };
+    }
+
+    const visites = audience.periode(aujourdhui, aujourdhui);
+    res.json({
+      noel, fermeLe: reglagesBoutique.fermeLe || '', absence: !!(reglagesBoutique.absence && reglagesBoutique.absence.active),
+      aujourdhui,
+      jour: { ventes: duJour.length, montant: somme(duJour) },
+      mois: { ventes: duMois.length, montant: somme(duMois) },
+      visitesDuJour: visites.visites,
+      versBoutiqueDuJour: Object.values(visites.actions || {}).reduce((t, n) => t + n, 0),
+      meilleurs, aTraiter, aExpedier, retraits, ateliersDuJour, production, enLigneParJour,
+      stockBas, seuilGeneral, prochains, reservationsRecentes,
+      caisse: caisse.journal().dernierReleve,
+    });
+  } catch (err) {
+    console.error('Tableau de bord illisible :', err);
+    res.status(500).json({ error: 'Le tableau de bord n’a pas pu être composé.' });
+  }
+});
+
+// La boutique physique, d'après la caisse SumUp : le chiffre du jour, les
+// moyens de paiement, la courbe sur 60 jours, et les meilleures heures sur 90.
+// Séparé du reste du tableau de bord : SumUp peut être lent ou injoignable, et
+// l'accueil de l'administration ne doit pas l'attendre pour s'afficher.
+const MOYENS_LIBELLES = { POS: 'Carte', CASH: 'Espèces', APM: 'TWINT / autre', BALANCE: 'Solde SumUp', MOTO: 'Par téléphone' };
+
+function partiesGeneve(iso) {
+  const d = new Date(iso);
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Zurich', weekday: 'short', hour: '2-digit', hourCycle: 'h23' })
+    .formatToParts(d).map((x) => [x.type, x.value]));
+  return {
+    jour: d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Zurich' }),
+    // 0 = lundi … 6 = dimanche
+    semaine: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(p.weekday),
+    heure: Number(p.hour),
+  };
+}
+
+router.get('/admin/tableau-de-bord/boutique', requireAdmin, async (req, res) => {
+  if (!db.getSumupConfig().apiKey) return res.json({ configure: false });
+  try {
+    const ventes = await caisse.ventesBoutique({ jours: 90 });
+    const aujourdhui = audience.jourLocal();
+    const il60 = audience.jourLocal(new Date(Date.now() - 59 * 86400000));
+    const jour = { ventes: 0, montant: 0, rembourse: 0, moyens: {} };
+    const parJour = {};
+    const heures = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => ({ ventes: 0, montant: 0 })));
+    for (const v of ventes) {
+      const g = partiesGeneve(v.date);
+      const net = v.montant - v.rembourse;
+      if (g.semaine >= 0) {
+        heures[g.semaine][g.heure].ventes += 1;
+        heures[g.semaine][g.heure].montant += net;
+      }
+      if (g.jour >= il60) {
+        const pj = parJour[g.jour] || (parJour[g.jour] = { montant: 0, ventes: 0 });
+        pj.montant += net;
+        pj.ventes += 1;
+      }
+      if (g.jour === aujourdhui) {
+        jour.ventes += 1;
+        jour.montant += net;
+        jour.rembourse += v.rembourse;
+        const libelle = MOYENS_LIBELLES[v.moyen] || 'Autre';
+        const m = jour.moyens[libelle] || (jour.moyens[libelle] = { ventes: 0, montant: 0 });
+        m.ventes += 1;
+        m.montant += net;
+      }
+    }
+    const arrondi = (n) => Math.round(n * 100) / 100;
+    jour.montant = arrondi(jour.montant);
+    jour.panierMoyen = jour.ventes ? arrondi(jour.montant / jour.ventes) : 0;
+    res.json({ configure: true, aujourdhui, jour, parJour, heures, ventes90: ventes.length });
+  } catch (err) {
+    console.error('Ventes de la boutique illisibles :', err.response ? err.response.data : err.message);
+    res.json({ configure: true, erreur: err.response ? `SumUp a répondu ${err.response.status}` : 'SumUp n’a pas répondu' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Le fichier clients : voir server/crm.js.
+// ─────────────────────────────────────────────────────────────────────────
+
+router.get('/admin/crm', requireAdmin, async (req, res) => {
+  try {
+    res.json(await crm.fichier());
+  } catch (err) {
+    console.error('Fichier clients illisible :', err);
+    res.status(500).json({ error: 'Le fichier clients n’a pas pu être lu.' });
+  }
+});
+
+router.put('/admin/crm/:email', requireAdmin, (req, res) => {
+  try {
+    const { notes, tags } = req.body || {};
+    res.json(crm.majFiche(req.params.email, { notes, tags }));
+  } catch (err) {
+    res.status(400).json({ error: 'Fiche non enregistrée : ' + err.message });
+  }
+});
+
+router.get('/admin/crm/export.csv', requireAdmin, async (req, res) => {
+  try {
+    const liste = await crm.fichier();
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="clients-so-you.csv"');
+    res.send(crm.csv(liste));
+  } catch (err) {
+    res.status(500).json({ error: 'L’export n’a pas pu être généré.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Les ventes de la boutique, relevées dans la caisse SumUp : voir
+// server/caisse.js. Aperçu d'abord, application ensuite.
+// ─────────────────────────────────────────────────────────────────────────
+
+function dateDepuis(v) {
+  const d = new Date(v || Date.now() - 7 * 86400000);
+  return Number.isNaN(d.getTime()) ? new Date(Date.now() - 7 * 86400000).toISOString() : d.toISOString();
+}
+
+router.post('/admin/caisse/apercu', requireAdmin, async (req, res) => {
+  try {
+    res.json(await caisse.apercu({ depuis: dateDepuis(req.body && req.body.depuis) }));
+  } catch (err) {
+    console.error('Relevé SumUp impossible :', err.response ? err.response.data : err.message);
+    res.status(502).json({ error: 'SumUp n’a pas répondu : ' + (err.response ? `erreur ${err.response.status}` : err.message) });
+  }
+});
+
+router.post('/admin/caisse/appliquer', requireAdmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const r = await caisse.appliquer({
+      depuis: dateDepuis(b.depuis),
+      codes: Array.isArray(b.codes) ? b.codes.map(String) : [],
+      correspondances: b.correspondances && typeof b.correspondances === 'object' ? b.correspondances : {},
+    });
+    await alerterStock(r.evenements, 'Après les ventes en boutique (caisse SumUp)');
+    res.json(r);
+  } catch (err) {
+    console.error('Application du relevé SumUp impossible :', err.response ? err.response.data : err.message);
+    res.status(502).json({ error: 'Le relevé n’a pas pu être appliqué : ' + err.message });
+  }
+});
+
+router.get('/admin/caisse/journal', requireAdmin, (req, res) => {
+  res.json(caisse.journal());
+});
+
+// Le relevé automatique : en marche ou à l'arrêt. À l'arrêt par défaut.
+router.put('/admin/caisse/auto', requireAdmin, (req, res) => {
+  res.json(caisse.regler({ actif: Boolean(req.body && req.body.actif) }));
+});
+
+// Un passage tout de suite, sans attendre l'heure.
+router.post('/admin/caisse/auto/maintenant', requireAdmin, async (req, res) => {
+  try {
+    const r = await passageCaisse({ resume: false });
+    res.json({ ...caisse.journal().auto, passage: r ? { appliquees: r.appliquees, libres: r.libres, enAttente: r.enAttente.length } : null });
+  } catch (err) {
+    res.status(502).json({ error: 'Le relevé n’a pas pu se faire : ' + err.message });
+  }
+});
+
+// Le passage horaire. Les produits qui passent sous leur seuil déclenchent
+// l'alerte de stock habituelle ; après 19 h, le résumé de la journée part une
+// fois, s'il y a quelque chose à dire.
+async function passageCaisse({ resume = true } = {}) {
+  let r = null;
+  try {
+    r = await caisse.releverAuto();
+    if (r && r.evenements.length) await alerterStock(r.evenements, 'Après les ventes en boutique (relevé automatique)');
+  } catch (err) {
+    console.error('Relevé automatique SumUp impossible :', err.response ? err.response.data : err.message);
+    if (!resume) throw err;
+  }
+  const heure = Number(new Date().toLocaleString('en-GB', { timeZone: 'Europe/Zurich', hour: '2-digit', hourCycle: 'h23' }));
+  if (resume && heure >= 19) await envoyerResumeCaisse();
+  return r;
+}
+
+async function envoyerResumeCaisse() {
+  const destinataire = db.adresseAlerte();
+  if (!destinataire) return;
+  const resume = caisse.resumeDuJour(audience.jourLocal());
+  if (!resume) return;
+  const chf = (n) => `CHF ${Number(n || 0).toFixed(2)}`;
+  const heure = (iso) => new Date(iso).toLocaleTimeString('fr-CH', { timeZone: 'Europe/Zurich', hour: '2-digit', minute: '2-digit' });
+  const faits = resume.duJour.map((j) => `<li>${heure(j.date)} · ${chf(j.montant)} — ${escapeForEmail(j.action)}${j.lignes.length ? ` : ${escapeForEmail(j.lignes.join(', '))}` : ''}${j.auto ? '' : ' <em>(à la main)</em>'}</li>`).join('');
+  const attente = resume.enAttente.map((v) => `<li>${new Date(v.date).toLocaleString('fr-CH', { timeZone: 'Europe/Zurich', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ${chf(v.montant)} — ${escapeForEmail(v.raison)}</li>`).join('');
+  try {
+    await emailService.sendMail({
+      to: destinataire,
+      subject: resume.enAttente.length
+        ? `Ventes en boutique — ${resume.enAttente.length} vente(s) à vérifier`
+        : `Ventes en boutique — ${resume.duJour.length} relevée(s) aujourd'hui`,
+      html: `
+        <div style="font-family:sans-serif;color:#3A332B;max-width:600px;margin:0 auto;padding:24px;">
+          <h2 style="font-family:serif;font-weight:400;">Les ventes de la caisse, aujourd'hui</h2>
+          ${faits ? `<p><strong>Appliqué au stock du site :</strong></p><ul>${faits}</ul>` : '<p>Aucune vente appliquée aujourd’hui.</p>'}
+          ${attente ? `<p><strong>À vérifier dans « Ventes en boutique » :</strong></p><ul>${attente}</ul>` : ''}
+          <p style="color:#6A6157;font-size:13px;">Le relevé se fait seul toutes les heures. Seules les ventes dont chaque article est reconnu
+          sont appliquées sans vous ; les autres attendent dans l'administration.</p>
+        </div>`,
+    });
+  } catch (err) {
+    console.error('Résumé des ventes en boutique non envoyé :', err.message);
+  }
+}
+
+// Toutes les heures, et une première fois deux minutes après le démarrage.
+// Ne fait rien tant que le relevé automatique n'est pas mis en marche.
+{
+  const intervalle = Number(process.env.CAISSE_INTERVALLE_MS) || 3600000;
+  const t1 = setInterval(() => { passageCaisse().catch(() => {}); }, intervalle);
+  const t2 = setTimeout(() => { passageCaisse().catch(() => {}); }, Math.min(intervalle, 120000));
+  if (t1.unref) t1.unref();
+  if (t2.unref) t2.unref();
+}
+
+// Le catalogue du site, au format d'import de SumUp, avec les références
+// (SKU) : voir caisse.csvSumup.
+router.get('/admin/caisse/export-stock.csv', requireAdmin, async (req, res) => {
+  try {
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="articles-pour-sumup.csv"');
+    res.send(await caisse.csvSumup({ avecEnAttente: req.query.avecEnAttente === '1' }));
+  } catch (err) {
+    console.error('Export SumUp impossible :', err);
+    res.status(500).json({ error: 'L’export n’a pas pu être généré.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// L'infolettre : rédiger, essayer, envoyer.
+//
+// L'onglet ne faisait que collecter des adresses ; il n'y avait ni rédaction
+// ni envoi. Le travail se fait ici, dans la boutique, plutôt que chez un
+// prestataire — avec les précautions que cela impose, décrites en tête de
+// server/infolettre.js.
+// ─────────────────────────────────────────────────────────────────────────
+
+router.get('/admin/infolettres', requireAdmin, async (req, res) => {
+  try {
+    res.json({
+      lettres: infolettre.lire(),
+      inscrites: (await infolettre.destinataires()).length,
+    });
+  } catch (err) {
+    console.error('Lecture des infolettres impossible :', err);
+    res.status(500).json({ error: 'Les infolettres n’ont pas pu être lues.' });
+  }
+});
+
+router.get('/admin/infolettres/:id', requireAdmin, (req, res) => {
+  const lettre = infolettre.parId(req.params.id);
+  if (!lettre) return res.status(404).json({ error: 'Infolettre introuvable.' });
+  res.json(lettre);
+});
+
+router.post('/admin/infolettres', requireAdmin, (req, res) => {
+  const { sujet, html } = req.body || {};
+  res.status(201).json(infolettre.creer({ sujet, html }));
+});
+
+router.put('/admin/infolettres/:id', requireAdmin, (req, res) => {
+  const r = infolettre.modifier(req.params.id, req.body || {});
+  if (!r) return res.status(404).json({ error: 'Infolettre introuvable.' });
+  if (r.verrouillee) {
+    return res.status(409).json({
+      error: 'Cette infolettre est déjà partie : son texte ne peut plus être modifié. Dupliquez-la pour en écrire une nouvelle.',
+    });
+  }
+  res.json(r.lettre);
+});
+
+router.delete('/admin/infolettres/:id', requireAdmin, (req, res) => {
+  if (!infolettre.supprimer(req.params.id)) {
+    return res.status(409).json({ error: 'Impossible de supprimer une infolettre en cours d’envoi.' });
+  }
+  res.json({ message: 'Infolettre supprimée.' });
+});
+
+// Un essai. Une seule adresse, rien n'est verrouillé : on relit son message
+// dans une vraie boîte avant de l'envoyer à trois cents personnes.
+router.post('/admin/infolettres/:id/essai', requireAdmin, async (req, res) => {
+  const { adresse } = req.body || {};
+  if (!/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(String(adresse || '').trim())) {
+    return res.status(400).json({ error: 'Indiquez une adresse valide pour l’essai.' });
+  }
+  const r = await infolettre.envoyer(req.params.id, { base: publicBaseUrl(), essaiVers: adresse.trim() });
+  if (r.erreur) return res.status(400).json({ error: r.erreur });
+  res.json({ message: 'Essai envoyé à ' + r.vers + '.' });
+});
+
+router.post('/admin/infolettres/:id/envoyer', requireAdmin, async (req, res) => {
+  const r = await infolettre.envoyer(req.params.id, { base: publicBaseUrl() });
+  if (r.erreur) return res.status(400).json({ error: r.erreur });
+  // On répond tout de suite : l'envoi continue en arrière-plan, et
+  // l'administration suit la progression en relisant la lettre.
+  res.status(202).json({
+    message: r.dejaFaits > 0
+      ? `Reprise de l’envoi : ${r.total - r.dejaFaits} adresse(s) restante(s).`
+      : `Envoi lancé vers ${r.total} adresse(s).`,
+    total: r.total,
+  });
+});
+
+router.post('/admin/infolettres/:id/arreter', requireAdmin, (req, res) => {
+  if (!infolettre.arreter(req.params.id)) {
+    return res.status(409).json({ error: 'Cette infolettre n’est pas en cours d’envoi.' });
+  }
+  res.json({ message: 'Envoi interrompu. Il pourra être repris là où il s’est arrêté.' });
+});
+
+// ── Les rebonds ──────────────────────────────────────────────────────────
+//
+// Deux moitiés, et il fallait les deux.
+//
+// La première se règle à l'envoi : quand le serveur refuse tout de suite,
+// server/rebonds.js décide si l'adresse est morte ou si c'est le nôtre qui
+// tousse — voir ce fichier, la distinction est ce qui fait tout.
+//
+// La seconde est ici. Un serveur accepte souvent le message, puis renonce et
+// renvoie un avis de non-remise quelques minutes plus tard : l'envoi a donc
+// « réussi » alors que personne ne l'a lu, et seule la boîte de réception le
+// sait. La relève est déclenchée à la main plutôt qu'en tâche de fond : elle
+// lit la boîte de la boutique, et ce n'est pas une chose à faire dans le dos
+// de quelqu'un.
+
+router.get('/admin/rebonds', requireAdmin, (req, res) => {
+  res.json({
+    ecartees: rebonds.ecartees(),
+    suivies: rebonds.lire().filter((a) => !a.ecartee && a.echecs > 0),
+    seuil: rebonds.SEUIL_PASSAGERS,
+    boiteConfiguree: imapService.isConfigured(),
+  });
+});
+
+router.post('/admin/rebonds/relever', requireAdmin, async (req, res) => {
+  if (!imapService.isConfigured()) {
+    return res.status(400).json({
+      error: 'La boîte de réception n’est pas configurée : impossible de relever les avis de non-remise.',
+    });
+  }
+  try {
+    const messages = await imapService.listMessages({ limit: 100 });
+    const avis = (messages || []).filter((m) => rebonds.estUnAvisDeNonRemise(m));
+
+    const nosDomaines = ['soyoucosmetics.com'];
+    const traites = [];
+    for (const m of avis) {
+      let corps = '';
+      try {
+        const complet = await imapService.getMessage(m.uid);
+        corps = `${complet.text || ''}\n${complet.html || ''}\n${complet.raw || ''}`;
+      } catch (_) {
+        continue;                       // un message illisible n'arrête pas la relève
+      }
+      const adresse = rebonds.adresseEnCause(corps, nosDomaines);
+      if (!adresse) continue;
+
+      // Le doute profite à l'adresse : sans code d'état lisible, l'avis est
+      // traité comme passager. Écarter une cliente réelle sur une devinette
+      // coûterait plus cher qu'un rebond détecté un envoi plus tard.
+      const code = rebonds.codeDeLAvis(corps);
+      const verdict = rebonds.noterEchec(adresse, {
+        code,
+        message: m.subject || 'Avis de non-remise',
+      }, 'boîte de réception');
+      traites.push({ adresse, ecartee: verdict.ecartee, definitif: verdict.definitif });
+    }
+
+    res.json({
+      message: avis.length === 0
+        ? 'Aucun avis de non-remise dans les 100 derniers messages.'
+        : `${traites.length} adresse(s) relevée(s) sur ${avis.length} avis.`,
+      lus: messages.length,
+      avis: avis.length,
+      traites,
+    });
+  } catch (err) {
+    console.error('Relève des rebonds impossible :', err);
+    res.status(500).json({ error: 'La boîte n’a pas pu être lue : ' + err.message });
+  }
+});
+
+router.post('/admin/rebonds/reintegrer', requireAdmin, (req, res) => {
+  const { adresse } = req.body || {};
+  if (!rebonds.reintegrer(adresse)) return res.status(404).json({ error: 'Adresse inconnue.' });
+  res.json({ message: adresse + ' recevra de nouveau les infolettres.' });
+});
+
+router.post('/admin/rebonds/oublier', requireAdmin, async (req, res) => {
+  const { adresse } = req.body || {};
+  try {
+    // Retirée de la liste de diffusion ET de la table des rebonds : c'est le
+    // geste « cette adresse n'existe plus, qu'on n'en parle plus ».
+    await db.removeNewsletterSubscriber(adresse);
+    rebonds.oublier(adresse);
+    res.json({ message: adresse + ' a été retirée de la liste.' });
+  } catch (err) {
+    console.error('Retrait impossible :', err);
+    res.status(500).json({ error: 'Le retrait a échoué.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Le désabonnement de la newsletter.
+//
+// La politique de confidentialité promet depuis le premier jour que « chaque
+// newsletter contient un lien de désabonnement ». Ce lien n'existait pas.
+// Aucune newsletter n'étant encore partie, personne n'a été lésé — mais il doit
+// exister avant le premier envoi, pas après.
+//
+// Deux chemins, et le second existe parce que le premier ne suffit pas : celle
+// qui a supprimé le message ne peut plus cliquer nulle part.
+// ─────────────────────────────────────────────────────────────────────────
+
+// Le lien à glisser dans une newsletter. Signé, pour qu'on ne puisse pas
+// désabonner une inconnue en devinant son adresse.
+function lienDesabonnement(email) {
+  const e = encodeURIComponent(String(email || '').trim().toLowerCase());
+  return `${publicBaseUrl()}/desabonnement?e=${e}&s=${db.signerEmailNewsletter(email)}`;
+}
+
+// Le désabonnement lui-même. En POST, jamais en GET : certains logiciels de
+// messagerie visitent les liens d'un message pour les prévisualiser, et un
+// désabonnement en GET partirait tout seul, sans que personne l'ait demandé.
+router.post('/newsletter/desabonnement', async (req, res) => {
+  const { email, signature } = req.body || {};
+  if (!db.signatureNewsletterValide(email, signature)) {
+    return res.status(400).json({ error: 'Ce lien de désabonnement n’est pas valable. Demandez-en un nouveau.' });
+  }
+  try {
+    await db.removeNewsletterSubscriber(email);
+    // On répond la même chose que l'adresse ait été inscrite ou non : sinon la
+    // page dit qui est abonnée ici.
+    res.json({ message: 'C’est fait : vous ne recevrez plus la newsletter.' });
+  } catch (err) {
+    console.error('Désabonnement impossible :', err);
+    res.status(500).json({ error: 'Le désabonnement a échoué. Écrivez-nous à contact@soyoucosmetics.com.' });
+  }
+});
+
+// Pour celle qui n'a plus le message : elle donne son adresse, on lui envoie le
+// lien signé. Réponse identique dans tous les cas.
+router.post('/newsletter/desabonnement/demande', async (req, res) => {
+  const { email } = req.body || {};
+  const reponse = { message: 'Si cette adresse est inscrite, un message vient de lui être envoyé.' };
+  try {
+    const inscrites = await db.getNewsletterSubscribers();
+    const cible = comptes.normaliserEmail(email);
+    const entree = (inscrites || []).find((n) => {
+      const e = typeof n === 'string' ? n : (n && n.email);
+      return comptes.normaliserEmail(e) === cible;
+    });
+    // Jamais confirmée : elle ne reçoit déjà rien. On la retire sans écrire,
+    // pour que ce formulaire ne serve pas à envoyer des messages à n'importe
+    // quelle adresse de la liste.
+    if (entree && !entree.confirme_le) await db.removeNewsletterSubscriber(cible);
+    if (entree && entree.confirme_le) {
+      await emailService.sendMail({
+        to: cible,
+        subject: 'Vous désabonner de la newsletter — So You Cosmetics',
+        html: gabaritCompte({
+          titre: 'Se désabonner',
+          bonjour: '',
+          texte: 'Voici le lien qui vous retire de notre liste de diffusion.',
+          lien: lienDesabonnement(cible),
+          libelleLien: 'Me désabonner',
+          apres: 'Si vous n’avez rien demandé, ignorez ce message : rien ne change tant que le lien n’est pas ouvert.',
+        }),
+      });
+    }
+    res.json(reponse);
+  } catch (err) {
+    console.error('Demande de désabonnement impossible :', err);
+    res.json(reponse);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Les comptes clientes.
+//
+// Elles peuvent toujours commander sans compte : exiger une inscription avant
+// d'acheter fait perdre des ventes, et ce n'est pas ce qu'on cherche ici. Le
+// compte sert à RELIRE ce qu'on a déjà commandé.
+//
+// Une règle traverse toutes ces routes : les commandes ne sont jamais cherchées
+// par un identifiant venu du navigateur, mais par l'adresse VÉRIFIÉE du compte
+// ouvert. Une cliente ne peut donc demander que ce qui lui appartient, même en
+// forgeant la requête.
+// ─────────────────────────────────────────────────────────────────────────
+
+// La session cliente, quand il y en a une. N'échoue jamais : les routes qui
+// l'exigent le disent elles-mêmes.
+function clienteConnectee(req) {
+  const entete = String(req.headers.authorization || '');
+  const jeton = entete.startsWith('Bearer ') ? entete.slice(7) : null;
+  return comptes.compteDeLaSession(jeton);
+}
+
+const exigeCompte = (req, res, next) => {
+  const compte = clienteConnectee(req);
+  if (!compte) return res.status(401).json({ error: 'Connectez-vous pour accéder à votre compte.' });
+  req.compte = compte;
+  next();
+};
+
+// Une adresse plausible et un mot de passe qui vaut la peine d'être haché.
+// Douze caractères plutôt qu'une exigence de majuscules et de chiffres : la
+// longueur protège, les règles compliquées font écrire « Motdepasse1! ».
+function refusInscription({ email, motDePasse }) {
+  if (!/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(String(email || '').trim())) {
+    return 'Cette adresse e-mail ne semble pas valide.';
+  }
+  if (String(motDePasse || '').length < 12) {
+    return 'Choisissez un mot de passe d’au moins 12 caractères. Une phrase dont vous vous souvenez fait un très bon mot de passe.';
+  }
+  return null;
+}
+
+function gabaritCompte({ titre, bonjour, texte, lien, libelleLien, apres }) {
+  return `
+    <div style="font-family:sans-serif;color:#3A332B;max-width:600px;margin:0 auto;padding:24px;">
+      <h2 style="font-family:serif;font-weight:400;color:#3A332B;">${titre}</h2>
+      <p>Bonjour${bonjour ? ' <strong>' + escapeForEmail(bonjour) + '</strong>' : ''},</p>
+      <p>${texte}</p>
+      <p style="margin:26px 0;">
+        <a href="${lien}" style="display:inline-block;padding:12px 24px;background:#3A332B;color:#FDFBF7;text-decoration:none;border-radius:999px;">${libelleLien}</a>
+      </p>
+      <p style="color:#6A6157;font-size:13px;">${apres}</p>
+      <p style="color:#6A6157;font-size:12px;">Si le bouton ne fonctionne pas, copiez cette adresse dans votre navigateur :<br />${lien}</p>
+      <p style="font-style:italic;color:#8C8178;font-size:13px;">So You Cosmetics Genève — faits main en Suisse</p>
+    </div>`;
+}
+
+// Inscription. La réponse est la même que l'adresse soit déjà connue ou non :
+// autrement, ce formulaire dirait qui est cliente ici.
+router.post('/compte/inscription', async (req, res) => {
+  const { email, motDePasse, nom } = req.body || {};
+  const refus = refusInscription({ email, motDePasse });
+  if (refus) return res.status(400).json({ error: refus });
+
+  try {
+    const { deja, compte } = await comptes.creerCompte({ email, motDePasse, nom });
+    if (!deja) {
+      // Vers l'API, pas vers une page : le lien doit fonctionner depuis
+      // n'importe quelle boîte mail, même là où le JavaScript ne tourne pas.
+      // La route vérifie, puis renvoie vers la page du compte.
+      const lien = `${publicBaseUrl()}/api/compte/verifier/${compte.verif_jeton}`;
+      await emailService.sendMail({
+        to: compte.email,
+        subject: 'Confirmez votre adresse — So You Cosmetics',
+        html: gabaritCompte({
+          titre: 'Bienvenue',
+          bonjour: compte.nom,
+          texte: 'Il ne reste qu’à confirmer votre adresse pour ouvrir votre compte et retrouver vos commandes.',
+          lien,
+          libelleLien: 'Confirmer mon adresse',
+          apres: 'Ce lien est valable 24 heures. Si vous n’êtes pas à l’origine de cette demande, ignorez ce message : aucun compte ne sera ouvert.',
+        }),
+      });
+    }
+    res.status(201).json({
+      message: 'Si cette adresse peut recevoir du courrier, un message vient de lui être envoyé. Ouvrez-le pour confirmer votre compte.',
+    });
+  } catch (err) {
+    console.error('Inscription impossible :', err);
+    res.status(500).json({ error: 'L’inscription a échoué. Réessayez dans un instant.' });
+  }
+});
+
+// Le lien reçu par courrier. Répond en HTML : c'est une adresse qu'on ouvre
+// depuis sa boîte, pas un appel de l'application.
+router.get('/compte/verifier/:jeton', (req, res) => {
+  const r = comptes.verifierAdresse(req.params.jeton);
+  const vers = (etat) => res.redirect(302, `/compte?verification=${etat}`);
+  if (!r) return vers('inconnu');
+  if (r.expire) return vers('expire');
+  return vers('ok');
+});
+
+router.post('/compte/connexion', async (req, res) => {
+  const { email, motDePasse } = req.body || {};
+  const cle = comptes.normaliserEmail(email) + '|' + (req.ip || '');
+
+  if (comptes.tropDeTentatives(cle)) {
+    return res.status(429).json({
+      error: 'Trop de tentatives. Patientez un quart d’heure, ou passez par « mot de passe oublié ».',
+    });
+  }
+
+  try {
+    const compte = await comptes.motDePasseValide(email, motDePasse);
+    if (!compte) {
+      comptes.noterTentative(cle);
+      // Une seule phrase pour « adresse inconnue » et « mot de passe faux » :
+      // les distinguer dirait à un inconnu quelles adresses sont inscrites.
+      return res.status(401).json({ error: 'Adresse ou mot de passe incorrect.' });
+    }
+    if (!compte.verifie) {
+      return res.status(403).json({
+        error: 'Votre adresse n’est pas encore confirmée. Ouvrez le message que nous vous avons envoyé.',
+        codeNonVerifie: true,
+      });
+    }
+    comptes.oublierTentatives(cle);
+    res.json({ jeton: comptes.ouvrirSession(compte.id), cliente: comptes.vueCliente(compte) });
+  } catch (err) {
+    console.error('Connexion impossible :', err);
+    res.status(500).json({ error: 'La connexion a échoué. Réessayez dans un instant.' });
+  }
+});
+
+router.post('/compte/deconnexion', (req, res) => {
+  const entete = String(req.headers.authorization || '');
+  if (entete.startsWith('Bearer ')) comptes.fermerSession(entete.slice(7));
+  res.json({ message: 'Vous êtes déconnectée.' });
+});
+
+router.post('/compte/mot-de-passe-oublie', async (req, res) => {
+  const { email } = req.body || {};
+  const reponse = {
+    message: 'Si un compte existe pour cette adresse, un message vient de lui être envoyé.',
+  };
+  try {
+    const compte = comptes.compteParEmail(email);
+    if (compte) {
+      const j = comptes.poserJetonReinitialisation(compte);
+      await emailService.sendMail({
+        to: compte.email,
+        subject: 'Réinitialiser votre mot de passe — So You Cosmetics',
+        html: gabaritCompte({
+          titre: 'Nouveau mot de passe',
+          bonjour: compte.nom,
+          texte: 'Vous avez demandé à changer le mot de passe de votre compte.',
+          lien: `${publicBaseUrl()}/compte/reinitialiser?jeton=${j}`,
+          libelleLien: 'Choisir un nouveau mot de passe',
+          apres: 'Ce lien est valable une heure et ne peut servir qu’une fois. Si vous n’avez rien demandé, ignorez ce message : votre mot de passe actuel reste valable.',
+        }),
+      });
+    }
+    res.json(reponse);
+  } catch (err) {
+    console.error('Réinitialisation impossible :', err);
+    res.json(reponse);   // même réponse : une panne ne doit pas révéler l'existence du compte
+  }
+});
+
+router.post('/compte/reinitialiser', async (req, res) => {
+  const { jeton, motDePasse } = req.body || {};
+  if (String(motDePasse || '').length < 12) {
+    return res.status(400).json({ error: 'Choisissez un mot de passe d’au moins 12 caractères.' });
+  }
+  const compte = comptes.compteParJetonReinitialisation(jeton);
+  if (!compte) {
+    return res.status(400).json({ error: 'Ce lien a expiré ou a déjà servi. Demandez-en un nouveau.' });
+  }
+  try {
+    await comptes.changerMotDePasse(compte, motDePasse);
+    res.json({ message: 'Mot de passe changé. Vous pouvez vous connecter.' });
+  } catch (err) {
+    console.error('Changement de mot de passe impossible :', err);
+    res.status(500).json({ error: 'Le changement a échoué. Réessayez dans un instant.' });
+  }
+});
+
+// Le compte : les coordonnées, les commandes, les ateliers.
+//
+// Tout est cherché par l'adresse VÉRIFIÉE de la session — jamais par un
+// identifiant fourni par le navigateur.
+router.get('/compte', exigeCompte, async (req, res) => {
+  try {
+    const email = req.compte.email;
+    const [commandes, reservations] = await Promise.all([db.getOrders(), db.getBookings()]);
+
+    const siennes = (commandes || [])
+      .filter((c) => comptes.normaliserEmail(c.customer_email) === email)
+      .map((c) => ({
+        id: c.id,
+        date: c.created_at,
+        statut: db.canonicalOrderStatus(c.status),
+        total: c.total,
+        facture: c.invoice_number || null,
+        expedition: c.shipping || null,
+        adresse: c.address || null,
+        articles: (c.items || []).map((a) => ({
+          nom: a.name, qty: a.qty, prix: a.price, recharge: Boolean(a.recharge),
+        })),
+      }))
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+    const ateliers = (reservations || [])
+      .filter((r) => comptes.normaliserEmail(r.customer_email) === email)
+      .map((r) => ({
+        id: r.id, atelier: r.workshop_id, date: r.slot_date,
+        places: r.seats, statut: r.status,
+      }))
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+    res.json({ cliente: comptes.vueCliente(req.compte), commandes: siennes, ateliers });
+  } catch (err) {
+    console.error('Lecture du compte impossible :', err);
+    res.status(500).json({ error: 'Votre compte n’a pas pu être lu. Réessayez dans un instant.' });
+  }
+});
+
+router.put('/compte', exigeCompte, (req, res) => {
+  try {
+    const { nom, telephone, adresse } = req.body || {};
+    const compte = comptes.majCoordonnees(req.compte, { nom, telephone, adresse });
+    res.json({ cliente: comptes.vueCliente(compte) });
+  } catch (err) {
+    console.error('Mise à jour des coordonnées impossible :', err);
+    res.status(500).json({ error: 'L’enregistrement a échoué.' });
+  }
+});
+
+// Supprimer son compte.
+//
+// Le mot de passe est redemandé : un onglet resté ouvert sur un ordinateur
+// partagé ne doit pas suffire à effacer un compte. C'est le même geste que
+// pour se connecter, et il vaut ici comme preuve que c'est bien elle.
+//
+// Ce qui part : l'adresse, le mot de passe, le téléphone, l'adresse de
+// livraison, les sessions. Ce qui reste : les commandes, que la boutique est
+// tenue de conserver dix ans — sa politique de confidentialité l'annonce déjà.
+router.delete('/compte', exigeCompte, async (req, res) => {
+  const { motDePasse } = req.body || {};
+  try {
+    const verifie = await comptes.motDePasseValide(req.compte.email, motDePasse);
+    if (!verifie) {
+      return res.status(403).json({ error: 'Mot de passe incorrect. Le compte n’a pas été supprimé.' });
+    }
+    comptes.supprimerCompte(req.compte.id);
+    res.json({
+      message: 'Votre compte est supprimé. Vos commandes restent enregistrées : la boutique doit les conserver dix ans.',
+    });
+  } catch (err) {
+    console.error('Suppression de compte impossible :', err);
+    res.status(500).json({ error: 'La suppression a échoué. Réessayez dans un instant.' });
+  }
+});
+
+// Une facture, en page imprimable.
+//
+// Pas de bibliothèque PDF sur le serveur : le navigateur en fabrique un
+// meilleur que ce qu'on écrirait ici, avec « Imprimer → Enregistrer en PDF ».
+// C'est une dépendance de moins à installer et à tenir à jour sur l'hôte.
+router.get('/compte/facture/:orderId', exigeCompte, async (req, res) => {
+  try {
+    const commande = await db.getOrderById(req.params.orderId);
+    // La commande doit exister ET appartenir à la session. Sans cette seconde
+    // condition, changer le numéro dans l'adresse suffirait à lire la facture
+    // d'une autre.
+    if (!commande || comptes.normaliserEmail(commande.customer_email) !== req.compte.email) {
+      return res.status(404).send('Facture introuvable.');
+    }
+    if (!commande.invoice_number) {
+      return res.status(404).send('Cette commande n’a pas encore de facture.');
+    }
+    const settings = db.getShopSettings();
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(`<!doctype html><html lang="fr"><head><meta charset="utf-8" />
+      <title>Facture ${escapeForEmail(commande.invoice_number)} — So You Cosmetics</title>
+      <style>body{margin:0;background:#F7F3EC;font-family:sans-serif}
+        .barre{padding:16px;text-align:center}
+        button{font:inherit;padding:10px 22px;border:0;border-radius:999px;background:#3A332B;color:#FDFBF7;cursor:pointer}
+        @media print{.barre{display:none}body{background:#fff}}</style></head>
+      <body><div class="barre"><button onclick="window.print()">Imprimer ou enregistrer en PDF</button></div>
+      ${buildInvoiceHtml({ invoiceNumber: commande.invoice_number, order: commande, settings })}
+      </body></html>`);
+  } catch (err) {
+    console.error('Facture illisible :', err);
+    res.status(500).send('La facture n’a pas pu être produite.');
   }
 });
 

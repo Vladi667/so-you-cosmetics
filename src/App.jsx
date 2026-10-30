@@ -16,6 +16,7 @@ import SideDrawer from './components/SideDrawer';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { separerLangue } from './i18n/routes';
 import ScrollToTop from './components/ScrollToTop';
+import Audience from './components/Audience';
 import PersonnalisationPage from './pages/PersonnalisationPage';
 import Home from './pages/Home';
 import CategoryPage from './pages/CategoryPage';
@@ -25,9 +26,16 @@ import WorkshopDetailPage from './pages/WorkshopDetailPage';
 import JournalPage from './pages/JournalPage';
 import ContactPage from './pages/ContactPage';
 import ProductPage from './pages/ProductPage';
+import ComptePage from './pages/ComptePage';
+import MentionsPage from './pages/MentionsPage';
+import ReinitialiserPage from './pages/ReinitialiserPage';
+import DesabonnementPage from './pages/DesabonnementPage';
+import ConfirmationInfolettrePage from './pages/ConfirmationInfolettrePage';
 import SearchPage from './pages/SearchPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
+import FamillePage from './pages/FamillePage';
+import { SLUGS_FAMILLES } from './data/familles';
 // L'administration est chargee a la demande.
 //
 // Les deux ecrans pesaient 188 Ko de source dans le paquet principal, telecharge
@@ -211,6 +219,33 @@ function App() {
       <Route path="category/:categoryName" element={<CategoryPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
       <Route path="product/:id" element={<ProductPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
       <Route path="search/:query" element={<SearchPage addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />} />
+      {/* Les six familles commerciales, à la racine et non sous un préfixe.
+          Une adresse courte se retient, se dicte au téléphone et se lit dans
+          un résultat de recherche ; « /guides/… » n'aurait servi que notre
+          confort de rangement. Les slugs sont énumérés, donc rien ici
+          n'intercepte une adresse qui ne leur appartient pas. */}
+      {SLUGS_FAMILLES.map((slug) => (
+        <Route
+          key={slug}
+          path={slug}
+          element={
+            <FamillePage
+              slug={slug}
+              addToCart={addToCart}
+              toggleFavorite={toggleFavorite}
+              favorites={favorites}
+            />
+          }
+        />
+      ))}
+      {/* Le compte cliente. Deux adresses seulement : la page elle-même, et
+          celle où l'on choisit un nouveau mot de passe depuis le lien reçu. */}
+      <Route path="compte" element={<ComptePage />} />
+      <Route path="compte/reinitialiser" element={<ReinitialiserPage />} />
+      {/* Ce que promet la politique de confidentialité depuis le premier jour. */}
+      <Route path="desabonnement" element={<DesabonnementPage />} />
+      <Route path="confirmer-infolettre" element={<ConfirmationInfolettrePage />} />
+      <Route path="mentions-legales" element={<MentionsPage />} />
       <Route path="terms" element={<TermsPage />} />
       <Route path="privacy" element={<PrivacyPage />} />
       <Route
@@ -236,6 +271,7 @@ function App() {
   return (
     <div className="font-sans antialiased text-stone-gray bg-mist-white min-h-screen flex flex-col overflow-x-hidden">
       <ScrollToTop />
+      {!isAdminPage && <Audience />}
       {!isAdminPage && <PageLoader isVisible={isLoading} />}
       {!isAdminPage && <AbsenceNotice />}
       {/* Les deux tiroirs occupent exactement la meme place, sur le bord droit.

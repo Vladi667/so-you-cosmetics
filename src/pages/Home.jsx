@@ -1,5 +1,6 @@
 import React from 'react';
 import Hero from '../components/Hero';
+import BandeauBoutique from '../components/BandeauBoutique';
 import BrandEssence from '../components/BrandEssence';
 import SignatureProducts from '../components/SignatureProducts';
 import HandmadeGeneva from '../components/HandmadeGeneva';
@@ -18,6 +19,7 @@ const Home = ({ addToCart, toggleFavorite, favorites }) => {
   return (
     <>
       <Hero />
+      <BandeauBoutique />
       <BrandEssence />
       <SignatureProducts addToCart={addToCart} toggleFavorite={toggleFavorite} favorites={favorites} />
       <HandmadeGeneva />

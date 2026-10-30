@@ -72,8 +72,15 @@ export function getProducts() {
 // format selon ce que le navigateur accepte ; ici on ne choisit que la largeur.
 // Sans cette reconnaissance, le rapatriement ferait perdre le srcset gagné la
 // veille : toutes les adresses locales seraient servies à la même taille.
-const CATALOGUE_LOCAL = /^(\/uploads\/catalogue\/[a-f0-9]+)-(\d+)\.jpg$/i;
+const CATALOGUE_LOCAL = /^(\/uploads\/catalogue\/[a-f0-9]+)-(\d+)\.jpg(?:\?v=\d+)?$/i;
 const LARGEURS_LOCALES = [400, 800, 1600];
+
+// Ces fichiers partent « immutable » pour un an : un navigateur qui en a vu une
+// version ne la redemande plus. Quand il faut tout de même en remplacer — les
+// 48 photos détourées que le rapatriement avait posées sur du noir, refaites
+// sur ivoire par scripts/blanchir-fonds.mjs —, changer ce numéro change
+// l'adresse, et le cache repart de zéro.
+const VERSION_LOCALE = 2;
 
 // La largeur disponible la plus proche par le haut : mieux vaut une image un peu
 // trop grande que floue.
@@ -85,7 +92,7 @@ export function imageUrl(src, largeur = 800) {
   if (typeof src !== 'string' || !src) return src;
 
   const local = src.match(CATALOGUE_LOCAL);
-  if (local) return `${local[1]}-${largeurLocale(largeur)}.jpg`;
+  if (local) return `${local[1]}-${largeurLocale(largeur)}.jpg?v=${VERSION_LOCALE}`;
 
   const hauteur = Math.round(largeur * 5 / 4);
   const url = src.replace(/w_\d+,h_\d+/, `w_${largeur},h_${hauteur}`);

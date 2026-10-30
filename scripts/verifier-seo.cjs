@@ -93,6 +93,16 @@ const shop = {
   ok(prod.offers.availability.endsWith('InStock'), 'inStock absent => disponible (défaut correct)');
   ok(prod.image.every((u) => /^https?:\/\//.test(u)), 'toutes les images absolues');
   ok(m1.jsonLd.some((n) => n['@type'] === 'BreadcrumbList'), 'fil d’Ariane émis');
+  // Une fiche n'existe qu'en français : la version /en en est un doublon.
+  const m1en = await seo.metadonneesDeRoute('/en/product/' + p1.id, BASE + '/en/product/' + p1.id, BASE, db, shop);
+  const htmlFicheEn = seo.baliseshtml(m1en, BASE + '/en/product/' + p1.id, 'N');
+  ok(htmlFicheEn.includes('rel="canonical" href="' + BASE + '/product/' + seo.slugProduit(p1) + '"'), '/en/product : canonique vers la fiche française');
+  ok(!htmlFicheEn.includes('hreflang='), '/en/product : pas de hreflang');
+  const titres = catalogue.filter((p) => p.price > 0).map((p) => seo.titreProduit(p.name));
+  const descriptions = catalogue.filter((p) => p.price > 0).map((p) => seo.descriptionProduit(p));
+  ok(titres.every((t) => t.length <= 60), 'titres de fiche ≤ 60 caractères');
+  ok(descriptions.every((d) => d.length <= 160 && d.includes('CHF') && d.includes('Genève')), 'descriptions de fiche ≤ 160, avec prix et lieu');
+  ok(!descriptions.some((d) => /fait main/i.test(d)), 'aucune description ne prétend « fait main » (faux pour les accessoires)');
   const inconnu = await seo.metadonneesDeRoute('/product/nexiste-pas', BASE + '/x', BASE, db, shop);
   ok(inconnu === null, 'produit inconnu -> 404');
 
@@ -139,13 +149,24 @@ const shop = {
   console.log('\n== plan du site ==');
   const xml = await seo.construireSitemap(BASE, db);
   const n = (xml.match(/<loc>/g) || []).length;
-  // (178 fiches + 12 rubriques + /category/All + 8 pages fixes + 1 atelier
-  //  + 1 article) × 3 langues
+  // (178 fiches + 12 rubriques + /category/All + 9 pages fixes + 6 familles
+  //  + 1 atelier + 1 article) × 3 langues
+  //
+  // Les neuf pages fixes : accueil, boutique, à propos, contact, journal,
+  // ateliers, mentions légales, CGV, confidentialité.
+  //
+  // Le compte des familles est lu depuis le module plutôt qu'écrit ici : ce
+  // test doit échouer si une famille disparaît du plan, pas si quelqu'un en
+  // ajoute une septième et oublie de venir corriger un nombre.
   const rubriques = new Set(catalogue.flatMap((p) => p.collections || [])).size;
-  const parLangue = catalogue.length + rubriques + 1 + 8 + ateliers.length +
-                    articles.filter((a) => a.published).length;
+  // Les fiches produit n'existent qu'en français (catalogue non traduit) :
+  // une entrée chacune, sans alternatives. Tout le reste est en trois langues.
+  const parLangue = rubriques + 1 + 9 + seo.SLUGS_FAMILLES.length +
+                    ateliers.length + articles.filter((a) => a.published).length;
   const attendu = parLangue * 3;
-  ok(n === attendu, 'nombre d’URL attendu ' + attendu + ' (' + parLangue + ' × 3), obtenu ' + n);
+  const fiches = catalogue.length;
+  ok(n === attendu + fiches, 'nombre d’URL attendu ' + (attendu + fiches) + ' (' + parLangue + ' × 3 + ' + fiches + ' fiches en français), obtenu ' + n);
+  ok(!/<loc>[^<]*\/(en|de)\/product\//.test(xml), 'aucune fiche produit en /en ou /de au plan');
   ok(xml.includes('xmlns:xhtml="http://www.w3.org/1999/xhtml"'), 'espace de noms xhtml déclaré');
   ok(xml.includes('<loc>' + BASE + '/en/about</loc>'), 'la version anglaise est au plan');
   ok(xml.includes('<loc>' + BASE + '/de/contact</loc>'), 'la version allemande est au plan');
@@ -327,6 +348,65 @@ const shop = {
     '/workshops/ws_1', BASE + '/workshops/ws_1', BASE, dbBidon, shop);
   const nBidon = atelierBidon.jsonLd.find((n) => n['@type'] === 'Event' || n['@type'] === 'Service');
   ok(nBidon['@type'] === 'Service', 'date illisible : on retombe sur Service');
+
+  console.log('\n== les six familles commerciales ==');
+
+  // Même procédé que pour les slugs : la liste du serveur est une copie de
+  // celle du navigateur, et rien d’autre que ceci n’empêche qu’elles divergent.
+  const sourceFamilles = require('fs')
+    .readFileSync(path.join(RACINE, 'src/data/familles.js'), 'utf8')
+    .replace(/export /g, '');
+  const modFamilles = {};
+  new Function('module', sourceFamilles + '\nmodule.exports = { FAMILLES, SLUGS_FAMILLES };')(modFamilles);
+  const { FAMILLES, SLUGS_FAMILLES } = modFamilles.exports;
+
+  ok(JSON.stringify(SLUGS_FAMILLES) === JSON.stringify(seo.SLUGS_FAMILLES),
+     'navigateur et serveur connaissent les mêmes six familles',
+     SLUGS_FAMILLES.filter((s) => !seo.SLUGS_FAMILLES.includes(s)).join(', '));
+
+  // Une famille sans traduction rendrait du français à un visiteur allemand
+  // sans que rien ne le signale.
+  const champs = ['titre', 'chapeau', 'intro', 'sections', 'question', 'reponse'];
+  const incompletes = FAMILLES.filter((f) =>
+    ['fr', 'en', 'de'].some((l) => !f[l] || champs.some((c) => !f[l][c]))
+  );
+  ok(incompletes.length === 0,
+     'chaque famille est complète dans les trois langues',
+     incompletes.map((f) => f.slug).join(', '));
+
+  // Une rubrique mal orthographiée donnerait une page de texte suivie d’une
+  // grille vide — le pire des deux mondes.
+  const rubriquesReelles = new Set(catalogue.flatMap((p) => p.collections || []));
+  const orphelines = FAMILLES.flatMap((f) =>
+    (f.rubriques || []).filter((r) => !rubriquesReelles.has(r)).map((r) => `${f.slug} → ${r}`)
+  );
+  ok(orphelines.length === 0,
+     'chaque rubrique visée par une famille existe au catalogue',
+     orphelines.join(', '));
+
+  // Une famille sans rubrique afficherait du texte suivi de rien.
+  const sansRubrique = FAMILLES.filter((f) => !Array.isArray(f.rubriques) || f.rubriques.length === 0);
+  ok(sansRubrique.length === 0,
+     'chaque famille vise au moins une rubrique',
+     sansRubrique.map((f) => f.slug).join(', '));
+
+  for (const langue of ['', '/en', '/de']) {
+    const manquantes = [];
+    for (const slug of SLUGS_FAMILLES) {
+      const m = await seo.metadonneesDeRoute(
+        `${langue}/${slug}`, `${BASE}${langue}/${slug}`, BASE, db, shop);
+      if (!m || !m.titre || !m.description) manquantes.push(slug);
+    }
+    ok(manquantes.length === 0,
+       `les six familles ont titre et description en « ${langue || '/'} »`,
+       manquantes.join(', '));
+  }
+
+  const planFamilles = await seo.construireSitemap(BASE, db);
+  const absentesDuPlan = SLUGS_FAMILLES.filter((s) => !planFamilles.includes(`${BASE}/${s}<`));
+  ok(absentesDuPlan.length === 0,
+     'les six familles figurent au plan du site',
+     absentesDuPlan.join(', '));
 
   console.log('\n' + (echecs === 0 ? 'TOUT PASSE' : echecs + ' ECHEC(S)'));
   process.exit(echecs ? 1 : 0);
